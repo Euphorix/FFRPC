@@ -91,9 +91,11 @@ int main(int argc, char* argv[])
     //! broker客户端，可以注册到broker，并注册服务以及接口，也可以远程调用其他节点的接口
     ffrpc_t ffrpc_service("echo");
     foo_t foo;
-    ffrpc_service.reg(&foo_t::echo, &foo);
-    ffrpc_service.open(service_host);
-
+    if (false == arg_helper.is_enable_option("-broker_master"))
+    {
+        ffrpc_service.reg(&foo_t::echo, &foo);
+        ffrpc_service.open(service_host);
+    }
     signal_helper_t::wait();
     ffbroker.close();
     return 0;
