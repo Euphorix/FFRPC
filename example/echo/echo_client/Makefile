@@ -12,12 +12,12 @@ LIB_VER=1.0.0
 #平台
 ARCH=
 # 二进制目标
-BIN=app_rpc
+BIN=app_client
 
 #源文件目录
-SrcDir= . ../../fflib/base ../../fflib/net ../../fflib/rpc
+SrcDir= . ../../../fflib/base ../../../fflib/net ../../../fflib/rpc
 #头文件目录
-IncDir=  ../../fflib/ 
+IncDir=  ../../../fflib/ 
 #连接库目录
 LibDir= /usr/local/lib
 SRCS=$(foreach dir,$(SrcDir),$(wildcard $(dir)/*.cpp))
