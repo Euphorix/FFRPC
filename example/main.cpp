@@ -66,16 +66,16 @@ int main(int argc, char* argv[])
 
     //! 启动broker，负责网络相关的操作，如消息转发，节点注册，重连等
     ffbroker_t ffbroker;
-    ffbroker.open("app -l tcp://127.0.0.1:10241");
+    ffbroker.open("-l tcp://127.0.0.1:10241");
 
     //! broker客户端，可以注册到broker，并注册服务以及接口，也可以远程调用其他节点的接口
     ffrpc_t ffrpc_service("echo");
     foo_t foo;
     ffrpc_service.reg(&foo_t::echo, &foo);
-    ffrpc_service.open("app -broker tcp://127.0.0.1:10241");
+    ffrpc_service.open("-broker tcp://127.0.0.1:10241");
     
     ffrpc_t ffrpc_client;
-    ffrpc_client.open("app -broker tcp://127.0.0.1:10241");
+    ffrpc_client.open("-broker tcp://127.0.0.1:10241");
     echo_t::in_t in;
     in.data = "helloworld";
 
