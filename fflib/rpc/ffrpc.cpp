@@ -98,10 +98,10 @@ void ffrpc_t::timer_reconnect_broker()
     if (NULL == m_master_broker_sock)
     {
         LOGERROR((FFRPC, "ffrpc_t::timer_reconnect_broker failed, can't connect to remote broker<%s>", m_host.c_str()));
+        //! 设置定时器重连
+        m_timer.once_timer(RECONNECT_TO_BROKER_TIMEOUT, task_binder_t::gen(&route_call_reconnect, this));
         return;
     }
-    //! 设置定时器重连
-    m_timer.once_timer(RECONNECT_TO_BROKER_TIMEOUT, task_binder_t::gen(&route_call_reconnect, this));
     LOGERROR((FFRPC, "ffrpc_t::timer_reconnect_broker  end ok"));
 }
 
