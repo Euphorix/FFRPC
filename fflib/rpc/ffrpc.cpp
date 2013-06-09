@@ -340,13 +340,7 @@ void ffrpc_t::send_to_broker_by_nodeid(uint32_t dest_node_id, const string& body
     //!  如果是response 消息，那么从哪个broker来，再从哪个broker 回去
     if (callback_id_ != 0)
     {
-        uint32_t self_bind_broer = m_broker_client_info[m_node_id].bind_broker_id;
-        if (0 == singleton_t<ffrpc_memory_route_t>::instance().client_route_to_broker(self_bind_broer, msg))
-        {
-            LOGTRACE((FFRPC, "ffrpc_t::send_to_broker_by_nodeid dest_node_id[%u], self_bind_broer[%u], msgid<%u>, callback_id_[%u] same process",
-                            dest_node_id, self_bind_broer, msg_id_, callback_id_));
-            return;
-        }
+        broker_node_id = m_broker_client_info[m_node_id].bind_broker_id;
     }
     //!如果在同一个进程内那么，内存转发
     if (0 == singleton_t<ffrpc_memory_route_t>::instance().client_route_to_broker(broker_node_id, msg))
