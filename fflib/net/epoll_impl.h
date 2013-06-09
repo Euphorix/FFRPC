@@ -13,7 +13,7 @@ namespace ff {
 #define CREATE_EPOLL_SIZE  4096
 #define EPOLL_EVENTS_SIZE  128
 //! 100 ms
-#define EPOLL_WAIT_TIME    100 
+#define EPOLL_WAIT_TIME    -1 
 
 class epoll_impl_t: public epoll_i
 {

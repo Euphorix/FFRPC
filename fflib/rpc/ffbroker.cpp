@@ -30,20 +30,24 @@ int ffbroker_t::open(const string& opt_)
 {
     arg_helper_t arg(opt_);
     net_factory_t::start(1);
-    acceptor_i* acceptor = net_factory_t::listen(arg.get_option_value("-l"), this);
+    m_listen_host = arg.get_option_value("-l");
+    acceptor_i* acceptor = net_factory_t::listen(m_listen_host, this);
     if (NULL == acceptor)
     {
+        LOGERROR((BROKER, "ffbroker_t::open failed<%s>", opt_.c_str()));
         return -1;
     }
     //! 绑定cmd 对应的回调函数
     m_ffslot.bind(BROKER_SLAVE_REGISTER, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_slave_register, this))
             .bind(BROKER_CLIENT_REGISTER, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_client_register, this))
             .bind(BROKER_ROUTE_MSG, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_route_msg, this))
-            .bind(CLIENT_REGISTER_TO_SLAVE_BROKER, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_client_register_slave_broker, this));
+            .bind(CLIENT_REGISTER_TO_SLAVE_BROKER, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_client_register_slave_broker, this))
+            .bind(BROKER_SYNC_DATA_MSG, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_broker_sync_data, this));
 
     //! 任务队列绑定线程
     m_thread.create_thread(task_binder_t::gen(&task_queue_t::run, &m_tq), 1);
 
+    LOGTRACE((BROKER, "ffbroker_t::open accept ok<%s>", opt_.c_str()));
     if (arg.is_enable_option("-master_broker"))
     {
         m_broker_host = arg.get_option_value("-master_broker");
@@ -63,6 +67,7 @@ int ffbroker_t::open(const string& opt_)
 //! 连接到broker master
 int ffbroker_t::connect_to_master_broker()
 {
+    LOGINFO((BROKER, "ffbroker_t::connect_to_master_broker begin<%s>", m_broker_host.c_str()));
     m_master_broker_sock = net_factory_t::connect(m_broker_host, this);
     if (NULL == m_master_broker_sock)
     {
@@ -74,8 +79,9 @@ int ffbroker_t::connect_to_master_broker()
 
     //! 发送注册消息给master broker
     register_slave_broker_t::in_t msg;
-    msg.host = m_broker_host;
-    msg_sender_t::send(m_master_broker_sock, CLIENT_REGISTER_TO_SLAVE_BROKER, msg);
+    msg.host = m_listen_host;
+    msg_sender_t::send(m_master_broker_sock, BROKER_SLAVE_REGISTER, msg);
+    LOGINFO((BROKER, "ffbroker_t::connect_to_master_broker ok<%s>", m_broker_host.c_str()));
     return 0;
 }
 //! 判断是否是master broker
@@ -192,7 +198,7 @@ int ffbroker_t::handle_slave_register(register_slave_broker_t::in_t& msg_, socke
     slave_broker_info.host = msg_.host;
     slave_broker_info.sock = sock_;
     sync_all_register_info(sock_);
-    LOGTRACE((BROKER, "ffbroker_t::handle_slave_register end ok"));
+    LOGTRACE((BROKER, "ffbroker_t::handle_slave_register end ok new node id[%u]", psession->get_node_id()));
     return 0;
 }
 
@@ -219,10 +225,14 @@ int ffbroker_t::handle_client_register(register_broker_client_t::in_t& msg_, soc
     session_data_t* psession = new session_data_t(alloc_id());
     sock_->set_data(psession);
 
-    LOGTRACE((BROKER, "ffbroker_t::handle_client_register alloc node id<%u>", psession->get_node_id()));
+    LOGTRACE((BROKER, "ffbroker_t::handle_client_register alloc node id<%u>,binder_broker[%u]", psession->get_node_id(), msg_.binder_broker_node_id));
 
     broker_client_info_t& broker_client_info = m_broker_client_info[psession->get_node_id()];
-    broker_client_info.bind_broker_id        = alloc_broker_id();
+    broker_client_info.bind_broker_id        = msg_.binder_broker_node_id;
+    if (broker_client_info.bind_broker_id < 0)
+    {
+        broker_client_info.bind_broker_id        = alloc_broker_id();
+    }
     broker_client_info.service_name          = msg_.service_name;
     broker_client_info.sock                  = sock_;
 
@@ -243,15 +253,6 @@ int ffbroker_t::handle_client_register(register_broker_client_t::in_t& msg_, soc
 uint32_t ffbroker_t::alloc_broker_id()
 {
     //! 若本进程内有broker 那么直接分配本进程的
-    vector<uint32_t> same_process_nodes = singleton_t<ffrpc_memory_route_t>::instance().get_node_same_process();
-    for (vector<uint32_t>::iterator it = same_process_nodes.begin(); it != same_process_nodes.end(); ++it)
-    {
-        if (m_slave_broker_sockets.find(*it) != m_slave_broker_sockets.end())//! 必须确定是slave broker
-        {
-            return *it;
-        }
-    }
-
     if (false == m_slave_broker_sockets.empty())
     {
         uint32_t index = m_alloc_slave_broker_index++;
@@ -281,7 +282,8 @@ int ffbroker_t::sync_all_register_info(socket_ptr_t sock_)
     {
         //!在取值之前，要检测一下对应的broker node id，是否存在，若已经失效，则重新分配一个
         uint32_t& bind_broker_node_id = it->second.bind_broker_id;
-        if (is_master() && m_slave_broker_sockets.find(bind_broker_node_id) == m_slave_broker_sockets.end())
+        if (is_master() && m_slave_broker_sockets.find(bind_broker_node_id) == m_slave_broker_sockets.end() &&
+            bind_broker_node_id != BROKER_MASTER_NODE_ID)
         {
             bind_broker_node_id = alloc_broker_id();
         }
@@ -303,6 +305,10 @@ int ffbroker_t::sync_all_register_info(socket_ptr_t sock_)
         {
             msg.node_id = sock_->get_data<session_data_t>()->get_node_id();
         }
+        else
+        {
+            msg.node_id = 0;
+        }
         msg_sender_t::send(it->second.sock, BROKER_SYNC_DATA_MSG, msg);
     }
     //! 给所有已注册的broker client节点推送所有的消息
@@ -312,6 +318,10 @@ int ffbroker_t::sync_all_register_info(socket_ptr_t sock_)
         if (sock_ == it->second.sock)
         {
             msg.node_id = sock_->get_data<session_data_t>()->get_node_id();
+        }
+        else
+        {
+            msg.node_id = 0;
         }
         msg_sender_t::send(it->second.sock, BROKER_SYNC_DATA_MSG, msg);
         LOGTRACE((BROKER, "ffbroker_t::sync_all_register_info to node_id[%u]", msg.node_id));
@@ -328,7 +338,7 @@ int ffbroker_t::handle_route_msg(broker_route_t::in_t& msg_, socket_ptr_t sock_)
 //! 转发消息给master client
 int ffbroker_t::route_msg_to_broker_client(broker_route_t::in_t& msg_)
 {
-    LOGTRACE((BROKER, "ffbroker_t::handle_route_msg begin"));
+    LOGTRACE((BROKER, "ffbroker_t::route_msg_to_broker_client begin dest node id[%u]", msg_.dest_node_id));
     if (0 == singleton_t<ffrpc_memory_route_t>::instance().broker_route_to_client(msg_))
     {
         LOGTRACE((BROKER, "ffbroker_t::handle_route_msg same process dest_node_id[%u]", msg_.dest_node_id));
@@ -338,11 +348,11 @@ int ffbroker_t::route_msg_to_broker_client(broker_route_t::in_t& msg_)
     map<uint32_t, broker_client_info_t>::iterator it = m_broker_client_info.find(msg_.dest_node_id);
     if (it == m_broker_client_info.end())
     {
-        LOGERROR((BROKER, "ffbroker_t::handle_route_msg no dest_node_id[%u]", msg_.dest_node_id));
+        LOGERROR((BROKER, "ffbroker_t::route_msg_to_broker_client no dest_node_id[%u]", msg_.dest_node_id));
         return -1;
     }
     msg_sender_t::send(it->second.sock, BROKER_TO_CLIENT_MSG, msg_);
-    LOGTRACE((BROKER, "ffbroker_t::handle_route_msg end ok"));
+    LOGTRACE((BROKER, "ffbroker_t::route_msg_to_broker_client end ok sock[%ld]", long(it->second.sock)));
     return 0;
 }
 //! 处理broker client连接到broker slave的消息
@@ -358,7 +368,7 @@ int ffbroker_t::handle_client_register_slave_broker(register_client_to_slave_bro
 
     broker_client_info_t& broker_client_info = it->second;
     broker_client_info.sock = sock_;
-    LOGTRACE((BROKER, "ffbroker_t::handle_client_register_slave_broker end ok"));
+    LOGTRACE((BROKER, "ffbroker_t::handle_client_register_slave_broker end ok node id[%u], sock[%d]", msg_.node_id, long(sock_)));
     return 0;
 }
 //! 处理broker同步消息，broker master 会把master上注册的所有信息同步给所有的client
@@ -373,6 +383,7 @@ int ffbroker_t::handle_broker_sync_data(broker_sync_all_registered_data_t::out_t
     }
 
     m_msg2id = msg_.msg2id;
+    map<uint32_t, broker_client_info_t> tmp_broker_info_data = m_broker_client_info;
     m_broker_client_info.clear();
 
     map<uint32_t, broker_sync_all_registered_data_t::broker_client_info_t>::iterator it4 = msg_.broker_client_info.begin();
@@ -381,6 +392,10 @@ int ffbroker_t::handle_broker_sync_data(broker_sync_all_registered_data_t::out_t
         ffbroker_t::broker_client_info_t& broker_client_info = m_broker_client_info[it4->first];
         broker_client_info.bind_broker_id = it4->second.bind_broker_id;
         broker_client_info.service_name   = it4->second.service_name;
+        if (tmp_broker_info_data[it4->first].service_name == it4->second.service_name)
+        {
+            broker_client_info.sock = tmp_broker_info_data[it4->first].sock;
+        }
 
         LOGTRACE((BROKER, "ffbroker_t::handle_broker_sync_data name[%s] -> node id[%u]", broker_client_info.service_name, it4->first));
     }

@@ -13,7 +13,12 @@ ffrpc_t::ffrpc_t(string service_name_):
     m_callback_id(0),
     m_master_broker_sock(NULL)
 {
-    
+    if (m_service_name.empty())
+    {
+        char tmp[512];
+        sprintf(tmp, "FFRPCClient-%ld-%p", ::time(NULL), this);
+        m_service_name = tmp;
+    }
 }
 
 ffrpc_t::~ffrpc_t()
@@ -56,6 +61,7 @@ int ffrpc_t::open(const string& opt_)
 //! 连接到broker master
 socket_ptr_t ffrpc_t::connect_to_broker(const string& host_, uint32_t node_id_)
 {
+    LOGINFO((FFRPC, "ffrpc_t::connect_to_broker begin...host_<%s>,node_id_[%u]", host_.c_str(), node_id_));
     socket_ptr_t sock = net_factory_t::connect(host_, this);
     if (NULL == sock)
     {
@@ -103,7 +109,8 @@ void ffrpc_t::timer_reconnect_broker()
 int ffrpc_t::register_all_interface(socket_ptr_t sock)
 {
     register_broker_client_t::in_t msg;
-    msg.service_name = m_service_name;
+    msg.binder_broker_node_id = singleton_t<ffrpc_memory_route_t>::instance().get_broker_node_same_process();
+    msg.service_name          = m_service_name;
     
     for (map<string, ffslot_t::callback_t*>::iterator it = m_reg_iterface.begin(); it != m_reg_iterface.end(); ++it)
     {
@@ -230,7 +237,8 @@ int ffrpc_t::handle_broker_sync_data(broker_sync_all_registered_data_t::out_t& m
         broker_client_info.service_name   = it4->second.service_name;
 
         m_broker_client_name2nodeid[broker_client_info.service_name] = it4->first;
-        LOGTRACE((FFRPC, "ffrpc_t::handle_broker_sync_data name[%s] -> node id[%u]", broker_client_info.service_name, it4->first));
+        LOGTRACE((FFRPC, "ffrpc_t::handle_broker_sync_data name[%s] -> node id[%u],bind_broker_id[%u]",
+                    broker_client_info.service_name, it4->first, broker_client_info.bind_broker_id));
     }
     LOGTRACE((FFRPC, "ffrpc_t::handle_broker_sync_data end ok"));
     return 0;
@@ -329,8 +337,19 @@ void ffrpc_t::send_to_broker_by_nodeid(uint32_t dest_node_id, const string& body
     msg.body        = body_;
     msg.callback_id = callback_id_;
     
+    //!  如果是response 消息，那么从哪个broker来，再从哪个broker 回去
+    if (callback_id_ != 0)
+    {
+        uint32_t self_bind_broer = m_broker_client_info[m_node_id].bind_broker_id;
+        if (0 == singleton_t<ffrpc_memory_route_t>::instance().client_route_to_broker(self_bind_broer, msg))
+        {
+            LOGTRACE((FFRPC, "ffrpc_t::send_to_broker_by_nodeid dest_node_id[%u], self_bind_broer[%u], msgid<%u>, callback_id_[%u] same process",
+                            dest_node_id, self_bind_broer, msg_id_, callback_id_));
+            return;
+        }
+    }
     //!如果在同一个进程内那么，内存转发
-    if (0 == singleton_t<ffrpc_memory_route_t>::instance().client_route_to_broker(msg))
+    if (0 == singleton_t<ffrpc_memory_route_t>::instance().client_route_to_broker(broker_node_id, msg))
     {
         LOGTRACE((FFRPC, "ffrpc_t::send_to_broker_by_nodeid dest_node_id[%u], broker_node_id[%u], msgid<%u>, callback_id_[%u] same process",
                         dest_node_id, broker_node_id, msg_id_, callback_id_));

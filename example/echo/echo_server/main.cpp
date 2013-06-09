@@ -64,7 +64,7 @@ struct foo_t
 int main(int argc, char* argv[])
 {
     //! 美丽的日志组件，shell输出是彩色滴！！
-    LOG.start("-log_path ./log -log_filename log -log_class XX,BROKER,FFRPC -log_print_screen false -log_print_file false -log_level 1");
+    LOG.start("-log_path ./log -log_filename log -log_class XX,BROKER,FFRPC -log_print_screen true -log_print_file false -log_level 6");
 
     if (argc == 1)
     {
@@ -81,6 +81,10 @@ int main(int argc, char* argv[])
     //! 启动broker，负责网络相关的操作，如消息转发，节点注册，重连等
     string broker_host  = string("-l ") + arg_helper.get_option_value("-l");
     string service_host = string("-broker ") + arg_helper.get_option_value("-l");
+    if (arg_helper.is_enable_option("-master_broker"))
+    {
+        broker_host += string(" -master_broker ") + arg_helper.get_option_value("-master_broker");
+    }
     ffbroker_t ffbroker;
     if (ffbroker.open(broker_host))
     {
@@ -91,7 +95,7 @@ int main(int argc, char* argv[])
     //! broker客户端，可以注册到broker，并注册服务以及接口，也可以远程调用其他节点的接口
     ffrpc_t ffrpc_service("echo");
     foo_t foo;
-    if (false == arg_helper.is_enable_option("-broker_master"))
+    if (false == arg_helper.is_enable_option("-master_broker"))
     {
         ffrpc_service.reg(&foo_t::echo, &foo);
         ffrpc_service.open(service_host);

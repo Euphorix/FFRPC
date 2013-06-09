@@ -72,6 +72,8 @@ private:
 private:
     //! 分配broker slave的索引id
     uint32_t                                m_alloc_slave_broker_index;
+    //! 本 broker的监听信息
+    string                                  m_listen_host;
     //!broker master 的host信息
     string                                  m_broker_host;
     //! 连接到master 的连接socket

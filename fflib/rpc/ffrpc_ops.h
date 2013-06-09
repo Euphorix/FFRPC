@@ -397,14 +397,16 @@ struct register_broker_client_t
     {
         void encode()
         {
-            encoder() << service_name << msg_names;
+            encoder() << service_name << msg_names << binder_broker_node_id;
         }
         void decode()
         {
-            decoder() >> service_name >> msg_names;
+            decoder() >> service_name >> msg_names >> binder_broker_node_id;
         }
         string                      service_name;
         std::set<string>            msg_names;
+        //! 需要绑定到哪个broker node id 上，如果是-1，表示任意绑定
+        uint32_t                    binder_broker_node_id;
     };
 };
 //! 向broker slave 注册client
@@ -519,10 +521,12 @@ struct ffrpc_memory_route_t
     //! broker 转发消息到rpc client
     int broker_route_to_client(broker_route_t::in_t& msg_);
     //! client 转发消息到 broker, 再由broker转发到client
-    int client_route_to_broker(broker_route_t::in_t& msg_);
+    int client_route_to_broker(uint32_t broker_node_id, broker_route_t::in_t& msg_);
 
     //! 所有已经注册的本进程的节点
     vector<uint32_t> get_node_same_process();
+    //! 获取本进程内的broker 节点
+    uint32_t get_broker_node_same_process();
     map<uint32_t/*node id*/, dest_node_info_t>      m_node_info;
 };
 

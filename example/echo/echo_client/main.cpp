@@ -41,7 +41,7 @@ struct echo_t
     };
 };
 
-int g_times = 1000*100;
+int g_times = 100;
 struct foo_t
 {
     //! echo接口，返回请求的发送的消息ffreq_t可以提供两个模板参数，第一个表示输入的消息（请求者发送的）
@@ -74,6 +74,8 @@ struct foo_t
             printf("%ld秒,%ld毫秒,%ld微妙\n", sec, msec, usec);
             printf("收到第%d个包，ctrl-C结束\n", index);
         }
+        if (g_times == 100)
+            sleep(1);
     }
     struct timeval tm_begin;
 };
@@ -81,7 +83,7 @@ struct foo_t
 int main(int argc, char* argv[])
 {
     //! 美丽的日志组件，shell输出是彩色滴！！
-    LOG.start("-log_path ./log -log_filename log -log_class XX,BROKER,FFRPC -log_print_screen true -log_print_file false -log_level 2");
+    LOG.start("-log_path ./log -log_filename log -log_class XX,BROKER,FFRPC -log_print_screen true -log_print_file false -log_level 6");
 
     if (argc == 1)
     {

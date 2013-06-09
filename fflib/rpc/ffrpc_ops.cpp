@@ -44,9 +44,9 @@ int ffrpc_memory_route_t::broker_route_to_client(broker_route_t::in_t& msg_)
 }
 
 //! client 转发消息到 broker, 再由broker转发到client
-int ffrpc_memory_route_t::client_route_to_broker(broker_route_t::in_t& msg_)
+int ffrpc_memory_route_t::client_route_to_broker(uint32_t broker_node_id, broker_route_t::in_t& msg_)
 {
-    ffbroker_t* ffbroker = m_node_info[msg_.dest_node_id].ffbroker;
+    ffbroker_t* ffbroker = m_node_info[broker_node_id].ffbroker;
     if (NULL == ffbroker)
     {
         return -1;
@@ -65,3 +65,17 @@ vector<uint32_t> ffrpc_memory_route_t::get_node_same_process()
     }
     return ret;
 }
+//! 获取本进程内的broker 节点
+uint32_t ffrpc_memory_route_t::get_broker_node_same_process()
+{
+    map<uint32_t/*node id*/, dest_node_info_t>::iterator it = m_node_info.begin();
+    for (; it != m_node_info.end(); ++it)
+    {
+        if (it->second.ffbroker)
+        {
+            return it->first;
+        }
+    }
+    return -1;
+}
+
