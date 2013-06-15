@@ -498,6 +498,207 @@ struct broker_route_t//!broker 转发消息
     };
 };
 
+//! gate 验证client的sessionid的消息
+struct gate_session_online_t
+{
+    struct in_t: public ffmsg_t<in_t>
+    {
+        void encode()
+        {
+            encoder() << session_key << online_time << gate_name;
+        }
+        void decode()
+        {
+            decoder() >> session_key >> online_time >> gate_name;
+        }
+        string      session_key;//! 包含用户id、密码等
+        int64_t     online_time;
+        string      gate_name;
+    };
+    struct out_t: public ffmsg_t<out_t>
+    {
+        void encode()
+        {
+            encoder() << session_id << err << alloc_logic_service;
+        }
+        void decode()
+        {
+            decoder() >> session_id >> err >> alloc_logic_service;
+        }
+        string session_id;//! 分配的sessionid
+        string err;//! 错误信息
+        string alloc_logic_service;//! 分配的logic service
+    };
+};
+//! gate session 下线
+struct gate_session_offline_t
+{
+    struct in_t: public ffmsg_t<in_t>
+    {
+        void encode()
+        {
+            encoder() << session_id << online_time;
+        }
+        void decode()
+        {
+            decoder() >> session_id >> online_time;
+        }
+        string    session_id;//! 包含用户id
+        int64_t   online_time;
+    };
+    struct out_t: public ffmsg_t<out_t>
+    {
+        void encode()
+        {
+            encoder();
+        }
+        void decode()
+        {
+            decoder();
+        }
+    };
+};
+
+//! gate 转发client的消息
+struct gate_route_logic_msg_t
+{
+    struct in_t: public ffmsg_t<in_t>
+    {
+        void encode()
+        {
+            encoder() << session_id << body;
+        }
+        void decode()
+        {
+            decoder() >> session_id >> body;
+        }
+        string session_id;//! 包含用户id
+        string body;
+    };
+    struct out_t: public ffmsg_t<out_t>
+    {
+        void encode()
+        {
+            encoder();
+        }
+        void decode()
+        {
+            decoder();
+        }
+    };
+};
+//! 改变gate 中client 对应的logic节点
+struct gate_change_logic_node_t
+{
+    struct in_t: public ffmsg_t<in_t>
+    {
+        void encode()
+        {
+            encoder() << session_id << alloc_logic_service;
+        }
+        void decode()
+        {
+            decoder() >> session_id >> alloc_logic_service;
+        }
+        string session_id;//! 包含用户id
+        string alloc_logic_service;//! 分配的logic service
+    };
+    struct out_t: public ffmsg_t<out_t>
+    {
+        void encode()
+        {
+            encoder();
+        }
+        void decode()
+        {
+            decoder();
+        }
+    };
+};
+
+//! 关闭gate中的某个session
+struct gate_close_session_t
+{
+    struct in_t: public ffmsg_t<in_t>
+    {
+        void encode()
+        {
+            encoder() << session_id;
+        }
+        void decode()
+        {
+            decoder() >> session_id;
+        }
+        string session_id;//! 包含用户id
+    };
+    struct out_t: public ffmsg_t<out_t>
+    {
+        void encode()
+        {
+            encoder();
+        }
+        void decode()
+        {
+            decoder();
+        }
+    };
+};
+//! 转发消息给client
+struct gate_route_msg_to_session_t
+{
+    struct in_t: public ffmsg_t<in_t>
+    {
+        void encode()
+        {
+            encoder() << session_id << body;
+        }
+        void decode()
+        {
+            decoder() >> session_id >> body;
+        }
+        vector<string>  session_id;//! 包含用户id
+        string          body;//! 数据
+    };
+    struct out_t: public ffmsg_t<out_t>
+    {
+        void encode()
+        {
+            encoder();
+        }
+        void decode()
+        {
+            decoder();
+        }
+    };
+};
+//! 转发消息给所有client
+struct gate_broadcast_msg_to_session_t
+{
+    struct in_t: public ffmsg_t<in_t>
+    {
+        void encode()
+        {
+            encoder() << body;
+        }
+        void decode()
+        {
+            decoder() >> body;
+        }
+        string          body;//! 数据
+    };
+    struct out_t: public ffmsg_t<out_t>
+    {
+        void encode()
+        {
+            encoder();
+        }
+        void decode()
+        {
+            decoder();
+        }
+    };
+};
+
 //! 用于broker 和 rpc 在内存间投递消息
 class ffrpc_t;
 class ffbroker_t;

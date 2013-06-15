@@ -29,6 +29,7 @@ public:
     virtual ~ffrpc_t();
 
     int open(const string& opt_);
+    int close() { return 0; }
     
     //! 处理连接断开
     int handle_broken(socket_ptr_t sock_);
