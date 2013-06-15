@@ -90,7 +90,7 @@ int ffgate_t::handle_broken_impl(socket_ptr_t sock_)
             gate_session_offline_t::in_t msg;
             msg.session_id  = session_data->id();
             msg.online_time = session_data->online_time;
-            m_ffrpc->call(client_info.alloc_logic_service, msg);
+            m_ffrpc->call(DEFAULT_LOGIC_SERVICE, msg);
             m_client_set.erase(session_data->id());
         }
     }
