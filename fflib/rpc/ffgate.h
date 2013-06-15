@@ -20,6 +20,7 @@ using namespace std;
 #include "base/arg_helper.h"
 
 namespace ff {
+#define DEFAULT_LOGIC_SERVICE "logic_service@0"
 
 class ffgate_t: public msg_handler_i
 {
@@ -92,7 +93,8 @@ struct ffgate_t::session_data_t
 struct ffgate_t::client_info_t
 {
     client_info_t():
-        sock(NULL)
+        sock(NULL),
+        alloc_logic_service(DEFAULT_LOGIC_SERVICE)
     {}
     socket_ptr_t     sock;
     string           alloc_logic_service;
