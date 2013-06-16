@@ -499,7 +499,7 @@ struct broker_route_t//!broker 转发消息
 };
 
 //! gate 验证client的sessionid的消息
-struct gate_session_online_t
+struct session_online_t
 {
     struct in_t: public ffmsg_t<in_t>
     {
@@ -531,7 +531,7 @@ struct gate_session_online_t
     };
 };
 //! gate session 下线
-struct gate_session_offline_t
+struct session_offline_t
 {
     struct in_t: public ffmsg_t<in_t>
     {
@@ -560,7 +560,7 @@ struct gate_session_offline_t
 };
 
 //! gate 转发client的消息
-struct gate_route_logic_msg_t
+struct route_logic_msg_t
 {
     struct in_t: public ffmsg_t<in_t>
     {

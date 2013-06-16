@@ -87,7 +87,7 @@ int ffgate_t::handle_broken_impl(socket_ptr_t sock_)
         client_info_t& client_info = m_client_set[session_data->id()];
         if (client_info.sock == sock_)
         {
-            gate_session_offline_t::in_t msg;
+            session_offline_t::in_t msg;
             msg.session_id  = session_data->id();
             msg.online_time = session_data->online_time;
             m_ffrpc->call(DEFAULT_LOGIC_SERVICE, msg);
@@ -130,7 +130,7 @@ int ffgate_t::verify_session_id(const message_t& msg_, socket_ptr_t sock_)
     //! 还未通过验证
     m_wait_verify_set.insert(sock_);
 
-    gate_session_online_t::in_t msg;
+    session_online_t::in_t msg;
     msg.session_key = msg_.get_body();
     msg.online_time = session_data->online_time;
     msg.gate_name   = m_gate_name;
@@ -139,7 +139,7 @@ int ffgate_t::verify_session_id(const message_t& msg_, socket_ptr_t sock_)
     return 0;
 }
 //! 验证sessionid 的回调函数
-int ffgate_t::verify_session_callback(ffreq_t<gate_session_online_t::out_t>& req_, socket_ptr_t sock_)
+int ffgate_t::verify_session_callback(ffreq_t<session_online_t::out_t>& req_, socket_ptr_t sock_)
 {
     LOGTRACE((FFGATE, "ffgate_t::verify_session_callback session_id[%s], err[%s]", req_.arg.session_id, req_.arg.err));
     set<socket_ptr_t>::iterator it = m_wait_verify_set.find(sock_);
@@ -184,7 +184,7 @@ int ffgate_t::route_logic_msg(const message_t& msg_, socket_ptr_t sock_)
     
     if (client_info.request_queue.empty())
     {
-        gate_route_logic_msg_t::in_t msg;
+        route_logic_msg_t::in_t msg;
         msg.session_id = session_data->id();
         msg.body       = msg_.get_body();
         m_ffrpc->call(client_info.alloc_logic_service, msg,
@@ -199,7 +199,7 @@ int ffgate_t::route_logic_msg(const message_t& msg_, socket_ptr_t sock_)
 }
 
 //! 逻辑处理,转发消息到logic service
-int ffgate_t::route_logic_msg_callback(ffreq_t<gate_route_logic_msg_t::out_t>& req_, const string& session_id_, socket_ptr_t sock_)
+int ffgate_t::route_logic_msg_callback(ffreq_t<route_logic_msg_t::out_t>& req_, const string& session_id_, socket_ptr_t sock_)
 {
     LOGTRACE((FFGATE, "ffgate_t::route_logic_msg_callback session_id[%s]", session_id_));
     map<string/*sessionid*/, client_info_t>::iterator it = m_client_set.find(session_id_);
@@ -213,7 +213,7 @@ int ffgate_t::route_logic_msg_callback(ffreq_t<gate_route_logic_msg_t::out_t>& r
         return 0;
     }
     
-    gate_route_logic_msg_t::in_t msg;
+    route_logic_msg_t::in_t msg;
     msg.session_id = session_id_;
     msg.body       = client_info.request_queue.front();
     m_ffrpc->call(client_info.alloc_logic_service, msg,

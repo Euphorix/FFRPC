@@ -50,12 +50,12 @@ private:
     //! 验证sessionid
     int verify_session_id(const message_t& msg_, socket_ptr_t sock_);
     //! 验证sessionid 的回调函数
-    int verify_session_callback(ffreq_t<gate_session_online_t::out_t>& req_, socket_ptr_t sock_);
+    int verify_session_callback(ffreq_t<session_online_t::out_t>& req_, socket_ptr_t sock_);
     
     //! 逻辑处理,转发消息到logic service
     int route_logic_msg(const message_t& msg_, socket_ptr_t sock_);
     //! 逻辑处理,转发消息到logic service
-    int route_logic_msg_callback(ffreq_t<gate_route_logic_msg_t::out_t>& req_, const string& session_id_, socket_ptr_t sock_);
+    int route_logic_msg_callback(ffreq_t<route_logic_msg_t::out_t>& req_, const string& session_id_, socket_ptr_t sock_);
     
     //! 改变处理client 逻辑的对应的节点
     int change_session_logic(ffreq_t<gate_change_logic_node_t::in_t, gate_change_logic_node_t::out_t>& req_);
