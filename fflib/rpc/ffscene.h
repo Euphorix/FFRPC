@@ -21,16 +21,19 @@ public:
     struct callback_info_t
     {
         callback_info_t():
-            online_callback(NULL),
+            verify_callback(NULL),
+            enter_callback(NULL),
             offline_callback(NULL),
             logic_callback(NULL)
         {}
-        ffslot_t::callback_t*   online_callback;
+        ffslot_t::callback_t*   verify_callback;
+        ffslot_t::callback_t*   enter_callback;
         ffslot_t::callback_t*   offline_callback;
         ffslot_t::callback_t*   logic_callback;
     };
     
-    class session_online_arg;
+    class session_verify_arg;
+    class session_enter_arg;
     class session_offline_arg;
     class logic_msg_arg;
     
@@ -59,7 +62,9 @@ public:
     int close_session(const string& session_id_);
 private:
     //! 处理client 上线
-    int process_session_online(ffreq_t<session_online_t::in_t, session_online_t::out_t>& req_);
+    int process_session_verify(ffreq_t<session_verify_t::in_t, session_verify_t::out_t>& req_);
+    //! 处理client 进入场景
+    int process_session_enter(ffreq_t<session_enter_scene_t::in_t, session_enter_scene_t::out_t>& req_);
     //! 处理client 下线
     int process_session_offline(ffreq_t<session_offline_t::in_t, session_offline_t::out_t>& req_);
     //! 转发client消息
@@ -74,21 +79,45 @@ private:
 
 
 
-class ffscene_t::session_online_arg: public ffslot_t::callback_arg_t
+class ffscene_t::session_verify_arg: public ffslot_t::callback_arg_t
 {
 public:
-    session_online_arg(const string& s_, int64_t t_, const string& gate_):
+    session_verify_arg(const string& s_, int64_t t_, const string& gate_):
         session_key(s_),
         online_time(t_),
         gate_name(gate_)
     {}
     virtual int type()
     {
-        return TYPEID(session_offline_arg);
+        return TYPEID(session_verify_arg);
     }
     string          session_key;
     int64_t         online_time;
     string          gate_name;
+
+    //! 验证后的sessionid
+    string          alloc_session_id;
+    //! 需要额外的返回给client的消息内容
+    string          extra_data;
+};
+
+class ffscene_t::session_enter_arg: public ffslot_t::callback_arg_t
+{
+public:
+    session_enter_arg(const string& s_, const string& from_, const string& to_, const string& data_):
+        session_id(s_),
+        from_scene(from_),
+        to_scene(to_),
+        extra_data(data_)
+    {}
+    virtual int type()
+    {
+        return TYPEID(session_enter_arg);
+    }
+    string    session_id;//! 包含用户id
+    string    from_scene;//! 从哪个scene跳转过来,若是第一次上线，from_scene为空
+    string    to_scene;//! 跳到哪个scene上面去,若是下线，to_scene为空
+    string    extra_data;//! 附带数据
 };
 class ffscene_t::session_offline_arg: public ffslot_t::callback_arg_t
 {

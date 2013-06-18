@@ -499,7 +499,7 @@ struct broker_route_t//!broker 转发消息
 };
 
 //! gate 验证client的sessionid的消息
-struct session_online_t
+struct session_verify_t
 {
     struct in_t: public ffmsg_t<in_t>
     {
@@ -519,15 +519,46 @@ struct session_online_t
     {
         void encode()
         {
-            encoder() << session_id << err << alloc_logic_service;
+            encoder() << session_id << err << extra_data;
         }
         void decode()
         {
-            decoder() >> session_id >> err >> alloc_logic_service;
+            decoder() >> session_id >> err >> extra_data;
         }
         string session_id;//! 分配的sessionid
         string err;//! 错误信息
-        string alloc_logic_service;//! 分配的logic service
+        //! 需要额外的返回给client的消息内容
+        string          extra_data;
+    };
+};
+//! gate session 进入场景服务器消息
+struct session_enter_scene_t
+{
+    struct in_t: public ffmsg_t<in_t>
+    {
+        void encode()
+        {
+            encoder() << session_id << from_scene << to_scene << extra_data;
+        }
+        void decode()
+        {
+            decoder() >> session_id >> from_scene >> to_scene >> extra_data;
+        }
+        string    session_id;//! 包含用户id
+        string    from_scene;//! 从哪个scene跳转过来,若是第一次上线，from_scene为空
+        string    to_scene;//! 跳到哪个scene上面去,若是下线，to_scene为空
+        string    extra_data;//! 附带数据
+    };
+    struct out_t: public ffmsg_t<out_t>
+    {
+        void encode()
+        {
+            encoder();
+        }
+        void decode()
+        {
+            decoder();
+        }
     };
 };
 //! gate session 下线

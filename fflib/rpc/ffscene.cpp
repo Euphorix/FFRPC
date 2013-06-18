@@ -23,7 +23,7 @@ int ffscene_t::open(arg_helper_t& arg_helper)
     m_logic_name = arg_helper.get_option_value("-logic");
     m_ffrpc = new ffrpc_t(m_logic_name);
     
-    m_ffrpc->reg(&ffscene_t::process_session_online, this);
+    m_ffrpc->reg(&ffscene_t::process_session_verify, this);
     m_ffrpc->reg(&ffscene_t::process_session_offline, this);
     m_ffrpc->reg(&ffscene_t::process_session_req, this);
     
@@ -41,17 +41,30 @@ int ffscene_t::close()
 }
 
 //! 处理client 上线
-int ffscene_t::process_session_online(ffreq_t<session_online_t::in_t, session_online_t::out_t>& req_)
+int ffscene_t::process_session_verify(ffreq_t<session_verify_t::in_t, session_verify_t::out_t>& req_)
 {
-    LOGTRACE((FFSCENE, "ffscene_t::process_session_online begin"));
-    if (m_callback_info.online_callback)
+    LOGTRACE((FFSCENE, "ffscene_t::process_session_verify begin"));
+    if (m_callback_info.verify_callback)
     {
-        session_online_arg arg(req_.arg.session_key, req_.arg.online_time, req_.arg.gate_name);
-        m_callback_info.online_callback->exe(&arg);
+        session_verify_arg arg(req_.arg.session_key, req_.arg.online_time, req_.arg.gate_name);
+        m_callback_info.verify_callback->exe(&arg);
     }
-    LOGTRACE((FFSCENE, "ffscene_t::process_session_online end ok"));
+    LOGTRACE((FFSCENE, "ffscene_t::process_session_verify end ok"));
     return 0;
 }
+//! 处理client 进入场景
+int ffscene_t::process_session_enter(ffreq_t<session_enter_scene_t::in_t, session_enter_scene_t::out_t>& req_)
+{
+    LOGTRACE((FFSCENE, "ffscene_t::process_session_enter begin"));
+    if (m_callback_info.enter_callback)
+    {
+        session_enter_arg arg(req_.arg.session_id, req_.arg.from_scene, req_.arg.to_scene, req_.arg.extra_data);
+        m_callback_info.enter_callback->exe(&arg);
+    }
+    LOGTRACE((FFSCENE, "ffscene_t::process_session_enter end ok"));
+    return 0;
+}
+
 //! 处理client 下线
 int ffscene_t::process_session_offline(ffreq_t<session_offline_t::in_t, session_offline_t::out_t>& req_)
 {

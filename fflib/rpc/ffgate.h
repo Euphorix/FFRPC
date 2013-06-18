@@ -50,7 +50,7 @@ private:
     //! 验证sessionid
     int verify_session_id(const message_t& msg_, socket_ptr_t sock_);
     //! 验证sessionid 的回调函数
-    int verify_session_callback(ffreq_t<session_online_t::out_t>& req_, socket_ptr_t sock_);
+    int verify_session_callback(ffreq_t<session_verify_t::out_t>& req_, socket_ptr_t sock_);
     
     //! 逻辑处理,转发消息到logic service
     int route_logic_msg(const message_t& msg_, socket_ptr_t sock_);

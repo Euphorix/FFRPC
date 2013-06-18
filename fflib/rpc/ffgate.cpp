@@ -130,7 +130,7 @@ int ffgate_t::verify_session_id(const message_t& msg_, socket_ptr_t sock_)
     //! 还未通过验证
     m_wait_verify_set.insert(sock_);
 
-    session_online_t::in_t msg;
+    session_verify_t::in_t msg;
     msg.session_key = msg_.get_body();
     msg.online_time = session_data->online_time;
     msg.gate_name   = m_gate_name;
@@ -139,7 +139,7 @@ int ffgate_t::verify_session_id(const message_t& msg_, socket_ptr_t sock_)
     return 0;
 }
 //! 验证sessionid 的回调函数
-int ffgate_t::verify_session_callback(ffreq_t<session_online_t::out_t>& req_, socket_ptr_t sock_)
+int ffgate_t::verify_session_callback(ffreq_t<session_verify_t::out_t>& req_, socket_ptr_t sock_)
 {
     LOGTRACE((FFGATE, "ffgate_t::verify_session_callback session_id[%s], err[%s]", req_.arg.session_id, req_.arg.err));
     set<socket_ptr_t>::iterator it = m_wait_verify_set.find(sock_);
@@ -163,8 +163,12 @@ int ffgate_t::verify_session_callback(ffreq_t<session_online_t::out_t>& req_, so
         client_info.sock->close();
     }
     client_info.sock = sock_;
-    client_info.alloc_logic_service = req_.arg.alloc_logic_service;
-    LOGTRACE((FFGATE, "ffgate_t::verify_session_callback alloc_logic_service[%s]", req_.arg.alloc_logic_service));
+
+    if (false == req_.arg.extra_data.empty())
+    {
+        msg_sender_t::send(client_info.sock, 0, req_.arg.extra_data);
+    }
+    LOGTRACE((FFGATE, "ffgate_t::verify_session_callback end ok"));
     return 0;
 }
 
