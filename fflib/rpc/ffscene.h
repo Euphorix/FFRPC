@@ -51,13 +51,13 @@ public:
     callback_info_t& callback_info();
     
     //! 发送消息给特定的client
-    int send_msg_session(const string& session_id_, const string& data_);
+    int send_msg_session(const string& session_id_, uint16_t cmd_, const string& data_);
     //! 多播
-    int multicast_msg_session(const vector<string>& session_id_, const string& data_);
+    int multicast_msg_session(const vector<string>& session_id_, uint16_t cmd_, const string& data_);
     //! 广播
-    int broadcast_msg_session(const string& data_);
+    int broadcast_msg_session(uint16_t cmd_, const string& data_);
     //! 广播 整个gate
-    int broadcast_msg_gate(const string& gate_name_, const string& data_);
+    int broadcast_msg_gate(const string& gate_name_, uint16_t cmd_, const string& data_);
     //! 关闭某个session
     int close_session(const string& session_id_);
 private:
@@ -138,8 +138,9 @@ public:
 class ffscene_t::logic_msg_arg: public ffslot_t::callback_arg_t
 {
 public:
-    logic_msg_arg(const string& s_, const string& t_):
+    logic_msg_arg(const string& s_, uint16_t cmd_, const string& t_):
         session_id(s_),
+        cmd(cmd_),
         body(t_)
     {}
     virtual int type()
@@ -147,6 +148,7 @@ public:
         return TYPEID(logic_msg_arg);
     }
     string          session_id;
+    uint16_t        cmd;
     string          body;
 };
 

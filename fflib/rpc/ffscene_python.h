@@ -107,7 +107,7 @@ public:
                 {
                     ffscene->m_ffpython.call<void>(ffscene->m_ext_name, func_name,
                                                    data->session_id, data->from_scene,
-                                                   data->to_scene, data->extra_data);
+                                                   data->extra_data);
                 }
                 catch(exception& e_)
                 {
@@ -165,7 +165,7 @@ public:
                 try
                 {
                     ffscene->m_ffpython.call<void>(ffscene->m_ext_name, func_name,
-                                                   data->session_id, data->body);
+                                                   data->session_id, data->cmd, data->body);
                 }
                 catch(exception& e_)
                 {

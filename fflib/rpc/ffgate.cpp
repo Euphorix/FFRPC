@@ -195,17 +195,18 @@ int ffgate_t::route_logic_msg(const message_t& msg_, socket_ptr_t sock_)
         return 0;
     }
     
+    route_logic_msg_t::in_t msg;
+    msg.session_id = session_data->id();
+    msg.cmd        = msg_.get_cmd();
+    msg.body       = msg_.get_body();
     if (client_info.request_queue.empty())
     {
-        route_logic_msg_t::in_t msg;
-        msg.session_id = session_data->id();
-        msg.body       = msg_.get_body();
         m_ffrpc->call(client_info.alloc_logic_service, msg,
                       ffrpc_ops_t::gen_callback(&ffgate_t::route_logic_msg_callback, this, session_data->id(), sock_));
     }
     else
     {
-        client_info.request_queue.push(msg_.get_body());
+        client_info.request_queue.push(msg);
     }
     LOGTRACE((FFGATE, "ffgate_t::route_logic_msg end ok alloc_logic_service[%s]", client_info.alloc_logic_service));
     return 0;
@@ -226,10 +227,7 @@ int ffgate_t::route_logic_msg_callback(ffreq_t<route_logic_msg_t::out_t>& req_, 
         return 0;
     }
     
-    route_logic_msg_t::in_t msg;
-    msg.session_id = session_id_;
-    msg.body       = client_info.request_queue.front();
-    m_ffrpc->call(client_info.alloc_logic_service, msg,
+    m_ffrpc->call(client_info.alloc_logic_service, client_info.request_queue.front(),
                   ffrpc_ops_t::gen_callback(&ffgate_t::route_logic_msg_callback, this, session_id_, sock_));
     
     client_info.request_queue.pop();
@@ -289,7 +287,7 @@ int ffgate_t::route_msg_to_session(ffreq_t<gate_route_msg_to_session_t::in_t, ga
             continue;
         }
 
-        msg_sender_t::send(it->second.sock, 0, req_.arg.body);
+        msg_sender_t::send(it->second.sock, req_.arg.cmd, req_.arg.body);
     }
     gate_route_msg_to_session_t::out_t out;
     req_.response(out);
@@ -305,7 +303,7 @@ int ffgate_t::broadcast_msg_to_session(ffreq_t<gate_broadcast_msg_to_session_t::
     map<string/*sessionid*/, client_info_t>::iterator it = m_client_set.begin();
     for (; it != m_client_set.end(); ++it)
     {
-        msg_sender_t::send(it->second.sock, 0, req_.arg.body);
+        msg_sender_t::send(it->second.sock, req_.arg.cmd, req_.arg.body);
     }
     
     gate_broadcast_msg_to_session_t::out_t out;

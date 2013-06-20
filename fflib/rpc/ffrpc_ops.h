@@ -598,13 +598,14 @@ struct route_logic_msg_t
     {
         void encode()
         {
-            encoder() << session_id << body;
+            encoder() << session_id << cmd << body;
         }
         void decode()
         {
-            decoder() >> session_id >> body;
+            decoder() >> session_id >> cmd >> body;
         }
         string session_id;//! 包含用户id
+        uint16_t cmd;
         string body;
     };
     struct out_t: public ffmsg_t<out_t>
@@ -682,13 +683,14 @@ struct gate_route_msg_to_session_t
     {
         void encode()
         {
-            encoder() << session_id << body;
+            encoder() << session_id << cmd << body;
         }
         void decode()
         {
-            decoder() >> session_id >> body;
+            decoder() >> session_id >> cmd >> body;
         }
         vector<string>  session_id;//! 包含用户id
+        uint16_t        cmd;
         string          body;//! 数据
     };
     struct out_t: public ffmsg_t<out_t>
@@ -710,12 +712,13 @@ struct gate_broadcast_msg_to_session_t
     {
         void encode()
         {
-            encoder() << body;
+            encoder() << cmd << body;
         }
         void decode()
         {
-            decoder() >> body;
+            decoder() >> cmd >> body;
         }
+        uint16_t        cmd;
         string          body;//! 数据
     };
     struct out_t: public ffmsg_t<out_t>
