@@ -46,7 +46,7 @@ public:
     ffscene_t();
     virtual ~ffscene_t();
     virtual int open(arg_helper_t& arg);
-    int close();
+    virtual int close();
 
     callback_info_t& callback_info();
     

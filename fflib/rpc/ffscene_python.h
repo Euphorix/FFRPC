@@ -41,7 +41,11 @@ public:
         m_ffpython.reload("main.py");
         return ffscene_t::open(arg_helper);
     }
-
+    int close()
+    {
+        ffscene_t::close();
+        Py_Finalize();
+    }
     ffslot_t::callback_t* gen_verify_callback()
     {
         struct lambda_cb: public ffslot_t::callback_t
