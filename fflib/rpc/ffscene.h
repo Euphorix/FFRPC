@@ -82,9 +82,10 @@ private:
 class ffscene_t::session_verify_arg: public ffslot_t::callback_arg_t
 {
 public:
-    session_verify_arg(const string& s_, int64_t t_, const string& gate_):
+    session_verify_arg(const string& s_, int64_t t_, const string& ip_, const string& gate_):
         session_key(s_),
         online_time(t_),
+        ip(ip_),
         gate_name(gate_)
     {}
     virtual int type()
@@ -93,6 +94,7 @@ public:
     }
     string          session_key;
     int64_t         online_time;
+    string          ip;
     string          gate_name;
 
     //! 验证后的sessionid

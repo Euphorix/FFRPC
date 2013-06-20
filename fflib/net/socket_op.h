@@ -4,7 +4,9 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <unistd.h>
-
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 namespace ff {
 
 struct socket_op_t
@@ -19,6 +21,17 @@ struct socket_op_t
         }
     
         return 0;
+    }
+    static string getpeername(int sockfd)
+    {
+        string ret;
+        struct sockaddr_in sa;
+        ::socklen_t len = sizeof(sa);
+        if(!::getpeername(sockfd, (struct sockaddr *)&sa, &len))
+        {
+            ret = ::inet_ntoa(sa.sin_addr);
+        }
+        return ret;
     }
 };
 

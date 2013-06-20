@@ -505,14 +505,15 @@ struct session_verify_t
     {
         void encode()
         {
-            encoder() << session_key << online_time << gate_name;
+            encoder() << session_key << online_time << ip << gate_name;
         }
         void decode()
         {
-            decoder() >> session_key >> online_time >> gate_name;
+            decoder() >> session_key >> online_time >> ip >> gate_name;
         }
         string      session_key;//! 包含用户id、密码等
         int64_t     online_time;
+        string      ip;
         string      gate_name;
     };
     struct out_t: public ffmsg_t<out_t>

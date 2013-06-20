@@ -1,6 +1,8 @@
 #include "rpc/ffgate.h"
 #include "net/net_factory.h"
 #include "base/log.h"
+#include "net/socket_op.h"
+
 using namespace ff;
 
 #define FFGATE                   "FFGATE"
@@ -124,7 +126,13 @@ int ffgate_t::handle_msg_impl(const message_t& msg_, socket_ptr_t sock_)
 //! 验证sessionid
 int ffgate_t::verify_session_id(const message_t& msg_, socket_ptr_t sock_)
 {
-    LOGTRACE((FFGATE, "ffgate_t::verify_session_id session_key[%s]", msg_.get_body()));
+    string ip = socket_op_t::getpeername(sock_->socket());
+    LOGTRACE((FFGATE, "ffgate_t::verify_session_id session_key[%s], ip[%s]", msg_.get_body(), ip));
+    if (ip.empty())
+    {
+        sock_->close();
+        return -1;
+    }
     session_data_t* session_data = new session_data_t();
     sock_->set_data(session_data);
     //! 还未通过验证
@@ -134,6 +142,7 @@ int ffgate_t::verify_session_id(const message_t& msg_, socket_ptr_t sock_)
     msg.session_key = msg_.get_body();
     msg.online_time = session_data->online_time;
     msg.gate_name   = m_gate_name;
+    msg.ip          = ip;
     m_ffrpc->call(DEFAULT_LOGIC_SERVICE, msg, ffrpc_ops_t::gen_callback(&ffgate_t::verify_session_callback, this, sock_));
     LOGTRACE((FFGATE, "ffgate_t::verify_session_id end ok"));
     return 0;

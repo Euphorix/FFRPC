@@ -46,7 +46,7 @@ int ffscene_t::process_session_verify(ffreq_t<session_verify_t::in_t, session_ve
     LOGTRACE((FFSCENE, "ffscene_t::process_session_verify begin"));
     if (m_callback_info.verify_callback)
     {
-        session_verify_arg arg(req_.arg.session_key, req_.arg.online_time, req_.arg.gate_name);
+        session_verify_arg arg(req_.arg.session_key, req_.arg.online_time, req_.arg.ip, req_.arg.gate_name);
         m_callback_info.verify_callback->exe(&arg);
     }
     LOGTRACE((FFSCENE, "ffscene_t::process_session_verify end ok"));

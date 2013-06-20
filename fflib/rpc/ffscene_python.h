@@ -13,12 +13,18 @@ namespace ff
 {
 #define FFSCENE_PYTHON "FFSCENE_PYTHON"
 
+#define MOD_NAME            "ffext"
+#define VERIFY_CB_NAME      "ff_session_verify"
+#define ENTER_CB_NAME       "ff_session_enter"
+#define OFFLINE_CB_NAME     "ff_session_offline"
+#define LOGIC_CB_NAME       "ff_session_logic"
+
 class ffscene_python_t: public ffscene_t
 {
 public:  
     int open(arg_helper_t& arg_helper)
     {
-        m_ext_name = "ffext";
+        m_ext_name = MOD_NAME;
         m_ffpython.reg_class<ffscene_t, PYCTOR()>("ffscene_t")
     			  .reg(&ffscene_t::send_msg_session, "send_msg_session")
     			  .reg(&ffscene_t::multicast_msg_session, "multicast_msg_session")
@@ -58,11 +64,12 @@ public:
                     return;
                 }
                 session_verify_arg* data = (session_verify_arg*)args_;
-                static string func_name  = "ff_session_verify";
+                static string func_name  = VERIFY_CB_NAME;
                 try
                 {
                     vector<string> ret = ffscene->m_ffpython.call<vector<string> >(ffscene->m_ext_name, func_name,
-                                                                                   data->session_key, data->online_time, data->gate_name);
+                                                                                   data->session_key, data->online_time,
+                                                                                   data->ip, data->gate_name);
                     if (ret.size() >= 1)
                     {
                         data->alloc_session_id = ret[0];
@@ -95,7 +102,7 @@ public:
                     return;
                 }
                 session_enter_arg* data = (session_enter_arg*)args_;
-                static string func_name  = "ff_session_enter";
+                static string func_name  = ENTER_CB_NAME;
                 try
                 {
                     ffscene->m_ffpython.call<void>(ffscene->m_ext_name, func_name,
@@ -125,7 +132,7 @@ public:
                     return;
                 }
                 session_offline_arg* data = (session_offline_arg*)args_;
-                static string func_name  = "ff_session_offline";
+                static string func_name   = OFFLINE_CB_NAME;
                 try
                 {
                     ffscene->m_ffpython.call<void>(ffscene->m_ext_name, func_name,
@@ -154,7 +161,7 @@ public:
                     return;
                 }
                 logic_msg_arg* data = (logic_msg_arg*)args_;
-                static string func_name  = "ff_session_offline";
+                static string func_name  = LOGIC_CB_NAME;
                 try
                 {
                     ffscene->m_ffpython.call<void>(ffscene->m_ext_name, func_name,
