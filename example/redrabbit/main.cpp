@@ -7,6 +7,7 @@
 #include "rpc/ffrpc.h"
 #include "rpc/ffbroker.h"
 #include "base/log.h"
+#include "rpc/ffscene_python.h"
 
 using namespace ff;
 

@@ -4,7 +4,7 @@ CP=/bin/cp
 RM=-/bin/rm -rf
 LN=/bin/ln -s 
 CFLAGS=-g  -Wall
-LDFLAGS= -lpthread  -ldl
+LDFLAGS= -lpthread  -ldl -lpython2.7
 #链接库名
 LIB_NAME=
 #链接库版本
@@ -12,12 +12,12 @@ LIB_VER=1.0.0
 #平台
 ARCH=
 # 二进制目标
-BIN=app_rpc
+BIN=app_redrabbit
 
 #源文件目录
 SrcDir= . ../../fflib/base ../../fflib/net ../../fflib/rpc
 #头文件目录
-IncDir=  ../../fflib/
+IncDir=  ../../fflib/  /usr/include/python2.7/
 #连接库目录
 LibDir= /usr/local/lib 
 SRCS=$(foreach dir,$(SrcDir),$(wildcard $(dir)/*.cpp))
