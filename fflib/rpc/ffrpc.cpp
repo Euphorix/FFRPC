@@ -31,6 +31,7 @@ int ffrpc_t::open(const string& opt_)
     net_factory_t::start(1);
     m_host = opt_;
 
+    m_thread.create_thread(task_binder_t::gen(&task_queue_t::run, &m_tq), 1);
     m_ffslot.bind(BROKER_SYNC_DATA_MSG, ffrpc_ops_t::gen_callback(&ffrpc_t::handle_broker_sync_data, this))
             .bind(BROKER_TO_CLIENT_MSG, ffrpc_ops_t::gen_callback(&ffrpc_t::handle_broker_route_msg, this));
 
@@ -41,7 +42,6 @@ int ffrpc_t::open(const string& opt_)
         LOGERROR((FFRPC, "ffrpc_t::open failed, can't connect to remote broker<%s>", m_host.c_str()));
         return -1;
     }
-    m_thread.create_thread(task_binder_t::gen(&task_queue_t::run, &m_tq), 1);
 
     while(m_node_id == 0)
     {
@@ -184,6 +184,7 @@ int ffrpc_t::handle_msg_impl(const message_t& msg_, socket_ptr_t sock_)
         {
             ffslot_msg_arg arg(msg_.get_body(), sock_);
             cb->exe(&arg);
+            LOGTRACE((FFRPC, "ffrpc_t::handle_msg_impl cmd[%u] call end ok", cmd));
             return 0;
         }
         catch(exception& e_)
@@ -192,6 +193,7 @@ int ffrpc_t::handle_msg_impl(const message_t& msg_, socket_ptr_t sock_)
             return -1;
         }
     }
+    LOGTRACE((FFRPC, "ffrpc_t::handle_msg_impl cmd[%u] end ok", cmd));
     return -1;
 }
 

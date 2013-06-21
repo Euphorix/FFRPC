@@ -24,6 +24,7 @@ class ffscene_python_t: public ffscene_t
 public:  
     int open(arg_helper_t& arg_helper)
     {
+        LOGTRACE((FFSCENE_PYTHON, "ffscene_python_t::open begin"));
         m_ext_name = MOD_NAME;
         m_ffpython.reg_class<ffscene_t, PYCTOR()>("ffscene_t")
     			  .reg(&ffscene_t::send_msg_session, "send_msg_session")
@@ -42,10 +43,12 @@ public:
 
         if (arg_helper.is_enable_option("-python_path"))
         {
-            m_ffpython.reload("main.py");
+            ffpython_t::add_path(arg_helper.get_option_value("-python_path"));
         }
-        m_ffpython.reload("main.py");
-        return ffscene_t::open(arg_helper);
+        m_ffpython.load("main");
+        int ret = ffscene_t::open(arg_helper);
+        LOGTRACE((FFSCENE_PYTHON, "ffscene_python_t::open end ok"));
+        return ret;
     }
     int close()
     {

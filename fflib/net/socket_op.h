@@ -7,6 +7,10 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+
+#include <string>
+using namespace std;
+
 namespace ff {
 
 struct socket_op_t

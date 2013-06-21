@@ -15,12 +15,12 @@ ffscene_t::~ffscene_t()
 int ffscene_t::open(arg_helper_t& arg_helper)
 {
     LOGTRACE((FFSCENE, "ffscene_t::open begin"));
-    if (false == arg_helper.is_enable_option("-logic"))
+    if (false == arg_helper.is_enable_option("-scene"))
     {
-        LOGERROR((FFSCENE, "ffscene_t::open failed without -gate argmuent"));
+        LOGERROR((FFSCENE, "ffscene_t::open failed without -scene argmuent"));
         return -1;
     }
-    m_logic_name = arg_helper.get_option_value("-logic");
+    m_logic_name = arg_helper.get_option_value("-scene");
     m_ffrpc = new ffrpc_t(m_logic_name);
     
     m_ffrpc->reg(&ffscene_t::process_session_verify, this);
@@ -33,6 +33,7 @@ int ffscene_t::open(arg_helper_t& arg_helper)
         return -1;
     }
     
+    LOGTRACE((FFSCENE, "ffscene_t::open end ok"));
     return 0;
 }
 int ffscene_t::close()
