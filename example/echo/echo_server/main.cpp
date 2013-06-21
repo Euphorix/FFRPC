@@ -80,7 +80,7 @@ int main(int argc, char* argv[])
 
     //! 启动broker，负责网络相关的操作，如消息转发，节点注册，重连等
     string broker_host  = string("-l ") + arg_helper.get_option_value("-l");
-    string service_host = string("-broker ") + arg_helper.get_option_value("-l");
+    string service_host = arg_helper.get_option_value("-l");
     if (arg_helper.is_enable_option("-master_broker"))
     {
         broker_host += string(" -master_broker ") + arg_helper.get_option_value("-master_broker");

@@ -51,6 +51,7 @@ public:
     {
         ffscene_t::close();
         Py_Finalize();
+        return 0;
     }
     ffslot_t::callback_t* gen_verify_callback()
     {

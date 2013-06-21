@@ -101,7 +101,7 @@ int main(int argc, char* argv[])
         g_times = atoi(arg_helper.get_option_value("-times").c_str());
     }
     //! 启动broker，负责网络相关的操作，如消息转发，节点注册，重连等
-    string service_host = string("-broker ") + arg_helper.get_option_value("-l");
+    string service_host = arg_helper.get_option_value("-l");
 
     //! broker客户端，可以注册到broker，并注册服务以及接口，也可以远程调用其他节点的接口
     ffrpc_t ffrpc_client;

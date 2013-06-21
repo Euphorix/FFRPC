@@ -28,9 +28,8 @@ ffrpc_t::~ffrpc_t()
 
 int ffrpc_t::open(const string& opt_)
 {
-    arg_helper_t arg(opt_);
     net_factory_t::start(1);
-    m_host = arg.get_option_value("-broker");
+    m_host = opt_;
 
     m_ffslot.bind(BROKER_SYNC_DATA_MSG, ffrpc_ops_t::gen_callback(&ffrpc_t::handle_broker_sync_data, this))
             .bind(BROKER_TO_CLIENT_MSG, ffrpc_ops_t::gen_callback(&ffrpc_t::handle_broker_route_msg, this));

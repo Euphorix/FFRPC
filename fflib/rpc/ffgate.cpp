@@ -18,7 +18,7 @@ ffgate_t::~ffgate_t()
 
 int ffgate_t::open(arg_helper_t& arg_helper)
 {
-    LOGTRACE((FFGATE, "ffgate_t::open begin"));
+    LOGTRACE((FFGATE, "ffgate_t::open begin broker<%s>", arg_helper.get_option_value("-broker")));
     if (false == arg_helper.is_enable_option("-gate"))
     {
         LOGERROR((FFGATE, "ffgate_t::open failed without -gate argmuent"));

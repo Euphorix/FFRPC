@@ -72,10 +72,10 @@ int main(int argc, char* argv[])
     ffrpc_t ffrpc_service("echo");
     foo_t foo;
     ffrpc_service.reg(&foo_t::echo, &foo);
-    ffrpc_service.open("-broker tcp://127.0.0.1:10241");
+    ffrpc_service.open("tcp://127.0.0.1:10241");
     
     ffrpc_t ffrpc_client;
-    ffrpc_client.open("-broker tcp://127.0.0.1:10241");
+    ffrpc_client.open("tcp://127.0.0.1:10241");
     echo_t::in_t in;
     in.data = "helloworld";
 
