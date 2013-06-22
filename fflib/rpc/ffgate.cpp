@@ -159,7 +159,7 @@ int ffgate_t::verify_session_callback(ffreq_t<session_verify_t::out_t>& req_, so
     }
     m_wait_verify_set.erase(it);
     
-    if (false == req_.arg.err.empty())
+    if (false == req_.arg.err.empty() || req_.arg.session_id.empty())
     {
         sock_->close();
         return 0;
@@ -177,7 +177,22 @@ int ffgate_t::verify_session_callback(ffreq_t<session_verify_t::out_t>& req_, so
     {
         msg_sender_t::send(client_info.sock, 0, req_.arg.extra_data);
     }
+    session_enter_scene_t::in_t enter_msg;
+    enter_msg.session_id = session_data->id();
+    enter_msg.from_gate = m_gate_name;
+    //enter_msg.from_scene = "";
+    enter_msg.to_scene = DEFAULT_LOGIC_SERVICE;
+    //enter_msg.extra_data = "";
+    m_ffrpc->call(DEFAULT_LOGIC_SERVICE, enter_msg, ffrpc_ops_t::gen_callback(&ffgate_t::enter_scene_callback, this, session_data->id()));
     LOGTRACE((FFGATE, "ffgate_t::verify_session_callback end ok"));
+    return 0;
+}
+
+//! enter scene 回调函数
+int ffgate_t::enter_scene_callback(ffreq_t<session_enter_scene_t::out_t>& req_, const string& session_id_)
+{
+    LOGTRACE((FFGATE, "ffgate_t::enter_scene_callback session_id[%s]", session_id_));
+    LOGTRACE((FFGATE, "ffgate_t::enter_scene_callback end ok"));
     return 0;
 }
 
@@ -246,10 +261,20 @@ int ffgate_t::change_session_logic(ffreq_t<gate_change_logic_node_t::in_t, gate_
         return 0;
     }
     
-    it->second.alloc_logic_service = req_.arg.alloc_logic_service;
+    session_enter_scene_t::in_t enter_msg;
+    enter_msg.from_scene = it->second.alloc_logic_service;
     
+    it->second.alloc_logic_service = req_.arg.alloc_logic_service;
     gate_change_logic_node_t::out_t out;
     req_.response(out);
+    
+    enter_msg.session_id = req_.arg.session_id;
+    enter_msg.from_gate = m_gate_name;
+    
+    enter_msg.to_scene = req_.arg.alloc_logic_service;
+    enter_msg.extra_data = req_.arg.extra_data;
+    m_ffrpc->call(req_.arg.alloc_logic_service, enter_msg, ffrpc_ops_t::gen_callback(&ffgate_t::enter_scene_callback, this, req_.arg.session_id));
+    
     LOGTRACE((FFGATE, "ffgate_t::change_session_logic end ok"));
     return 0;
 }

@@ -83,7 +83,8 @@ struct ffreq_t
     ffresponser_t*  responser;
     void response(OUT& out_)
     {
-        responser->response(node_id, 0, callback_id, out_.encode_data());
+        if (0 != callback_id)
+            responser->response(node_id, 0, callback_id, out_.encode_data());
     }
 };
 
@@ -539,16 +540,18 @@ struct session_enter_scene_t
     {
         void encode()
         {
-            encoder() << session_id << from_scene << to_scene << extra_data;
+            encoder() << session_id << from_gate << from_scene << to_scene << extra_data;
         }
         void decode()
         {
-            decoder() >> session_id >> from_scene >> to_scene >> extra_data;
+            decoder() >> session_id >> from_gate >> from_scene >> to_scene >> extra_data;
         }
         string    session_id;//! 包含用户id
+        string    from_gate;
         string    from_scene;//! 从哪个scene跳转过来,若是第一次上线，from_scene为空
         string    to_scene;//! 跳到哪个scene上面去,若是下线，to_scene为空
         string    extra_data;//! 附带数据
+        
     };
     struct out_t: public ffmsg_t<out_t>
     {
@@ -627,14 +630,15 @@ struct gate_change_logic_node_t
     {
         void encode()
         {
-            encoder() << session_id << alloc_logic_service;
+            encoder() << session_id << alloc_logic_service << extra_data;
         }
         void decode()
         {
-            decoder() >> session_id >> alloc_logic_service;
+            decoder() >> session_id >> alloc_logic_service >> extra_data;
         }
         string session_id;//! 包含用户id
         string alloc_logic_service;//! 分配的logic service
+        string extra_data;
     };
     struct out_t: public ffmsg_t<out_t>
     {

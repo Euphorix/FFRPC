@@ -1143,6 +1143,8 @@ IMPL_INT_CODE(short)
 IMPL_INT_CODE(unsigned short)
 IMPL_INT_CODE(char)
 IMPL_INT_CODE(unsigned char)
+IMPL_INT_CODE(int64_t)
+IMPL_INT_CODE(uint64_t)
 
 
 template<typename T>

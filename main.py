@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import json
+import ff as ffext
 
 g_session_verify_callback  = None
 g_session_enter_callback   = None
@@ -38,8 +39,8 @@ def ff_session_verify(session_key, online_time, ip, gate_name):
     gate_name Ϊ���ĸ�gate��½��
     '''
     ret= [session_key]
-    if session_verify_callback != None:
-       ret = session_verify_callback(session_key, online_time, gate_name) 
+    if g_session_verify_callback != None:
+       ret = g_session_verify_callback(session_key, online_time, ip, gate_name) 
     return ret
 
 def ff_session_enter(session_id, from_scene, extra_data):
@@ -64,9 +65,12 @@ def ff_session_logic(session_id, cmd, body):
     session_id Ϊclient id
     body Ϊ�������Ϣ
     '''
-    info = g_session_logic_callback_dict[cmd]
-    arg  = info[0](body)
-    return info[1](session_id, arg)
+    try:
+        info = g_session_logic_callback_dict[cmd]
+        arg  = info[0](body)
+        return info[1](session_id, arg)
+    except:
+        return False
 
 def to_str(msg):
     if hasattr(msg, 'SerializeToString2'):
@@ -75,19 +79,26 @@ def to_str(msg):
         return str(msg)
 
 def send_msg_session(session_id, cmd_, body):
-    return ffext.ffscene_obj.send_msg_session(session_id, cmd_, to_str(body))
-def send_msg_session(session_id_list, cmd_, body):
+    ffext.ffscene_obj.send_msg_session(session_id, cmd_, to_str(body))
+def send_msg_session_list(session_id_list, cmd_, body):
     return ffext.ffscene_obj.multicast_msg_session(session_id_list, cmd_, to_str(body))
 def broadcast_msg_session(cmd_, body):
     return ffext.ffscene_obj.broadcast_msg_session(cmd_, to_str(body))
 def broadcast_msg_gate(gate_name_, cmd_, body):
     return ffext.ffscene_obj.broadcast_msg_gate(gate_name_, cmd_, to_str(body))
-def send_msg_session(session_id):
+def close_session(session_id):
     return ffext.ffscene_obj.close_session(session_id)
 
-#@session_call(100)
-#def test(session_id, msg):
-#    print("test", session_id, msg)
+num = 0
+@session_call(1)
+def test(session_id, msg):
+    print("test", session_id, msg, ffext.ffscene_obj.send_msg_session)
+    global num
+    num += 1
+    if num % 3 == 0:
+        close_session(session_id)
+    send_msg_session(session_id, 100, msg)
+
 #@session_call(200)
 #def test2(session_id, msg):
 #    print("test2", session_id, msg)
@@ -99,3 +110,6 @@ def my_session_verify(session_key, online_time, ip, gate_name):
     ret = [session_key, "ohnice"]
     print(str(ret))
     return ret
+
+
+print("loading.......")

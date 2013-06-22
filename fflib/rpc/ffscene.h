@@ -60,6 +60,8 @@ public:
     int broadcast_msg_gate(const string& gate_name_, uint16_t cmd_, const string& data_);
     //! 关闭某个session
     int close_session(const string& session_id_);
+    //! 切换scene
+    int change_session_scene(const string& session_id_, const string& to_scene_, const string& extra_data);
 private:
     //! 处理client 上线
     int process_session_verify(ffreq_t<session_verify_t::in_t, session_verify_t::out_t>& req_);

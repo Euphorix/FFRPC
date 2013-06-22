@@ -13,7 +13,7 @@ namespace ff
 {
 #define FFSCENE_PYTHON "FFSCENE_PYTHON"
 
-#define MOD_NAME            "ffext"
+#define MOD_NAME            "main"
 #define VERIFY_CB_NAME      "ff_session_verify"
 #define ENTER_CB_NAME       "ff_session_enter"
 #define OFFLINE_CB_NAME     "ff_session_offline"
@@ -31,10 +31,11 @@ public:
     			  .reg(&ffscene_t::multicast_msg_session, "multicast_msg_session")
     			  .reg(&ffscene_t::broadcast_msg_session, "broadcast_msg_session")
     			  .reg(&ffscene_t::broadcast_msg_gate, "broadcast_msg_gate")
-    			  .reg(&ffscene_t::close_session, "close_session");
+    			  .reg(&ffscene_t::close_session, "close_session")
+                  .reg(&ffscene_t::change_session_scene, "change_session_scene");
     
-        m_ffpython.init(m_ext_name);
-        m_ffpython.set_global_var(m_ext_name, "ffscene_obj", this);
+        m_ffpython.init("ff");
+        m_ffpython.set_global_var("ff", "ffscene_obj", (ffscene_t*)this);
 
         this->callback_info().verify_callback = gen_verify_callback();
         this->callback_info().enter_callback = gen_enter_callback();

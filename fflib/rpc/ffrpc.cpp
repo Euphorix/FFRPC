@@ -57,7 +57,7 @@ int ffrpc_t::open(const string& opt_)
     return 0;
 }
 
-//! Á¬½Óµ½broker master
+//! ï¿½ï¿½ï¿½Óµï¿½broker master
 socket_ptr_t ffrpc_t::connect_to_broker(const string& host_, uint32_t node_id_)
 {
     LOGINFO((FFRPC, "ffrpc_t::connect_to_broker begin...host_<%s>,node_id_[%u]", host_.c_str(), node_id_));
@@ -70,12 +70,12 @@ socket_ptr_t ffrpc_t::connect_to_broker(const string& host_, uint32_t node_id_)
     session_data_t* psession = new session_data_t(node_id_);
     sock->set_data(psession);
 
-    //! ·¢ËÍ×¢²áÏûÏ¢¸ømaster broker
+    //! ï¿½ï¿½ï¿½ï¿½×¢ï¿½ï¿½ï¿½ï¿½Ï¢ï¿½ï¿½master broker
     if (node_id_ == BROKER_MASTER_NODE_ID)
     {
         register_all_interface(sock);
     }
-    //! ·¢ËÍ×¢²áÏûÏ¢¸ømaster slave broker
+    //! ï¿½ï¿½ï¿½ï¿½×¢ï¿½ï¿½ï¿½ï¿½Ï¢ï¿½ï¿½master slave broker
     else
     {
         register_client_to_slave_broker_t::in_t msg;
@@ -84,12 +84,12 @@ socket_ptr_t ffrpc_t::connect_to_broker(const string& host_, uint32_t node_id_)
     }
     return sock;
 }
-//! Í¶µÝµ½ffrpc ÌØ¶¨µÄÏß³Ì
+//! Í¶ï¿½Ýµï¿½ffrpc ï¿½Ø¶ï¿½ï¿½ï¿½ï¿½ß³ï¿½
 static void route_call_reconnect(ffrpc_t* ffrpc_)
 {
     ffrpc_->get_tq().produce(task_binder_t::gen(&ffrpc_t::timer_reconnect_broker, ffrpc_));
 }
-//! ¶¨Ê±ÖØÁ¬ broker master
+//! ï¿½ï¿½Ê±ï¿½ï¿½ï¿½ï¿½ broker master
 void ffrpc_t::timer_reconnect_broker()
 {
     LOGERROR((FFRPC, "ffrpc_t::timer_reconnect_broker begin..."));
@@ -97,7 +97,7 @@ void ffrpc_t::timer_reconnect_broker()
     if (NULL == m_master_broker_sock)
     {
         LOGERROR((FFRPC, "ffrpc_t::timer_reconnect_broker failed, can't connect to remote broker<%s>", m_host.c_str()));
-        //! ÉèÖÃ¶¨Ê±Æ÷ÖØÁ¬
+        //! ï¿½ï¿½ï¿½Ã¶ï¿½Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         m_timer.once_timer(RECONNECT_TO_BROKER_TIMEOUT, task_binder_t::gen(&route_call_reconnect, this));
         return;
     }
@@ -118,7 +118,7 @@ int ffrpc_t::register_all_interface(socket_ptr_t sock)
     msg_sender_t::send(sock, BROKER_CLIENT_REGISTER, msg);
     return 0;
 }
-//! »ñÈ¡ÈÎÎñ¶ÓÁÐ¶ÔÏó
+//! ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð¶ï¿½ï¿½ï¿½
 task_queue_t& ffrpc_t::get_tq()
 {
     return m_tq;
@@ -144,7 +144,7 @@ int ffrpc_t::handle_broken_impl(socket_ptr_t sock_)
     if (BROKER_MASTER_NODE_ID == sock_->get_data<session_data_t>()->get_node_id())
     {
         m_master_broker_sock = NULL;
-        //! Á¬½Óµ½broker masterµÄÁ¬½Ó¶Ï¿ªÁË
+        //! ï¿½ï¿½ï¿½Óµï¿½broker masterï¿½ï¿½ï¿½ï¿½ï¿½Ó¶Ï¿ï¿½ï¿½ï¿½
         map<uint32_t, slave_broker_info_t>::iterator it = m_slave_broker_sockets.begin();//! node id -> info
         for (; it != m_slave_broker_sockets.end(); ++it)
         {
@@ -153,13 +153,13 @@ int ffrpc_t::handle_broken_impl(socket_ptr_t sock_)
             slave_broker_info.sock->set_data(NULL);
             slave_broker_info.sock->close();
         }
-        m_slave_broker_sockets.clear();//! ËùÓÐÁ¬½Óµ½broker slaveµÄÁ¬½Ó¶Ï¿ª
-        m_ffslot_interface.clear();//! ×¢²áµÄ½Ó¿ÚÇå³ý
-        m_ffslot_callback.clear();//! »Øµ÷º¯ÊýÇå³ý
-        m_msg2id.clear();//! ÏûÏ¢Ó³Éä±íÇå³ý
-        m_broker_client_info.clear();//! ¸÷¸ö·þÎñµÄ¼ÇÂ¼±íÇå³ý
-        m_broker_client_name2nodeid.clear();//! ·þÎñÃûµ½node idµÄÓ³Éä
-        //! ÉèÖÃ¶¨Ê±Æ÷ÖØÁ·
+        m_slave_broker_sockets.clear();//! ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Óµï¿½broker slaveï¿½ï¿½ï¿½ï¿½ï¿½Ó¶Ï¿ï¿½
+        m_ffslot_interface.clear();//! ×¢ï¿½ï¿½Ä½Ó¿ï¿½ï¿½ï¿½ï¿½
+        m_ffslot_callback.clear();//! ï¿½Øµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+        m_msg2id.clear();//! ï¿½ï¿½Ï¢Ó³ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+        m_broker_client_info.clear();//! ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½Â¼ï¿½ï¿½ï¿½ï¿½ï¿½
+        m_broker_client_name2nodeid.clear();//! ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½node idï¿½ï¿½Ó³ï¿½ï¿½
+        //! ï¿½ï¿½ï¿½Ã¶ï¿½Ê±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         m_timer.once_timer(RECONNECT_TO_BROKER_TIMEOUT, task_binder_t::gen(&route_call_reconnect, this));
     }
     else
@@ -250,13 +250,13 @@ int ffrpc_t::handle_broker_route_msg(broker_route_t::in_t& msg_, socket_ptr_t so
     return trigger_callback(msg_);
 }
 
-//! µ÷ÓÃÏûÏ¢¶ÔÓ¦µÄ»Øµ÷º¯Êý
+//! ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï¢ï¿½ï¿½Ó¦ï¿½Ä»Øµï¿½ï¿½ï¿½ï¿½ï¿½
 int ffrpc_t::trigger_callback(broker_route_t::in_t& msg_)
 {
     LOGTRACE((FFRPC, "ffrpc_t::handle_broker_route_msg msg_id[%u],callback_id[%u] begin", msg_.msg_id, msg_.callback_id));
     try
     {
-        if (msg_.msg_id == 0)//! msg_id Îª0±íÊ¾ÕâÊÇÒ»¸ö»Øµ÷µÄÏûÏ¢£¬callback_idÒÑ¾­ÓÐÖµ
+        if (msg_.msg_id == 0)//! msg_id Îª0ï¿½ï¿½Ê¾ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ï¿½Øµï¿½ï¿½ï¿½ï¿½ï¿½Ï¢ï¿½ï¿½callback_idï¿½Ñ¾ï¿½ï¿½ï¿½Öµ
         {
             ffslot_t::callback_t* cb = m_ffslot_callback.get_callback(msg_.callback_id);
             if (cb)
@@ -271,7 +271,7 @@ int ffrpc_t::trigger_callback(broker_route_t::in_t& msg_)
                 LOGERROR((FFRPC, "ffrpc_t::handle_broker_route_msg callback_id[%u] not found", msg_.callback_id));
             }
         }
-        else//! ±íÊ¾µ÷ÓÃ½Ó¿Ú
+        else//! ï¿½ï¿½Ê¾ï¿½ï¿½ï¿½Ã½Ó¿ï¿½
         {
             ffslot_t::callback_t* cb = m_ffslot_interface.get_callback(msg_.msg_id);
             if (cb)
@@ -306,12 +306,22 @@ int ffrpc_t::call_impl(const string& service_name_, const string& msg_name_, con
     map<string, uint32_t>::iterator it = m_broker_client_name2nodeid.find(service_name_);
     if (it == m_broker_client_name2nodeid.end())
     {
+        delete callback_;
         return -1;
     }
 
     uint32_t dest_node_id = it->second;
-    uint32_t msg_id      = m_msg2id[msg_name_];
-    uint32_t callback_id = 0;
+    uint32_t msg_id       = 0;
+    map<string, uint32_t>::iterator msg_it = m_msg2id.find(msg_name_);
+    if (msg_it == m_msg2id.end())
+    {
+        delete callback_;
+        LOGERROR((FFRPC, "ffrpc_t::call_impl begin service_name_<%s>, no msg_name_<%s> registed", service_name_.c_str(), msg_name_.c_str()));
+        return -1;
+    }
+    msg_id = msg_it->second;
+    
+    uint32_t callback_id  = 0;
 
     if (callback_)
     {
@@ -321,11 +331,11 @@ int ffrpc_t::call_impl(const string& service_name_, const string& msg_name_, con
 
     send_to_broker_by_nodeid(dest_node_id, body_, msg_id, callback_id);
     
-    LOGTRACE((FFRPC, "ffrpc_t::call_impl msgid<%u> end ok", msg_id));
+    LOGTRACE((FFRPC, "ffrpc_t::call_impl msgid<%u> callback_id[%u] end ok", msg_id, callback_id));
     return 0;
 }
 
-//! Í¨¹ýnode id ·¢ËÍÏûÏ¢¸øbroker
+//! Í¨ï¿½ï¿½node id ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï¢ï¿½ï¿½broker
 void ffrpc_t::send_to_broker_by_nodeid(uint32_t dest_node_id, const string& body_, uint32_t msg_id_, uint32_t callback_id_)
 {
     broker_client_info_t& broker_client_info = m_broker_client_info[dest_node_id];
@@ -338,12 +348,12 @@ void ffrpc_t::send_to_broker_by_nodeid(uint32_t dest_node_id, const string& body
     msg.body        = body_;
     msg.callback_id = callback_id_;
     
-    //!  Èç¹ûÊÇresponse ÏûÏ¢£¬ÄÇÃ´´ÓÄÄ¸öbrokerÀ´£¬ÔÙ´ÓÄÄ¸öbroker »ØÈ¥
+    //!  ï¿½ï¿½ï¿½ï¿½ï¿½response ï¿½ï¿½Ï¢ï¿½ï¿½ï¿½ï¿½Ã´ï¿½ï¿½ï¿½Ä¸ï¿½brokerï¿½ï¿½ï¿½ï¿½ï¿½Ù´ï¿½ï¿½Ä¸ï¿½broker ï¿½ï¿½È¥
     if (callback_id_ != 0)
     {
         broker_node_id = m_broker_client_info[m_node_id].bind_broker_id;
     }
-    //!Èç¹ûÔÚÍ¬Ò»¸ö½ø³ÌÄÚÄÇÃ´£¬ÄÚ´æ×ª·¢
+    //!ï¿½ï¿½ï¿½ï¿½ï¿½Í¬Ò»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ã´ï¿½ï¿½ï¿½Ú´ï¿½×ªï¿½ï¿½
     if (0 == singleton_t<ffrpc_memory_route_t>::instance().client_route_to_broker(broker_node_id, msg))
     {
         LOGTRACE((FFRPC, "ffrpc_t::send_to_broker_by_nodeid dest_node_id[%u], broker_node_id[%u], msgid<%u>, callback_id_[%u] same process",
@@ -367,7 +377,7 @@ void ffrpc_t::send_to_broker_by_nodeid(uint32_t dest_node_id, const string& body
                         dest_node_id, broker_node_id, msg_id_, callback_id_));
 }
 
-//! µ÷ÓÃ½Ó¿Úºó£¬ÐèÒª»Øµ÷ÏûÏ¢¸øÇëÇóÕß
+//! ï¿½ï¿½ï¿½Ã½Ó¿Úºï¿½ï¿½ï¿½Òªï¿½Øµï¿½ï¿½ï¿½Ï¢ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 void ffrpc_t::response(uint32_t node_id_, uint32_t msg_id_, uint32_t callback_id_, const string& body_)
 {
     m_tq.produce(task_binder_t::gen(&ffrpc_t::send_to_broker_by_nodeid, this, node_id_, body_, msg_id_, callback_id_));

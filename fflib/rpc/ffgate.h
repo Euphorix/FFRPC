@@ -20,7 +20,7 @@ using namespace std;
 #include "base/arg_helper.h"
 
 namespace ff {
-#define DEFAULT_LOGIC_SERVICE "logic_service@0"
+#define DEFAULT_LOGIC_SERVICE "scene@0"
 
 class ffgate_t: public msg_handler_i
 {
@@ -56,6 +56,8 @@ private:
     int route_logic_msg(const message_t& msg_, socket_ptr_t sock_);
     //! 逻辑处理,转发消息到logic service
     int route_logic_msg_callback(ffreq_t<route_logic_msg_t::out_t>& req_, const string& session_id_, socket_ptr_t sock_);
+    //! enter scene 回调函数
+    int enter_scene_callback(ffreq_t<session_enter_scene_t::out_t>& req_, const string& session_id_);
     
     //! 改变处理client 逻辑的对应的节点
     int change_session_logic(ffreq_t<gate_change_logic_node_t::in_t, gate_change_logic_node_t::out_t>& req_);
