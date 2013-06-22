@@ -38,12 +38,18 @@ int main(int argc, char* argv[])
         printf("usage: %s -gate tcp://127.0.0.1:10241\n", argv[0]);
         return 1;
     }
+    string name ="helloworld";
     arg_helper_t arg_helper(argc, argv);
     if (false == arg_helper.is_enable_option("-gate"))
     {
         printf("usage: %s -gate tcp://127.0.0.1:10241\n", argv[0]);
         return 1;
     }
+    if (arg_helper.is_enable_option("-name"))
+    {
+        name = arg_helper.get_option_value("-name");
+    }
+    printf("name=%s\n", name.c_str());
     handler_t handler;
     string host_ = arg_helper.get_option_value("-gate");
     socket_ptr_t sock = net_factory_t::connect(host_, &handler);
@@ -52,7 +58,7 @@ int main(int argc, char* argv[])
         LOGERROR((FFRPC, "can't connect to remote broker<%s>", host_.c_str()));
         return -1;
     }
-    msg_sender_t::send(sock, 0, "helloworld");
+    msg_sender_t::send(sock, 0, name);
 
     int cmd = 1;
     while(cmd)

@@ -18,6 +18,7 @@ namespace ff
 #define ENTER_CB_NAME       "ff_session_enter"
 #define OFFLINE_CB_NAME     "ff_session_offline"
 #define LOGIC_CB_NAME       "ff_session_logic"
+#define TIMER_CB_NAME       "ff_timer_callback"
 
 class ffscene_python_t: public ffscene_t
 {
@@ -26,16 +27,17 @@ public:
     {
         LOGTRACE((FFSCENE_PYTHON, "ffscene_python_t::open begin"));
         m_ext_name = MOD_NAME;
-        m_ffpython.reg_class<ffscene_t, PYCTOR()>("ffscene_t")
-    			  .reg(&ffscene_t::send_msg_session, "send_msg_session")
-    			  .reg(&ffscene_t::multicast_msg_session, "multicast_msg_session")
-    			  .reg(&ffscene_t::broadcast_msg_session, "broadcast_msg_session")
-    			  .reg(&ffscene_t::broadcast_msg_gate, "broadcast_msg_gate")
-    			  .reg(&ffscene_t::close_session, "close_session")
-                  .reg(&ffscene_t::change_session_scene, "change_session_scene");
+        m_ffpython.reg_class<ffscene_python_t, PYCTOR()>("ffscene_t")
+    			  .reg(&ffscene_python_t::send_msg_session, "send_msg_session")
+    			  .reg(&ffscene_python_t::multicast_msg_session, "multicast_msg_session")
+    			  .reg(&ffscene_python_t::broadcast_msg_session, "broadcast_msg_session")
+    			  .reg(&ffscene_python_t::broadcast_msg_gate, "broadcast_msg_gate")
+    			  .reg(&ffscene_python_t::close_session, "close_session")
+                  .reg(&ffscene_python_t::change_session_scene, "change_session_scene")
+                  .reg(&ffscene_python_t::once_timer, "once_timer");
     
         m_ffpython.init("ff");
-        m_ffpython.set_global_var("ff", "ffscene_obj", (ffscene_t*)this);
+        m_ffpython.set_global_var("ff", "ffscene_obj", (ffscene_python_t*)this);
 
         this->callback_info().verify_callback = gen_verify_callback();
         this->callback_info().enter_callback = gen_enter_callback();
@@ -183,7 +185,34 @@ public:
         return new lambda_cb(this);
     }
 
-        
+    //! 定时器接口
+    int once_timer(int timeout_, uint64_t id_)
+    {
+        struct lambda_cb
+        {
+            static void call_py(ffscene_python_t* ffscene, uint64_t id)
+            {
+                LOGTRACE((FFSCENE_PYTHON, "ffscene_python_t::once_timer call_py id<%u>", id));
+                static string func_name  = TIMER_CB_NAME;
+                try
+                {
+                    ffscene->m_ffpython.call<void>(ffscene->m_ext_name, func_name, id);
+                }
+                catch(exception& e_)
+                {
+                    LOGERROR((FFSCENE_PYTHON, "ffscene_python_t::gen_logic_callback exception<%s>", e_.what()));
+                }
+            }
+            static void callback(ffscene_python_t* ffscene, task_queue_t* tq_, uint64_t id)
+            {
+                tq_->produce(task_binder_t::gen(&lambda_cb::call_py, ffscene, id));
+            }
+        };
+        LOGTRACE((FFSCENE_PYTHON, "ffscene_python_t::once_timer begin id<%u>", id_));
+        m_ffrpc->get_timer().once_timer(timeout_, task_binder_t::gen(&lambda_cb::callback, this, &(m_ffrpc->get_tq()), id_));
+        return 0;
+    }
+    
 
 public:
     ffpython_t      m_ffpython;

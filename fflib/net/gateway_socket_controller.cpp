@@ -46,5 +46,6 @@ int gateway_socket_controller_t::handle_read(socket_i* s_, char* buff, size_t le
 int gateway_socket_controller_t::handle_error(socket_i* s_)
 {
     m_net_stat->get_heartbeat().del(s_);
+    common_socket_controller_t::handle_error(s_);
     return 0;
 }

@@ -59,6 +59,8 @@ public:
     void timer_reconnect_broker();
     //! 调用消息对应的回调函数
     int trigger_callback(broker_route_t::in_t& msg_);
+
+    timer_service_t& get_timer() { return m_timer; }
 private:
     //! 处理连接断开
     int handle_broken_impl(socket_ptr_t sock_);

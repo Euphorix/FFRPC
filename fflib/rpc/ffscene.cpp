@@ -63,10 +63,10 @@ int ffscene_t::process_session_verify(ffreq_t<session_verify_t::in_t, session_ve
 int ffscene_t::process_session_enter(ffreq_t<session_enter_scene_t::in_t, session_enter_scene_t::out_t>& req_)
 {
     LOGTRACE((FFSCENE, "ffscene_t::process_session_enter begin gate[%s]", req_.arg.from_gate));
+    m_session_info[req_.arg.session_id].gate_name = req_.arg.from_gate;
     session_enter_scene_t::out_t out;
     if (m_callback_info.enter_callback)
     {
-        m_session_info[req_.arg.session_id].gate_name = req_.arg.from_gate;
         session_enter_arg arg(req_.arg.session_id, req_.arg.from_scene, req_.arg.to_scene, req_.arg.extra_data);
         m_callback_info.enter_callback->exe(&arg);
     }
@@ -79,10 +79,10 @@ int ffscene_t::process_session_enter(ffreq_t<session_enter_scene_t::in_t, sessio
 int ffscene_t::process_session_offline(ffreq_t<session_offline_t::in_t, session_offline_t::out_t>& req_)
 {
     LOGTRACE((FFSCENE, "ffscene_t::process_session_offline begin"));
+    m_session_info.erase(req_.arg.session_id);
     session_offline_t::out_t out;
     if (m_callback_info.offline_callback)
     {
-        m_session_info.erase(req_.arg.session_id);
         session_offline_arg arg(req_.arg.session_id, req_.arg.online_time);
         m_callback_info.offline_callback->exe(&arg);
     }
@@ -174,6 +174,7 @@ int ffscene_t::close_session(const string& session_id_)
     gate_close_session_t::in_t msg;
     msg.session_id = session_id_;
     m_ffrpc->call(it->second.gate_name, msg);
+    m_session_info.erase(it);
     return 0;
 }
 //! 切换scene

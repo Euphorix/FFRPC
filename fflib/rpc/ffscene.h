@@ -62,6 +62,7 @@ public:
     int close_session(const string& session_id_);
     //! 切换scene
     int change_session_scene(const string& session_id_, const string& to_scene_, const string& extra_data);
+
 private:
     //! 处理client 上线
     int process_session_verify(ffreq_t<session_verify_t::in_t, session_verify_t::out_t>& req_);
@@ -72,7 +73,7 @@ private:
     //! 转发client消息
     int process_session_req(ffreq_t<route_logic_msg_t::in_t, route_logic_msg_t::out_t>& req_);
     
-private:
+protected:
     string                                      m_logic_name;
     shared_ptr_t<ffrpc_t>                       m_ffrpc;
     callback_info_t                             m_callback_info;

@@ -72,6 +72,7 @@ int ffgate_t::handle_msg(const message_t& msg_, socket_ptr_t sock_)
 //! 处理连接断开
 int ffgate_t::handle_broken_impl(socket_ptr_t sock_)
 {
+    LOGTRACE((FFGATE, "ffgate_t::broken begin"));
     session_data_t* session_data = sock_->get_data<session_data_t>();
     if (NULL == session_data)
     {
@@ -170,6 +171,7 @@ int ffgate_t::verify_session_callback(ffreq_t<session_verify_t::out_t>& req_, so
     if (client_info.sock)
     {
         client_info.sock->close();
+        LOGINFO((FFGATE, "ffgate_t::verify_session_callback reconnect, close old session_id[%s]", req_.arg.session_id));
     }
     client_info.sock = sock_;
 
