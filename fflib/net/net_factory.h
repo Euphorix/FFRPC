@@ -68,6 +68,7 @@ public:
                 thread.join();
                 delete tg;
                 tg = NULL;
+                started_flag = false;
             }
         }
     };
@@ -75,6 +76,11 @@ public:
     static int start(int thread_num_)
     {
         singleton_t<global_data_t>::instance().start(thread_num_);
+        return 0;
+    }
+    static int stop()
+    {
+        singleton_t<global_data_t>::instance().stop();
         return 0;
     }
     static acceptor_i* listen(const string& host_, msg_handler_i* msg_handler_)

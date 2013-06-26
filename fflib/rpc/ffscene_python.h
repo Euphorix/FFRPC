@@ -13,7 +13,7 @@ namespace ff
 {
 #define FFSCENE_PYTHON "FFSCENE_PYTHON"
 
-#define MOD_NAME            "main"
+#define MOD_NAME            "ffext"
 #define VERIFY_CB_NAME      "ff_session_verify"
 #define ENTER_CB_NAME       "ff_session_enter"
 #define OFFLINE_CB_NAME     "ff_session_offline"
@@ -34,7 +34,8 @@ public:
     			  .reg(&ffscene_python_t::broadcast_msg_gate, "broadcast_msg_gate")
     			  .reg(&ffscene_python_t::close_session, "close_session")
                   .reg(&ffscene_python_t::change_session_scene, "change_session_scene")
-                  .reg(&ffscene_python_t::once_timer, "once_timer");
+                  .reg(&ffscene_python_t::once_timer, "once_timer")
+                  .reg(&ffscene_python_t::reload, "reload");
     
         m_ffpython.init("ff");
         m_ffpython.set_global_var("ff", "ffscene_obj", (ffscene_python_t*)this);
@@ -57,6 +58,21 @@ public:
     {
         ffscene_t::close();
         Py_Finalize();
+        return 0;
+    }
+    int reload(const string& name_)
+    {
+        LOGTRACE((FFSCENE_PYTHON, "ffscene_python_t::reload begin name_[%s]", name_));
+        try
+        {
+            ffpython_t::reload(name_);
+        }
+        catch(exception& e_)
+        {
+            LOGERROR((FFSCENE_PYTHON, "ffscene_python_t::reload exeception=%s", e_.what()));
+            return -1;
+        }
+        LOGTRACE((FFSCENE_PYTHON, "ffscene_python_t::reload end ok name_[%s]", name_));
         return 0;
     }
     ffslot_t::callback_t* gen_verify_callback()

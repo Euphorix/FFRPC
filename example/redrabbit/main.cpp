@@ -59,6 +59,6 @@ int main(int argc, char* argv[])
     ffscene_python.close();
     ffbroker.close();
     net_factory_t::stop();
-    sleep(1);
+    usleep(500);
     return 0;
 }

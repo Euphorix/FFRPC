@@ -1147,7 +1147,7 @@ IMPL_INT_CODE(unsigned char)
 #ifdef _WIN32
 IMPL_INT_CODE(unsigned long)
 #else
-IMPL_INT_CODE(int64_t)
+//IMPL_INT_CODE(int64_t)
 IMPL_INT_CODE(uint64_t)
 #endif
 
