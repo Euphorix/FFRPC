@@ -4,7 +4,7 @@ CP=/bin/cp
 RM=-/bin/rm -rf
 LN=/bin/ln -s 
 CFLAGS=-g  -Wall
-LDFLAGS= -lpthread  -ldl -lpython2.6
+LDFLAGS= -lpthread  -ldl -lpython2.7
 #链接库名
 LIB_NAME=
 #链接库版本
