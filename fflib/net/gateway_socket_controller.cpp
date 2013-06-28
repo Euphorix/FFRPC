@@ -61,7 +61,7 @@ int gateway_socket_controller_t::handle_read(socket_i* s_, char* buff, size_t le
     common_socket_controller_t::handle_read(s_, buff, len);
 
     //! 判断消息包是否超过限制
-    /*
+
     if (true == m_message.have_recv_head(m_have_recv_size) && m_message.size() > (size_t)m_net_stat->get_max_packet_size())
     {
         s_->close();
@@ -73,7 +73,8 @@ int gateway_socket_controller_t::handle_read(socket_i* s_, char* buff, size_t le
         m_last_update_tm = m_net_stat->get_heartbeat().tick();
         m_net_stat->get_heartbeat().update(s_);
     }
-    */
+
+    LOGTRACE((FFNET, "gateway_socket_controller_t::handle_read end msg size<%u>", m_message.size()));
     return 0;
 }
 
