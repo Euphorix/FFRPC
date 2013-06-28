@@ -1,8 +1,11 @@
 
 #include "net/gateway_socket_controller.h"
 #include "net/net_stat.h"
+#include "base/log.h"
+
 #include <stdio.h>
 using namespace ff;
+#define FFNET "FFNET"
 
 gateway_socket_controller_t::gateway_socket_controller_t(msg_handler_ptr_t msg_handler_, net_stat_t* ns_):
     common_socket_controller_t(msg_handler_),
@@ -28,6 +31,7 @@ int gateway_socket_controller_t::handle_open(socket_i* s_)
 
 int gateway_socket_controller_t::handle_read(socket_i* s_, char* buff, size_t len)
 {
+    LOGTRACE((FFNET, "gateway_socket_controller_t::handle_read begin len<%u>", len));
     if (m_first_pkg)
     {
         m_first_pkg = false;
@@ -43,9 +47,10 @@ int gateway_socket_controller_t::handle_read(socket_i* s_, char* buff, size_t le
         }
         if (i == tmp)
         {
+            LOGINFO((FFNET, "gateway_socket_controller_t::handle_read begin crossfile len<%u>", len));
             m_crossfile_req = true;
             string ret = "<cross-domain-policy><allow-access-from domain=\"*\" to-ports=\"*\"/></cross-domain-policy>";
-            ret.append("\0");
+            ret.append("\0", 1);
             s_->async_send(ret);
         }
     }

@@ -19,7 +19,7 @@ int main(int argc, char* argv[])
 {
     arg_helper_t arg_helper(argc, argv);
     //! 美丽的日志组件，shell输出是彩色滴！！
-    LOG.start("-log_path ./log -log_filename log -log_class XX,BROKER,FFRPC,FFGATE,FFSCENE,FFSCENE_PYTHON -log_print_screen true -log_print_file true -log_level 6");
+    LOG.start("-log_path ./log -log_filename log -log_class XX,BROKER,FFRPC,FFGATE,FFSCENE,FFSCENE_PYTHON,FFNET -log_print_screen true -log_print_file true -log_level 6");
 
     ffbroker_t ffbroker;
     ffgate_t ffgate;
