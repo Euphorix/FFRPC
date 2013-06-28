@@ -19,6 +19,9 @@ def my_session_verify(session_key, online_time, ip, gate_name):
     ret = [session_key, "%s login"%(session_key)]
     print(str(ret))
     ffext.reload('main')
+    content = "[" + (session_key).encode('utf-8') + " %s]login"%(GetNowTime())
+    ffext.broadcast_msg_session(1, content)
+    
     return ret
 
 
