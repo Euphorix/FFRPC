@@ -18,6 +18,8 @@ public:
     virtual int handle_error(socket_i*);
 
 private:
+    bool            m_first_pkg;//! first packet, need to check cross file
+    bool            m_crossfile_req;//! 
     net_stat_t*     m_net_stat;
     time_t          m_last_update_tm;
 };

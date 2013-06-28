@@ -4,11 +4,13 @@ import json
 import ffext
 @ffext.session_call(1)
 def process_chat(session_id, msg):
-    print("process_chat", session_id, msg)
-    ffext.broadcast_msg_gate('gate@0', 1, msg)
+    print("process_chat", session_id, msg[0])
+    ret = '%s'%(msg[0])
+    print(str(ret))
+    ffext.broadcast_msg_session(1, ret)
     def cb():
         ffext.broadcast_msg_gate('gate@0', 1, '定时器2')
-    ffext.once_timer(1000, cb)
+    #ffext.once_timer(1000, cb)
     ffext.reload('main')
 
 @ffext.session_verify_callback

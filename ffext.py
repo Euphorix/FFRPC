@@ -74,6 +74,7 @@ def ff_session_logic(session_id, cmd, body):
     session_id 为client id
     body 为请求的消息
     '''
+    print('ff_session_logic', session_id, cmd, body)
     try:
         info = g_session_logic_callback_dict[cmd]
         arg  = info[0](body)
@@ -93,7 +94,7 @@ def to_str(msg):
     if hasattr(msg, 'SerializeToString2'):
         return msg.SerializeToString()
     else:
-        return str(msg)
+        return str(msg)#return json.dumps(msg)
 
 def send_msg_session(session_id, cmd_, body):
     ffext.ffscene_obj.send_msg_session(session_id, cmd_, to_str(body))
@@ -102,7 +103,7 @@ def multi_send_msg_session(session_id_list, cmd_, body):
 def broadcast_msg_session(cmd_, body):
     return ffext.ffscene_obj.broadcast_msg_session(cmd_, to_str(body))
 def broadcast_msg_gate(gate_name_, cmd_, body):
-    return ffext.ffscene_obj.broadcast_msg_gate(gate_name_, cmd_, to_str(body))
+    return ffext.ffscene_obj.broadcast_msg_gate(gate_name_, cmd_, body)
 def close_session(session_id):
     return ffext.ffscene_obj.close_session(session_id)
 

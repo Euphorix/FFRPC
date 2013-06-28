@@ -185,6 +185,7 @@ public:
                 }
                 logic_msg_arg* data = (logic_msg_arg*)args_;
                 static string func_name  = LOGIC_CB_NAME;
+                LOGINFO((FFSCENE_PYTHON, "ffscene_python_t::gen_logic_callback body<%s>,len[%lu]", data->body, data->body.size()));
                 try
                 {
                     ffscene->m_ffpython.call<void>(ffscene->m_ext_name, func_name,
