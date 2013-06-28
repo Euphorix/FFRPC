@@ -1,16 +1,15 @@
 # -*- coding: utf-8 -*-
-import json
-
+import time
 import ffext
+def GetNowTime():
+    return time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))
 @ffext.session_call(1)
 def process_chat(session_id, msg):
     print("process_chat", session_id, msg[0])
-    ret = '%s'%(msg[0])
+    ret = '[%s %s]:%s'%(session_id, GetNowTime(), msg[0])
     print(str(ret))
     ffext.broadcast_msg_session(1, ret)
-    def cb():
-        ffext.broadcast_msg_gate('gate@0', 1, '定时器2')
-    #ffext.once_timer(1000, cb)
+
     ffext.reload('main')
 
 @ffext.session_verify_callback
