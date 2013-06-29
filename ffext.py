@@ -75,12 +75,9 @@ def ff_session_logic(session_id, cmd, body):
     body 为请求的消息
     '''
     print('ff_session_logic', session_id, cmd, body)
-    try:
-        info = g_session_logic_callback_dict[cmd]
-        arg  = info[0](body)
-        return info[1](session_id, arg)
-    except:
-        return False
+    info = g_session_logic_callback_dict[cmd]
+    arg  = info[0](body)
+    return info[1](session_id, arg)
 
 def ff_timer_callback(id):
     try:
@@ -93,8 +90,12 @@ def ff_timer_callback(id):
 def to_str(msg):
     if hasattr(msg, 'SerializeToString2'):
         return msg.SerializeToString()
+    elif isinstance(msg, unicode):
+        return msg.encode('utf-8')
+    elif isinstance(msg, str):
+        return msg
     else:
-        return str(msg)#return json.dumps(msg)
+        return json.dumps(msg, ensure_ascii=False)
 
 def send_msg_session(session_id, cmd_, body):
     ffext.ffscene_obj.send_msg_session(session_id, cmd_, to_str(body))
@@ -109,3 +110,19 @@ def close_session(session_id):
 
 def reload(name_):
     return ffext.ffscene_obj.reload(name_)
+
+singleton_register_dict = {}
+def singleton(type_):
+    try:
+	return type_._singleton
+    except:
+        global singleton_register_dict
+        name = type(type_)
+        obj  = singleton_register_dict.get(name)
+        if obj == None:
+            obj  = type_()
+            singleton_register_dict[name] = obj
+        type_._singleton = obj
+        return obj
+
+
