@@ -43,9 +43,9 @@ def session_call(cmd_, protocol_type_ = 'json'):
 
 def ff_session_verify(session_key, online_time, ip, gate_name):
     '''
-    session_key Îªclient·¢¹ıÀ´µÄÑéÖ¤key£¬¿ÉÄÜ°üÀ¨ÕËºÅÃÜÂë
-    online_time ÎªÉÏÏßÊ±¼ä
-    gate_name Îª´ÓÄÄ¸ögateµÇÂ½µÄ
+    session_key ä¸ºclientå‘è¿‡æ¥çš„éªŒè¯keyï¼Œå¯èƒ½åŒ…æ‹¬è´¦å·å¯†ç 
+    online_time ä¸ºä¸Šçº¿æ—¶é—´
+    gate_name ä¸ºä»å“ªä¸ªgateç™»é™†çš„
     '''
     ret= [session_key]
     if g_session_verify_callback != None:
@@ -54,25 +54,25 @@ def ff_session_verify(session_key, online_time, ip, gate_name):
 
 def ff_session_enter(session_id, from_scene, extra_data):
     '''
-    session_id Îªclient id
-    from_scene Îª´ÓÄÄ¸öscene¹ıÀ´µÄ£¬ÈôÎª¿Õ£¬Ôò±íÊ¾µÚÒ»´Î½øÈë
-    extra_data ´Ófrom_scene¸½´ø¹ıÀ´µÄÊı¾İ
+    session_id ä¸ºclient id
+    from_scene ä¸ºä»å“ªä¸ªsceneè¿‡æ¥çš„ï¼Œè‹¥ä¸ºç©ºï¼Œåˆ™è¡¨ç¤ºç¬¬ä¸€æ¬¡è¿›å…¥
+    extra_data ä»from_sceneé™„å¸¦è¿‡æ¥çš„æ•°æ®
     '''
     if g_session_enter_callback != None:
        return g_session_enter_callback(session_id, from_scene, extra_data)
 
 def ff_session_offline(session_id, online_time):
     '''
-    session_id Îªclient id
-    online_time ÎªÉÏÏßÊ±¼ä
+    session_id ä¸ºclient id
+    online_time ä¸ºä¸Šçº¿æ—¶é—´
     '''
     if g_session_offline_callback != None:
        return g_session_offline_callback(session_id, online_time)
 
 def ff_session_logic(session_id, cmd, body):
     '''
-    session_id Îªclient id
-    body ÎªÇëÇóµÄÏûÏ¢
+    session_id ä¸ºclient id
+    body ä¸ºè¯·æ±‚çš„æ¶ˆæ¯
     '''
     print('ff_session_logic', session_id, cmd, body)
     try:
