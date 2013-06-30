@@ -164,7 +164,7 @@ struct ffbroker_t::broker_bridge_info_t
     {}
     string          host;
     socket_ptr_t    sock;
-    map<string/*group name*/, uint32_t> m_broker_group_id;
+    map<string/*group name*/, uint32_t> broker_group_id;
 };
 
 //! broker bridge 上所有的 broker master group 信息

@@ -43,6 +43,7 @@ int ffbroker_t::open(arg_helper_t& arg)
             .bind(CLIENT_REGISTER_TO_SLAVE_BROKER, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_client_register_slave_broker, this))
             .bind(BROKER_SYNC_DATA_MSG, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_broker_sync_data, this))
             .bind(BROKER_TO_BRIDGE_ROUTE_MSG, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_broker_to_bridge_route_msg, this))
+            .bind(BRIDGE_TO_BROKER_ROUTE_MSG, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_bridge_to_broker_route_msg, this))
             .bind(BRIDGE_BROKER_TO_BROKER_MSG, ffrpc_ops_t::gen_callback(&ffbroker_t::bridge_handle_broker_to_broker_msg, this))
             .bind(BROKER_BRIDGE_REGISTER, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_broker_register_bridge, this));
 
@@ -81,6 +82,7 @@ int ffbroker_t::open(arg_helper_t& arg)
         {
             broker_bridge_info_t broker_bridge_info;
             broker_bridge_info.host = bridge_hosts[i];
+            broker_bridge_info.broker_group_id[m_master_group_name] = alloc_broker_id();//! TODO remove
             m_broker_bridge_info[alloc_broker_id()] = broker_bridge_info;
         }
         connect_to_bridge_broker();
@@ -445,8 +447,8 @@ string ffbroker_t::get_broker_group_name_by_id(uint32_t bridge_route_id_)
     
     for (; it == m_broker_bridge_info.end(); ++it)
     {
-        map<string/*group name*/, uint32_t>::iterator it2 = it->second.m_broker_group_id.begin();
-        for (; it2 != it->second.m_broker_group_id.end(); ++it2)
+        map<string/*group name*/, uint32_t>::iterator it2 = it->second.broker_group_id.begin();
+        for (; it2 != it->second.broker_group_id.end(); ++it2)
         {
             if (it2->second == bridge_route_id_)
             {
@@ -474,6 +476,7 @@ int ffbroker_t::route_msg_broker_to_bridge(const string& from_broker_group_name_
     dest_msg.dest_node_id = dest_node_id_;
     dest_msg.callback_id  = callback_id_;//! 回调函数的id
     msg_sender_t::send(sock_, BROKER_TO_BRIDGE_ROUTE_MSG, dest_msg);
+    LOGINFO((BROKER, "ffbroker_t::handle_bridge_to_broker_route_msg begin dest node id[%u]", msg_.dest_node_id));
     return 0;
 }
 //! [2]
@@ -486,7 +489,7 @@ int ffbroker_t::handle_broker_to_bridge_route_msg(broker_route_to_bridge_t::in_t
     map<uint32_t/*broker bridge id*/, broker_bridge_info_t>::iterator it = m_broker_bridge_info.begin();
     for (; it != m_broker_bridge_info.end(); ++it)
     {
-        if (it->second.m_broker_group_id.find(msg_.dest_broker_group_name) != it->second.m_broker_group_id.end())
+        if (it->second.broker_group_id.find(msg_.dest_broker_group_name) != it->second.broker_group_id.end())
         {
             dest_sock = it->second.sock;
             LOGINFO((BROKER, "ffbroker_t::handle_broker_to_bridge_route_msg find group[%s]", msg_.dest_broker_group_name));
@@ -525,6 +528,7 @@ int ffbroker_t::bridge_handle_broker_to_broker_msg(bridge_route_to_broker_t::in_
 //! 处理broker bridge 转发给broker master的消息
 int ffbroker_t::handle_bridge_to_broker_route_msg(bridge_route_to_broker_t::in_t& msg_, socket_ptr_t sock_)
 {
+    LOGINFO((BROKER, "ffbroker_t::handle_bridge_to_broker_route_msg begin dest node id[%u]", msg_.dest_node_id));
     //! 需要转发给broker client
     broker_route_t::in_t dest_msg;
     dest_msg.from_node_id = msg_.from_node_id;//! 来自哪个节点
@@ -550,7 +554,7 @@ int ffbroker_t::handle_bridge_to_broker_route_msg(bridge_route_to_broker_t::in_t
     dest_msg.body = msg_.body;
     
     uint32_t bridge_node_id = sock_->get_data<session_data_t>()->get_node_id();
-    dest_msg.bridge_route_id = m_broker_bridge_info[bridge_node_id].m_broker_group_id[msg_.from_broker_group_name];
+    dest_msg.bridge_route_id = m_broker_bridge_info[bridge_node_id].broker_group_id[msg_.from_broker_group_name];
     return route_msg_to_broker_client(dest_msg);
 }
 //! 转发消息给master client
