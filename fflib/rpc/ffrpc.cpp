@@ -363,7 +363,8 @@ int ffrpc_t::bridge_call_impl(const string& broker_group_, const string& service
 //! 通过node id 发送消息给broker
 void ffrpc_t::send_to_broker_by_nodeid(uint32_t dest_node_id, const string& body_, uint32_t msg_id_, uint32_t callback_id_, uint32_t bridge_route_id_)
 {
-
+    LOGINFO((FFRPC, "ffbroker_t::send_to_broker_by_nodeid begin bridge_route_id_[%u]", bridge_route_id_));
+    
     broker_route_t::in_t msg;
     msg.dest_node_id     = dest_node_id;
     msg.from_node_id     = m_node_id;

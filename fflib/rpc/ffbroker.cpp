@@ -430,6 +430,7 @@ int ffbroker_t::sync_all_register_info(socket_ptr_t sock_)
 //! 转发消息
 int ffbroker_t::handle_route_msg(broker_route_t::in_t& msg_, socket_ptr_t sock_)
 {
+    LOGINFO((BROKER, "ffbroker_t::handle_route_msg bridge_route_id[%u]", msg_.bridge_route_id));
     if (msg_.bridge_route_id != 0)
     {
         //! 需要转发给bridge broker标记，若此值不为0，说明目标node在其他broker组
@@ -476,7 +477,7 @@ int ffbroker_t::route_msg_broker_to_bridge(const string& from_broker_group_name_
     dest_msg.dest_node_id = dest_node_id_;
     dest_msg.callback_id  = callback_id_;//! 回调函数的id
     msg_sender_t::send(sock_, BROKER_TO_BRIDGE_ROUTE_MSG, dest_msg);
-    LOGINFO((BROKER, "ffbroker_t::handle_bridge_to_broker_route_msg begin dest node id[%u]", msg_.dest_node_id));
+    LOGINFO((BROKER, "ffbroker_t::route_msg_broker_to_bridge dest broker group[%s]", dest_broker_group_name_));
     return 0;
 }
 //! [2]
