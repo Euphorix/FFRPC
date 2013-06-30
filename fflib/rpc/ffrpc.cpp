@@ -349,7 +349,7 @@ void ffrpc_t::send_to_broker_by_nodeid(uint32_t dest_node_id, const string& body
     msg.callback_id = callback_id_;
     
     //!  如果是response 消息，那么从哪个broker来，再从哪个broker 回去
-    if (callback_id_ != 0)
+    if (msg_id_ == 0)
     {
         broker_node_id = m_broker_client_info[m_node_id].bind_broker_id;
     }

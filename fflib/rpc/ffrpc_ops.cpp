@@ -21,7 +21,7 @@ int ffrpc_memory_route_t::del_node(uint32_t node_id_)
     return 0;
 }
 
-//! ÅĞ¶ÏÄ¿±ê½ÚµãÊÇ·ñÔÚÍ¬Ò»½ø³ÌÖĞ
+//! åˆ¤æ–­ç›®æ ‡èŠ‚ç‚¹æ˜¯å¦åœ¨åŒä¸€è¿›ç¨‹ä¸­
 bool ffrpc_memory_route_t::is_same_process(uint32_t node_id_)
 {
     if (m_node_info.find(node_id_) != m_node_info.end())
@@ -31,7 +31,7 @@ bool ffrpc_memory_route_t::is_same_process(uint32_t node_id_)
     return false;
 }
 
-//! broker ×ª·¢ÏûÏ¢µ½rpc client
+//! broker è½¬å‘æ¶ˆæ¯åˆ°rpc client
 int ffrpc_memory_route_t::broker_route_to_client(broker_route_t::in_t& msg_)
 {
     ffrpc_t* ffrpc = m_node_info[msg_.dest_node_id].ffrpc;
@@ -43,7 +43,7 @@ int ffrpc_memory_route_t::broker_route_to_client(broker_route_t::in_t& msg_)
     return 0;
 }
 
-//! client ×ª·¢ÏûÏ¢µ½ broker, ÔÙÓÉbroker×ª·¢µ½client
+//! client è½¬å‘æ¶ˆæ¯åˆ° broker, å†ç”±brokerè½¬å‘åˆ°client
 int ffrpc_memory_route_t::client_route_to_broker(uint32_t broker_node_id, broker_route_t::in_t& msg_)
 {
     ffbroker_t* ffbroker = m_node_info[broker_node_id].ffbroker;
@@ -54,7 +54,7 @@ int ffrpc_memory_route_t::client_route_to_broker(uint32_t broker_node_id, broker
     ffbroker->get_tq().produce(task_binder_t::gen(&ffbroker_t::route_msg_to_broker_client, ffbroker, msg_));
     return 0;
 }
-//! ËùÓĞÒÑ¾­×¢²áµÄ±¾½ø³ÌµÄ½Úµã
+//! æ‰€æœ‰å·²ç»æ³¨å†Œçš„æœ¬è¿›ç¨‹çš„èŠ‚ç‚¹
 vector<uint32_t> ffrpc_memory_route_t::get_node_same_process()
 {
     vector<uint32_t> ret;
@@ -65,7 +65,7 @@ vector<uint32_t> ffrpc_memory_route_t::get_node_same_process()
     }
     return ret;
 }
-//! »ñÈ¡±¾½ø³ÌÄÚµÄbroker ½Úµã
+//! è·å–æœ¬è¿›ç¨‹å†…çš„broker èŠ‚ç‚¹
 uint32_t ffrpc_memory_route_t::get_broker_node_same_process()
 {
     map<uint32_t/*node id*/, dest_node_info_t>::iterator it = m_node_info.begin();
