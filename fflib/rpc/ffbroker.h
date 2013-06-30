@@ -15,6 +15,7 @@ using namespace std;
 #include "base/smart_ptr.h"
 #include "net/net_factory.h"
 #include "rpc/ffrpc_ops.h"
+#include "base/arg_helper.h"
 
 namespace ff
 {
@@ -39,7 +40,7 @@ public:
     //! 当有消息到来，被回调
     int handle_msg(const message_t& msg_, socket_ptr_t sock_);
 
-    int open(const string& opt_);
+    int open(arg_helper_t& opt_);
     int close();
     //! 分配一个nodeid
     uint32_t alloc_id();
@@ -50,6 +51,8 @@ public:
     
     //! 连接到broker master
     int connect_to_master_broker();
+    //! 连接到broker bridge
+    int connect_to_bridge_broker();
     //! 转发消息给master client
     int route_msg_to_broker_client(broker_route_t::in_t& msg_);
 private:
@@ -86,6 +89,10 @@ private:
     int handle_bridge_to_broker_route_msg(bridge_route_to_broker_t::in_t& msg_, socket_ptr_t sock_);
     //! [3] bridge的处理函数，从broker master转发到另外的broker master
     int bridge_handle_broker_to_broker_msg(bridge_route_to_broker_t::in_t& msg_, socket_ptr_t sock_);
+
+    
+    //! 处理broker master 注册到broker bridge
+    int handle_broker_register_bridge(register_bridge_broker_t::in_t& msg_, socket_ptr_t sock_);
 private:
     //! 分配broker slave的索引id
     uint32_t                                m_alloc_slave_broker_index;

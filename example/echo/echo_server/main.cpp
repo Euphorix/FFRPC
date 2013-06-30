@@ -86,7 +86,7 @@ int main(int argc, char* argv[])
         broker_host += string(" -master_broker ") + arg_helper.get_option_value("-master_broker");
     }
     ffbroker_t ffbroker;
-    if (ffbroker.open(broker_host))
+    if (ffbroker.open(arg_helper))
     {
         printf("broker open failed usage:app -l tcp://127.0.0.1:10241\n");
         return -1;

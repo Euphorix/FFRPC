@@ -66,7 +66,8 @@ int main(int argc, char* argv[])
 
     //! 启动broker，负责网络相关的操作，如消息转发，节点注册，重连等
     ffbroker_t ffbroker;
-    ffbroker.open("-l tcp://127.0.0.1:10241");
+    arg_helper_t arg_helper(argc, argv);
+    ffbroker.open(arg_helper);
 
     //! broker客户端，可以注册到broker，并注册服务以及接口，也可以远程调用其他节点的接口
     ffrpc_t ffrpc_service("echo");
@@ -84,9 +85,10 @@ int main(int argc, char* argv[])
     
     for (int i = 0; i < 100; ++i)
     {
+        sleep(10);
         //! 如你所想，echo接口被调用，然后echo_callback被调用，每一秒重复该过程
-        ffrpc_client.call("echo", in, ffrpc_ops_t::gen_callback(&foo_t::echo_callback, &foo, i));
-        sleep(1);
+        ffrpc_client.bridge_call("ff", "echo", in, ffrpc_ops_t::gen_callback(&foo_t::echo_callback, &foo, i));
+        sleep(30);
     }
     
     sleep(300);

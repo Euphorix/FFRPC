@@ -357,6 +357,7 @@ int ffrpc_t::bridge_call_impl(const string& broker_group_, const string& service
     }
 
     msg_sender_t::send(m_master_broker_sock, BROKER_TO_BRIDGE_ROUTE_MSG, dest_msg);
+    LOGINFO((FFRPC, "ffrpc_t::bridge_call_impl group<%s> service[%s] end ok", broker_group_, service_name_));
     return 0;
 }
 //! 通过node id 发送消息给broker

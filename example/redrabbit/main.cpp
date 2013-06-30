@@ -17,7 +17,13 @@ using namespace ff;
 
 int main(int argc, char* argv[])
 {
+    if (argc == 1)
+    {
+        printf("./example/redrabbit/app_redrabbit -gate gate@0 -broker tcp://127.0.0.1:10241 -gate_listen tcp://*:10242 -python_path /home/evan/work/ffrpc -scene scene@0\n");
+        return 0;
+    }
     arg_helper_t arg_helper(argc, argv);
+    
     //! 美丽的日志组件，shell输出是彩色滴！！
     LOG.start("-log_path ./log -log_filename log -log_class XX,BROKER,FFRPC,FFGATE,FFSCENE,FFSCENE_PYTHON,FFNET -log_print_screen true -log_print_file true -log_level 6");
 
@@ -31,7 +37,7 @@ int main(int argc, char* argv[])
     }
 
     //! 启动broker，负责网络相关的操作，如消息转发，节点注册，重连等
-    ffbroker.open(string("-l ") + arg_helper.get_option_value("-broker"));
+    ffbroker.open(arg_helper);
     
     try
     {

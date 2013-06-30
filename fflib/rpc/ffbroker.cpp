@@ -26,15 +26,14 @@ uint32_t ffbroker_t::alloc_id()
     return ret;
 }
 
-int ffbroker_t::open(const string& opt_)
+int ffbroker_t::open(arg_helper_t& arg)
 {
-    arg_helper_t arg(opt_);
     net_factory_t::start(1);
-    m_listen_host = arg.get_option_value("-l");
+    m_listen_host = arg.get_option_value("-broker");
     acceptor_i* acceptor = net_factory_t::listen(m_listen_host, this);
     if (NULL == acceptor)
     {
-        LOGERROR((BROKER, "ffbroker_t::open failed<%s>", opt_.c_str()));
+        LOGERROR((BROKER, "ffbroker_t::open failed<%s>", m_listen_host));
         return -1;
     }
     //! 绑定cmd 对应的回调函数
@@ -44,14 +43,15 @@ int ffbroker_t::open(const string& opt_)
             .bind(CLIENT_REGISTER_TO_SLAVE_BROKER, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_client_register_slave_broker, this))
             .bind(BROKER_SYNC_DATA_MSG, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_broker_sync_data, this))
             .bind(BROKER_TO_BRIDGE_ROUTE_MSG, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_broker_to_bridge_route_msg, this))
-            .bind(BRIDGE_TO_BROKER_ROUTE_MSG, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_bridge_to_broker_route_msg, this))
-            .bind(BRIDGE_BROKER_TO_BROKER_MSG, ffrpc_ops_t::gen_callback(&ffbroker_t::bridge_handle_broker_to_broker_msg, this));
+            .bind(BRIDGE_BROKER_TO_BROKER_MSG, ffrpc_ops_t::gen_callback(&ffbroker_t::bridge_handle_broker_to_broker_msg, this))
+            .bind(BROKER_BRIDGE_REGISTER, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_broker_register_bridge, this));
+
             
 
     //! 任务队列绑定线程
     m_thread.create_thread(task_binder_t::gen(&task_queue_t::run, &m_tq), 1);
 
-    LOGTRACE((BROKER, "ffbroker_t::open accept ok<%s>", opt_.c_str()));
+    LOGTRACE((BROKER, "ffbroker_t::open accept ok<%s>", m_listen_host));
     if (arg.is_enable_option("-master_broker"))
     {
         m_broker_host = arg.get_option_value("-master_broker");
@@ -65,12 +65,36 @@ int ffbroker_t::open(const string& opt_)
     {
         singleton_t<ffrpc_memory_route_t>::instance().add_node(BROKER_MASTER_NODE_ID, this);
     }
+    
+    //! 如果需要连接broker bridge，解析参数，连接
+    if (arg.is_enable_option("-bridge_broker"))
+    {
+        string broker_bridge_ops = arg.get_option_value("-bridge_broker");
+        vector<string> bridge_config;
+        strtool::split(broker_bridge_ops, bridge_config, "@");//! @前边的是本身的组名称
+        assert(bridge_config.size() == 2);
+        m_master_group_name = bridge_config[0];
+        //! 支持多个broker bridge，以逗号相隔
+        vector<string> bridge_hosts;
+        strtool::split(bridge_config[1], bridge_hosts, ",");
+        for (size_t i = 0; i < bridge_hosts.size(); ++i)
+        {
+            broker_bridge_info_t broker_bridge_info;
+            broker_bridge_info.host = bridge_hosts[i];
+            m_broker_bridge_info[alloc_broker_id()] = broker_bridge_info;
+        }
+        connect_to_bridge_broker();
+    }
     return 0;
 }
 
 //! 连接到broker master
 int ffbroker_t::connect_to_master_broker()
 {
+    if (m_master_broker_sock)
+    {
+        return 0;
+    }
     LOGINFO((BROKER, "ffbroker_t::connect_to_master_broker begin<%s>", m_broker_host.c_str()));
     m_master_broker_sock = net_factory_t::connect(m_broker_host, this);
     if (NULL == m_master_broker_sock)
@@ -84,9 +108,43 @@ int ffbroker_t::connect_to_master_broker()
     //! 发送注册消息给master broker
     register_slave_broker_t::in_t msg;
     msg.host = m_listen_host;
-    msg_sender_t::send(m_master_broker_sock, BROKER_SLAVE_REGISTER, msg);
+    msg_sender_t::send(m_master_broker_sock, BROKER_BRIDGE_REGISTER, msg);
     LOGINFO((BROKER, "ffbroker_t::connect_to_master_broker ok<%s>", m_broker_host.c_str()));
     return 0;
+}
+
+//! 连接到broker bridge
+int ffbroker_t::connect_to_bridge_broker()
+{
+    LOGINFO((BROKER, "ffbroker_t::connect_to_bridge_broker begin<%s>", m_master_group_name.c_str()));
+    int ret = 0;
+    map<uint32_t/*broker bridge id*/, broker_bridge_info_t>::iterator it = m_broker_bridge_info.begin();
+    for (; it != m_broker_bridge_info.end(); ++it)
+    {
+        broker_bridge_info_t& broker_bridge_info = it->second;
+        if (broker_bridge_info.sock)
+        {
+            continue;
+        }
+        broker_bridge_info.sock = net_factory_t::connect(broker_bridge_info.host, this);
+        if (NULL == broker_bridge_info.sock)
+        {
+            LOGERROR((BROKER, "ffbroker_t::connect_to_bridge_broker failed, can't connect to bridge broker<%s>", broker_bridge_info.host.c_str()));
+            ret = -1;
+            continue;
+        }
+        session_data_t* psession = new session_data_t(it->first);
+        broker_bridge_info.sock->set_data(psession);
+
+        //! 发送注册消息给master broker
+        register_bridge_broker_t::in_t msg;
+        msg.broker_group = m_master_group_name;
+        msg_sender_t::send(broker_bridge_info.sock, BROKER_BRIDGE_REGISTER, msg);
+        LOGINFO((BROKER, "ffbroker_t::connect_to_bridge_broker dest<%s>", broker_bridge_info.host));
+    }
+
+    LOGINFO((BROKER, "ffbroker_t::connect_to_bridge_broker ok<%s>", m_master_group_name.c_str()));
+    return ret;
 }
 //! 判断是否是master broker
 bool ffbroker_t::is_master()
@@ -108,6 +166,10 @@ static void route_call_reconnect(ffbroker_t* ffbroker_);
 static void reconnect_loop(ffbroker_t* ffbroker_)
 {
     if (ffbroker_->connect_to_master_broker())
+    {
+        ffbroker_->get_timer().once_timer(RECONNECT_TO_BROKER_TIMEOUT, task_binder_t::gen(&route_call_reconnect, ffbroker_));
+    }
+    if (ffbroker_->connect_to_bridge_broker())
     {
         ffbroker_->get_timer().once_timer(RECONNECT_TO_BROKER_TIMEOUT, task_binder_t::gen(&route_call_reconnect, ffbroker_));
     }
@@ -155,6 +217,25 @@ int ffbroker_t::handle_broken_impl(socket_ptr_t sock_)
     {
         m_slave_broker_sockets.erase(node_id);
         m_broker_client_info.erase(node_id);
+        
+        if (m_broker_bridge_info.find(node_id) != m_broker_bridge_info.end())
+        {
+            //!连接到broker bridge的连接断开了, 定时重连
+            m_timer.once_timer(RECONNECT_TO_BROKER_TIMEOUT, task_binder_t::gen(&route_call_reconnect, this));
+        }
+        else
+        {
+            //! broker bridge 上所有的 broker master group 信息
+            map<string/*group name*/, broker_group_info_t>::iterator it = m_broker_group_info.begin();
+            for (; it != m_broker_group_info.end(); ++it)
+            {
+                if (it->second.sock == sock_)
+                {
+                    m_broker_group_info.erase(it);
+                    break;
+                }
+            }
+        }
     }
 
     if (is_master())
@@ -190,6 +271,16 @@ int ffbroker_t::handle_msg_impl(const message_t& msg_, socket_ptr_t sock_)
         }
     }
     return -1;
+}
+
+//! 处理broker master 注册到broker bridge
+int ffbroker_t::handle_broker_register_bridge(register_bridge_broker_t::in_t& msg_, socket_ptr_t sock_)
+{
+    session_data_t* psession = new session_data_t(alloc_id());
+    sock_->set_data(psession);
+    m_broker_group_info[msg_.broker_group].sock = sock_;
+    LOGINFO((BROKER, "ffbroker_t::handle_broker_register_bridge end ok broker group[%s]", msg_.broker_group));
+    return 0;
 }
 
 //! 处理borker slave 注册消息
@@ -390,6 +481,7 @@ int ffbroker_t::route_msg_broker_to_bridge(const string& from_broker_group_name_
 int ffbroker_t::handle_broker_to_bridge_route_msg(broker_route_to_bridge_t::in_t& msg_, socket_ptr_t sock_)
 {
     socket_ptr_t dest_sock = NULL;
+    LOGINFO((BROKER, "ffbroker_t::handle_broker_to_bridge_route_msg begin broker_group[%s]", msg_.dest_broker_group_name));
     //! 找到目标broker group在哪个bridge上
     map<uint32_t/*broker bridge id*/, broker_bridge_info_t>::iterator it = m_broker_bridge_info.begin();
     for (; it != m_broker_bridge_info.end(); ++it)
@@ -397,6 +489,7 @@ int ffbroker_t::handle_broker_to_bridge_route_msg(broker_route_to_bridge_t::in_t
         if (it->second.m_broker_group_id.find(msg_.dest_broker_group_name) != it->second.m_broker_group_id.end())
         {
             dest_sock = it->second.sock;
+            LOGINFO((BROKER, "ffbroker_t::handle_broker_to_bridge_route_msg find group[%s]", msg_.dest_broker_group_name));
             break;
         }
     }
@@ -411,6 +504,7 @@ int ffbroker_t::handle_broker_to_bridge_route_msg(broker_route_to_bridge_t::in_t
     dest_msg.dest_node_id = msg_.dest_node_id;
     dest_msg.callback_id  = msg_.callback_id;//! 回调函数的id
     msg_sender_t::send(dest_sock, BRIDGE_BROKER_TO_BROKER_MSG, dest_msg);
+    LOGINFO((BROKER, "ffbroker_t::handle_broker_to_bridge_route_msg end ok dest node id[%u]", dest_msg.dest_node_id));
     return 0;
 }
 
@@ -423,6 +517,7 @@ int ffbroker_t::bridge_handle_broker_to_broker_msg(bridge_route_to_broker_t::in_
         return -1;
     }
     msg_sender_t::send(it->second.sock, BRIDGE_TO_BROKER_ROUTE_MSG, msg_);
+    LOGINFO((BROKER, "ffbroker_t::bridge_handle_broker_to_broker_msg end ok dest node id[%u]", msg_.dest_node_id));
     return 0;
 }
 

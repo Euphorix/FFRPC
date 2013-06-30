@@ -18,7 +18,8 @@ namespace ff
 #define BROKER_MASTER_NODE_ID   0
 #define GEN_SERVICE_NAME(M, X, Y) snprintf(M, sizeof(M), "%s@%u", X, Y)
 #define RECONNECT_TO_BROKER_TIMEOUT       1000//! ms
-
+#define RECONNECT_TO_BROKER_BRIDGE_TIMEOUT       1000//! ms
+    
 class ffslot_msg_arg: public ffslot_t::callback_arg_t
 {
 public:
@@ -376,6 +377,7 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<I
 enum ffrpc_cmd_def_e
 {
     BROKER_SLAVE_REGISTER  = 1,
+    BROKER_BRIDGE_REGISTER,//! 注册到broker bridge
     BROKER_CLIENT_REGISTER,
     BROKER_ROUTE_MSG,
     BROKER_SYNC_DATA_MSG,
@@ -386,6 +388,23 @@ enum ffrpc_cmd_def_e
     CLIENT_REGISTER_TO_SLAVE_BROKER,
 };
 
+
+//! 向broker master 注册slave
+struct register_bridge_broker_t
+{
+    struct in_t: public ffmsg_t<in_t>
+    {
+        void encode()
+        {
+            encoder() << broker_group;
+        }
+        void decode()
+        {
+            decoder()>> broker_group;
+        }
+        string          broker_group;
+    };
+};
 
 //! 向broker master 注册slave
 struct register_slave_broker_t
