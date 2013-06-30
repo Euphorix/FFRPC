@@ -281,7 +281,7 @@ int ffrpc_t::trigger_callback(broker_route_t::in_t& msg_)
             {
                 ffslot_req_arg arg(msg_.body, msg_.from_node_id, msg_.callback_id, msg_.bridge_route_id, this);
                 cb->exe(&arg);
-                LOGTRACE((FFRPC, "ffrpc_t::handle_broker_route_msg end ok"));
+                LOGINFO((FFRPC, "ffrpc_t::handle_broker_route_msg end ok msg_.bridge_route_id=%u", msg_.bridge_route_id));
                 return 0;
             }
             else

@@ -50,7 +50,7 @@ public:
         body(s_),
         node_id(n_),
         callback_id(cb_id_),
-        bridge_route_id(0),
+        bridge_route_id(bridge_route_id),
         responser(p)
     {}
     virtual int type()

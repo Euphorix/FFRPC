@@ -85,7 +85,7 @@ int main(int argc, char* argv[])
     
     for (int i = 0; i < 100; ++i)
     {
-        sleep(10);
+        sleep(3);
         //! 如你所想，echo接口被调用，然后echo_callback被调用，每一秒重复该过程
         ffrpc_client.bridge_call("ff", "echo", in, ffrpc_ops_t::gen_callback(&foo_t::echo_callback, &foo, i));
         sleep(30);

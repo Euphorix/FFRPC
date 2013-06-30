@@ -55,6 +55,8 @@ public:
     int connect_to_bridge_broker();
     //! 转发消息给master client
     int route_msg_to_broker_client(broker_route_t::in_t& msg_);
+    //! 内存间传递消息
+    int memory_route_msg(broker_route_t::in_t& msg_);
 private:
     //! 当有连接断开，则被回调
     int handle_broken_impl(socket_ptr_t sock_);
@@ -84,7 +86,7 @@ private:
                                     uint32_t callback_id_, socket_ptr_t sock_);
     //! 这里是broker master 发给 broker bridge 的消息
     int handle_broker_to_bridge_route_msg(broker_route_to_bridge_t::in_t& msg_, socket_ptr_t sock_);
-    string get_broker_group_name_by_id(uint32_t id_);
+    pair<string, socket_ptr_t> get_broker_group_name_by_id(uint32_t id_);
     //! 处理broker bridge 转发给broker master的消息
     int handle_bridge_to_broker_route_msg(bridge_route_to_broker_t::in_t& msg_, socket_ptr_t sock_);
     //! [3] bridge的处理函数，从broker master转发到另外的broker master

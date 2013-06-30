@@ -82,8 +82,8 @@ int ffbroker_t::open(arg_helper_t& arg)
         {
             broker_bridge_info_t broker_bridge_info;
             broker_bridge_info.host = bridge_hosts[i];
-            broker_bridge_info.broker_group_id[m_master_group_name] = alloc_broker_id();//! TODO remove
-            m_broker_bridge_info[alloc_broker_id()] = broker_bridge_info;
+            broker_bridge_info.broker_group_id[m_master_group_name] = alloc_id();//! TODO remove
+            m_broker_bridge_info[alloc_id()] = broker_bridge_info;
         }
         connect_to_bridge_broker();
     }
@@ -142,7 +142,7 @@ int ffbroker_t::connect_to_bridge_broker()
         register_bridge_broker_t::in_t msg;
         msg.broker_group = m_master_group_name;
         msg_sender_t::send(broker_bridge_info.sock, BROKER_BRIDGE_REGISTER, msg);
-        LOGINFO((BROKER, "ffbroker_t::connect_to_bridge_broker dest<%s>", broker_bridge_info.host));
+        LOGINFO((BROKER, "ffbroker_t::connect_to_bridge_broker dest<%s>, node_id[%u]", broker_bridge_info.host, psession->get_node_id()));
     }
 
     LOGINFO((BROKER, "ffbroker_t::connect_to_bridge_broker ok<%s>", m_master_group_name.c_str()));
@@ -430,34 +430,24 @@ int ffbroker_t::sync_all_register_info(socket_ptr_t sock_)
 //! 转发消息
 int ffbroker_t::handle_route_msg(broker_route_t::in_t& msg_, socket_ptr_t sock_)
 {
-    LOGINFO((BROKER, "ffbroker_t::handle_route_msg bridge_route_id[%u]", msg_.bridge_route_id));
-    if (msg_.bridge_route_id != 0)
-    {
-        //! 需要转发给bridge broker标记，若此值不为0，说明目标node在其他broker组
-        //! 需要broker master转发到bridge broker上, 这个是callback消息
-        return route_msg_broker_to_bridge(m_master_group_name, get_broker_group_name_by_id(msg_.bridge_route_id), "",
-                                          "",msg_.body,
-                                          msg_.from_node_id, msg_.dest_node_id,
-                                          msg_.callback_id, m_broker_bridge_info[msg_.bridge_route_id].sock);
-    }
     return route_msg_to_broker_client(msg_);
 }
-string ffbroker_t::get_broker_group_name_by_id(uint32_t bridge_route_id_)
+pair<string, socket_ptr_t> ffbroker_t::get_broker_group_name_by_id(uint32_t bridge_route_id_)
 {
     map<uint32_t/*broker bridge id*/, broker_bridge_info_t>::iterator it = m_broker_bridge_info.begin();
     
-    for (; it == m_broker_bridge_info.end(); ++it)
+    for (; it != m_broker_bridge_info.end(); ++it)
     {
         map<string/*group name*/, uint32_t>::iterator it2 = it->second.broker_group_id.begin();
         for (; it2 != it->second.broker_group_id.end(); ++it2)
         {
             if (it2->second == bridge_route_id_)
             {
-                return it2->first;
+                return make_pair(it2->first, it->second.sock);
             }
         }
     }
-    return "";
+    return pair<string, socket_ptr_t>();
 }
 //! client [1] -> master [2] -> bridge[3] -> master [4] -> client [5]
 //! broker client 转发消息给broker master, 再转给bridge broker
@@ -529,7 +519,6 @@ int ffbroker_t::bridge_handle_broker_to_broker_msg(bridge_route_to_broker_t::in_
 //! 处理broker bridge 转发给broker master的消息
 int ffbroker_t::handle_bridge_to_broker_route_msg(bridge_route_to_broker_t::in_t& msg_, socket_ptr_t sock_)
 {
-    LOGINFO((BROKER, "ffbroker_t::handle_bridge_to_broker_route_msg begin dest node id[%u]", msg_.dest_node_id));
     //! 需要转发给broker client
     broker_route_t::in_t dest_msg;
     dest_msg.from_node_id = msg_.from_node_id;//! 来自哪个节点
@@ -556,7 +545,26 @@ int ffbroker_t::handle_bridge_to_broker_route_msg(bridge_route_to_broker_t::in_t
     
     uint32_t bridge_node_id = sock_->get_data<session_data_t>()->get_node_id();
     dest_msg.bridge_route_id = m_broker_bridge_info[bridge_node_id].broker_group_id[msg_.from_broker_group_name];
+    LOGINFO((BROKER, "ffbroker_t::handle_bridge_to_broker_route_msg begin dest node id[%u], bridge_node_id[%u], dest_msg.bridge_route_id[%u]",
+             msg_.dest_node_id, bridge_node_id, dest_msg.bridge_route_id));
     return route_msg_to_broker_client(dest_msg);
+}
+
+//! 内存间传递消息
+int ffbroker_t::memory_route_msg(broker_route_t::in_t& msg_)
+{
+    if (msg_.bridge_route_id != 0)
+    {
+        LOGINFO((BROKER, "ffbroker_t::memory_route_msg bridge_route_id[%u]", msg_.bridge_route_id));
+        //! 需要转发给bridge broker标记，若此值不为0，说明目标node在其他broker组
+        //! 需要broker master转发到bridge broker上, 这个是callback消息
+        pair<string, socket_ptr_t> data = get_broker_group_name_by_id(msg_.bridge_route_id);
+        return route_msg_broker_to_bridge(m_master_group_name, data.first, "",
+                                          "",msg_.body,
+                                          msg_.from_node_id, msg_.dest_node_id,
+                                          msg_.callback_id, data.second);
+    }
+    return route_msg_to_broker_client(msg_);
 }
 //! 转发消息给master client
 int ffbroker_t::route_msg_to_broker_client(broker_route_t::in_t& msg_)

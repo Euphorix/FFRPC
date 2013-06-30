@@ -51,7 +51,7 @@ int ffrpc_memory_route_t::client_route_to_broker(uint32_t broker_node_id, broker
     {
         return -1;
     }
-    ffbroker->get_tq().produce(task_binder_t::gen(&ffbroker_t::route_msg_to_broker_client, ffbroker, msg_));
+    ffbroker->get_tq().produce(task_binder_t::gen(&ffbroker_t::memory_route_msg, ffbroker, msg_));
     return 0;
 }
 //! 所有已经注册的本进程的节点
