@@ -42,7 +42,11 @@ int ffbroker_t::open(const string& opt_)
             .bind(BROKER_CLIENT_REGISTER, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_client_register, this))
             .bind(BROKER_ROUTE_MSG, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_route_msg, this))
             .bind(CLIENT_REGISTER_TO_SLAVE_BROKER, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_client_register_slave_broker, this))
-            .bind(BROKER_SYNC_DATA_MSG, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_broker_sync_data, this));
+            .bind(BROKER_SYNC_DATA_MSG, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_broker_sync_data, this))
+            .bind(BROKER_TO_BRIDGE_ROUTE_MSG, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_broker_to_bridge_route_msg, this))
+            .bind(BRIDGE_TO_BROKER_ROUTE_MSG, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_bridge_to_broker_route_msg, this))
+            .bind(BRIDGE_BROKER_TO_BROKER_MSG, ffrpc_ops_t::gen_callback(&ffbroker_t::bridge_handle_broker_to_broker_msg, this));
+            
 
     //! 任务队列绑定线程
     m_thread.create_thread(task_binder_t::gen(&task_queue_t::run, &m_tq), 1);
@@ -333,12 +337,132 @@ int ffbroker_t::sync_all_register_info(socket_ptr_t sock_)
 //! 转发消息
 int ffbroker_t::handle_route_msg(broker_route_t::in_t& msg_, socket_ptr_t sock_)
 {
+    if (msg_.bridge_route_id != 0)
+    {
+        //! 需要转发给bridge broker标记，若此值不为0，说明目标node在其他broker组
+        //! 需要broker master转发到bridge broker上, 这个是callback消息
+        return route_msg_broker_to_bridge(m_master_group_name, get_broker_group_name_by_id(msg_.bridge_route_id), "",
+                                          "",msg_.body,
+                                          msg_.from_node_id, msg_.dest_node_id,
+                                          msg_.callback_id, m_broker_bridge_info[msg_.bridge_route_id].sock);
+    }
     return route_msg_to_broker_client(msg_);
+}
+string ffbroker_t::get_broker_group_name_by_id(uint32_t bridge_route_id_)
+{
+    map<uint32_t/*broker bridge id*/, broker_bridge_info_t>::iterator it = m_broker_bridge_info.begin();
+    
+    for (; it == m_broker_bridge_info.end(); ++it)
+    {
+        map<string/*group name*/, uint32_t>::iterator it2 = it->second.m_broker_group_id.begin();
+        for (; it2 != it->second.m_broker_group_id.end(); ++it2)
+        {
+            if (it2->second == bridge_route_id_)
+            {
+                return it2->first;
+            }
+        }
+    }
+    return "";
+}
+//! client [1] -> master [2] -> bridge[3] -> master [4] -> client [5]
+//! broker client 转发消息给broker master, 再转给bridge broker
+//! [1]
+int ffbroker_t::route_msg_broker_to_bridge(const string& from_broker_group_name_, const string& dest_broker_group_name_, const string& service_name_,
+                                           const string& msg_name_, const string& body_,
+                                           uint32_t from_node_id_, uint32_t dest_node_id_,
+                                           uint32_t callback_id_, socket_ptr_t sock_)
+{
+    broker_route_to_bridge_t::in_t dest_msg;
+    dest_msg.from_broker_group_name = from_broker_group_name_;
+    dest_msg.dest_broker_group_name = dest_broker_group_name_;
+    dest_msg.service_name = service_name_;//!  服务名
+    dest_msg.msg_name = msg_name_;//!消息名
+    dest_msg.body = body_;//! msg data
+    dest_msg.from_node_id = from_node_id_;
+    dest_msg.dest_node_id = dest_node_id_;
+    dest_msg.callback_id  = callback_id_;//! 回调函数的id
+    msg_sender_t::send(sock_, BROKER_TO_BRIDGE_ROUTE_MSG, dest_msg);
+    return 0;
+}
+//! [2]
+//! 这里是broker master 发给 broker bridge 的消息
+int ffbroker_t::handle_broker_to_bridge_route_msg(broker_route_to_bridge_t::in_t& msg_, socket_ptr_t sock_)
+{
+    socket_ptr_t dest_sock = NULL;
+    //! 找到目标broker group在哪个bridge上
+    map<uint32_t/*broker bridge id*/, broker_bridge_info_t>::iterator it = m_broker_bridge_info.begin();
+    for (; it != m_broker_bridge_info.end(); ++it)
+    {
+        if (it->second.m_broker_group_id.find(msg_.dest_broker_group_name) != it->second.m_broker_group_id.end())
+        {
+            dest_sock = it->second.sock;
+            break;
+        }
+    }
+
+    bridge_route_to_broker_t::in_t dest_msg;
+    dest_msg.from_broker_group_name = m_master_group_name;
+    dest_msg.dest_broker_group_name = msg_.dest_broker_group_name;
+    dest_msg.service_name = msg_.service_name;//!  服务名
+    dest_msg.msg_name = msg_.msg_name;//!消息名
+    dest_msg.body = msg_.body;//! msg data
+    dest_msg.from_node_id = msg_.from_node_id;
+    dest_msg.dest_node_id = msg_.dest_node_id;
+    dest_msg.callback_id  = msg_.callback_id;//! 回调函数的id
+    msg_sender_t::send(dest_sock, BRIDGE_BROKER_TO_BROKER_MSG, dest_msg);
+    return 0;
+}
+
+//! [3] bridge的处理函数，从broker master转发到另外的broker master
+int ffbroker_t::bridge_handle_broker_to_broker_msg(bridge_route_to_broker_t::in_t& msg_, socket_ptr_t sock_)
+{
+    map<string/*group name*/, broker_group_info_t>::iterator it = m_broker_group_info.find(msg_.dest_broker_group_name);
+    if (it == m_broker_group_info.end())
+    {
+        return -1;
+    }
+    msg_sender_t::send(it->second.sock, BRIDGE_TO_BROKER_ROUTE_MSG, msg_);
+    return 0;
+}
+
+//! [4]
+//! 处理broker bridge 转发给broker master的消息
+int ffbroker_t::handle_bridge_to_broker_route_msg(bridge_route_to_broker_t::in_t& msg_, socket_ptr_t sock_)
+{
+    //! 需要转发给broker client
+    broker_route_t::in_t dest_msg;
+    dest_msg.from_node_id = msg_.from_node_id;//! 来自哪个节点
+    
+    dest_msg.dest_node_id = msg_.dest_node_id;//! 需要转发到哪个节点上
+    
+    //! 记录所有服务/接口信息
+    if (dest_msg.dest_node_id == 0 && msg_.service_name.empty() == false)//! 说明是调用消息
+    {
+        map<uint32_t, broker_client_info_t>::iterator it = m_broker_client_info.begin();//! node id -> service
+        for (; it != m_broker_client_info.end(); ++it)
+        {
+            if (it->second.service_name == msg_.service_name)
+            {
+                dest_msg.dest_node_id = it->first;
+                break;
+            }
+        }
+    }
+
+    dest_msg.msg_id = m_msg2id[msg_.msg_name];//! 调用的是哪个接口
+    dest_msg.callback_id = msg_.callback_id;
+    dest_msg.body = msg_.body;
+    
+    uint32_t bridge_node_id = sock_->get_data<session_data_t>()->get_node_id();
+    dest_msg.bridge_route_id = m_broker_bridge_info[bridge_node_id].m_broker_group_id[msg_.from_broker_group_name];
+    return route_msg_to_broker_client(dest_msg);
 }
 //! 转发消息给master client
 int ffbroker_t::route_msg_to_broker_client(broker_route_t::in_t& msg_)
 {
     LOGTRACE((BROKER, "ffbroker_t::route_msg_to_broker_client begin dest node id[%u]", msg_.dest_node_id));
+    
     if (0 == singleton_t<ffrpc_memory_route_t>::instance().broker_route_to_client(msg_))
     {
         LOGTRACE((BROKER, "ffbroker_t::handle_route_msg same process dest_node_id[%u]", msg_.dest_node_id));

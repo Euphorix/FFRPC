@@ -237,7 +237,10 @@ int ffrpc_t::handle_broker_sync_data(broker_sync_all_registered_data_t::out_t& m
         broker_client_info.bind_broker_id = it4->second.bind_broker_id;
         broker_client_info.service_name   = it4->second.service_name;
 
-        m_broker_client_name2nodeid[broker_client_info.service_name] = it4->first;
+        if (false == broker_client_info.service_name.empty())
+        {
+            m_broker_client_name2nodeid[broker_client_info.service_name] = it4->first;
+        }
         LOGTRACE((FFRPC, "ffrpc_t::handle_broker_sync_data name[%s] -> node id[%u],bind_broker_id[%u]",
                     broker_client_info.service_name, it4->first, broker_client_info.bind_broker_id));
     }
@@ -261,7 +264,7 @@ int ffrpc_t::trigger_callback(broker_route_t::in_t& msg_)
             ffslot_t::callback_t* cb = m_ffslot_callback.get_callback(msg_.callback_id);
             if (cb)
             {
-                ffslot_req_arg arg(msg_.body, msg_.from_node_id, msg_.callback_id, this);
+                ffslot_req_arg arg(msg_.body, msg_.from_node_id, msg_.callback_id, msg_.bridge_route_id, this);
                 cb->exe(&arg);
                 m_ffslot_callback.del(msg_.callback_id);
                 return 0;
@@ -276,7 +279,7 @@ int ffrpc_t::trigger_callback(broker_route_t::in_t& msg_)
             ffslot_t::callback_t* cb = m_ffslot_interface.get_callback(msg_.msg_id);
             if (cb)
             {
-                ffslot_req_arg arg(msg_.body, msg_.from_node_id, msg_.callback_id, this);
+                ffslot_req_arg arg(msg_.body, msg_.from_node_id, msg_.callback_id, msg_.bridge_route_id, this);
                 cb->exe(&arg);
                 LOGTRACE((FFRPC, "ffrpc_t::handle_broker_route_msg end ok"));
                 return 0;
@@ -335,23 +338,57 @@ int ffrpc_t::call_impl(const string& service_name_, const string& msg_name_, con
     return 0;
 }
 
-//! 通过node id 发送消息给broker
-void ffrpc_t::send_to_broker_by_nodeid(uint32_t dest_node_id, const string& body_, uint32_t msg_id_, uint32_t callback_id_)
+//! 通过bridge broker调用远程的service
+int ffrpc_t::bridge_call_impl(const string& broker_group_, const string& service_name_, const string& msg_name_,
+                              const string& body_, ffslot_t::callback_t* callback_)
 {
-    broker_client_info_t& broker_client_info = m_broker_client_info[dest_node_id];
-    uint32_t broker_node_id = broker_client_info.bind_broker_id;
+    broker_route_to_bridge_t::in_t dest_msg;
+    dest_msg.dest_broker_group_name = broker_group_;
+    dest_msg.service_name           = service_name_;//!  服务名
+    dest_msg.msg_name               = msg_name_;//!消息名
+    dest_msg.body                   = body_;//! msg data
+    dest_msg.from_node_id           = m_node_id;
+    dest_msg.dest_node_id           = 0;
+    dest_msg.callback_id            = 0;
+    if (callback_)
+    {
+        dest_msg.callback_id = get_callback_id();
+        m_ffslot_callback.bind(dest_msg.callback_id, callback_);
+    }
+
+    msg_sender_t::send(m_master_broker_sock, BROKER_TO_BRIDGE_ROUTE_MSG, dest_msg);
+    return 0;
+}
+//! 通过node id 发送消息给broker
+void ffrpc_t::send_to_broker_by_nodeid(uint32_t dest_node_id, const string& body_, uint32_t msg_id_, uint32_t callback_id_, uint32_t bridge_route_id_)
+{
 
     broker_route_t::in_t msg;
     msg.dest_node_id     = dest_node_id;
     msg.from_node_id     = m_node_id;
-    msg.msg_id      = msg_id_;
-    msg.body        = body_;
-    msg.callback_id = callback_id_;
+    msg.msg_id           = msg_id_;
+    msg.body             = body_;
+    msg.callback_id      = callback_id_;
+    msg.bridge_route_id  = bridge_route_id_;
+
+    uint32_t broker_node_id = BROKER_MASTER_NODE_ID;
     
+    
+    if (bridge_route_id_ != 0)
+    {
+        //! 需要转发给bridge broker标记，若此值不为0，说明目标node在其他broker组
+        //! 需要broker master转发到bridge broker上
+        broker_node_id = BROKER_MASTER_NODE_ID;
+    }
     //!  如果是response 消息，那么从哪个broker来，再从哪个broker 回去
-    if (msg_id_ == 0)
+    else if (msg_id_ == 0)
     {
         broker_node_id = m_broker_client_info[m_node_id].bind_broker_id;
+    }
+    else//! call消息，需要找到目标节点绑定的broker
+    {
+        broker_client_info_t& broker_client_info = m_broker_client_info[dest_node_id];
+        broker_node_id = broker_client_info.bind_broker_id;
     }
     //!如果在同一个进程内那么，内存转发
     if (0 == singleton_t<ffrpc_memory_route_t>::instance().client_route_to_broker(broker_node_id, msg))
@@ -378,7 +415,7 @@ void ffrpc_t::send_to_broker_by_nodeid(uint32_t dest_node_id, const string& body
 }
 
 //! 调用接口后，需要回调消息给请求者
-void ffrpc_t::response(uint32_t node_id_, uint32_t msg_id_, uint32_t callback_id_, const string& body_)
+void ffrpc_t::response(uint32_t node_id_, uint32_t msg_id_, uint32_t callback_id_, uint32_t bridge_route_id_, const string& body_)
 {
-    m_tq.produce(task_binder_t::gen(&ffrpc_t::send_to_broker_by_nodeid, this, node_id_, body_, msg_id_, callback_id_));
+    m_tq.produce(task_binder_t::gen(&ffrpc_t::send_to_broker_by_nodeid, this, node_id_, body_, msg_id_, callback_id_, bridge_route_id_));
 }

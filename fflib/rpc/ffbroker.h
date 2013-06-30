@@ -26,6 +26,10 @@ class ffbroker_t: public msg_handler_i
     struct slave_broker_info_t;
     //! 记录每个broker client 的接口信息
     struct broker_client_info_t;
+    //! broker master 上 所有的broker bridge 信息
+    struct broker_bridge_info_t;
+    //! broker bridge 上所有的 broker master group 信息
+    struct broker_group_info_t;
 public:
     ffbroker_t();
     virtual ~ffbroker_t();
@@ -59,6 +63,7 @@ private:
     int handle_slave_register(register_slave_broker_t::in_t& msg_, socket_ptr_t sock_);
     //! 处理borker client 注册消息
     int handle_client_register(register_broker_client_t::in_t& msg_, socket_ptr_t sock_);
+
     //! 转发消息
     int handle_route_msg(broker_route_t::in_t& msg_, socket_ptr_t sock_);
     //! 处理broker client连接到broker slave的消息
@@ -69,6 +74,18 @@ private:
     bool is_master();
     //! 分配一个broker 给client,以后client的消息都通过此broker转发
     uint32_t alloc_broker_id();
+    //! 转发消息给broker bridge
+    int route_msg_broker_to_bridge(const string& from_broker_group_name_, const string& dest_broker_group_name_, const string& service_name_,
+                                    const string& msg_name_, const string& body_,
+                                    uint32_t from_node_id_, uint32_t dest_node_id_,
+                                    uint32_t callback_id_, socket_ptr_t sock_);
+    //! 这里是broker master 发给 broker bridge 的消息
+    int handle_broker_to_bridge_route_msg(broker_route_to_bridge_t::in_t& msg_, socket_ptr_t sock_);
+    string get_broker_group_name_by_id(uint32_t id_);
+    //! 处理broker bridge 转发给broker master的消息
+    int handle_bridge_to_broker_route_msg(bridge_route_to_broker_t::in_t& msg_, socket_ptr_t sock_);
+    //! [3] bridge的处理函数，从broker master转发到另外的broker master
+    int bridge_handle_broker_to_broker_msg(bridge_route_to_broker_t::in_t& msg_, socket_ptr_t sock_);
 private:
     //! 分配broker slave的索引id
     uint32_t                                m_alloc_slave_broker_index;
@@ -94,6 +111,11 @@ private:
     map<string, uint32_t>                   m_msg2id;
     //! 记录所有服务/接口信息
     map<uint32_t, broker_client_info_t>     m_broker_client_info;//! node id -> service
+    string                                  m_master_group_name;//! broker master 被分配的名称
+    //! 记录所有的broker bridge信息
+    map<uint32_t/*broker bridge id*/, broker_bridge_info_t> m_broker_bridge_info;
+    //! broker bridge 上所有的 broker master group 信息
+    map<string/*group name*/, broker_group_info_t>          m_broker_group_info;
 };
 
 //! 每个连接都要分配一个session，用于记录该socket，对应的信息
@@ -128,6 +150,24 @@ struct ffbroker_t::slave_broker_info_t
     socket_ptr_t    sock;
 };
 
+struct ffbroker_t::broker_bridge_info_t
+{
+    broker_bridge_info_t():
+        sock(NULL)
+    {}
+    string          host;
+    socket_ptr_t    sock;
+    map<string/*group name*/, uint32_t> m_broker_group_id;
+};
+
+//! broker bridge 上所有的 broker master group 信息
+struct ffbroker_t::broker_group_info_t
+{
+    broker_group_info_t():
+        sock(NULL)
+    {}
+    socket_ptr_t    sock;
+};
 }
 
 #endif

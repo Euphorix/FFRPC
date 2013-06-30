@@ -45,14 +45,17 @@ public:
     //! 调用远程的接口
     template <typename T>
     int call(const string& name_, T& req_, ffslot_t::callback_t* callback_ = NULL);
+    //! 调用其他broker master 组的远程的接口
+    template <typename T>
+    int bridge_call(const string& broker_group_, const string& name_, T& req_, ffslot_t::callback_t* callback_ = NULL);
     
     uint32_t get_callback_id() { return ++m_callback_id; }
     //! call 接口的实现函数，call会将请求投递到该线程，保证所有请求有序
     int call_impl(const string& service_name_, const string& msg_name_, const string& body_, ffslot_t::callback_t* callback_);
     //! 调用接口后，需要回调消息给请求者
-    virtual void response(uint32_t node_id_, uint32_t msg_id_, uint32_t callback_id_, const string& body_);
+    virtual void response(uint32_t node_id_, uint32_t msg_id_, uint32_t callback_id_, uint32_t bridge_route_id_, const string& body_);
     //! 通过node id 发送消息给broker
-    void send_to_broker_by_nodeid(uint32_t node_id_, const string& body_, uint32_t msg_id_ = 0, uint32_t callback_id_ = 0);
+    void send_to_broker_by_nodeid(uint32_t node_id_, const string& body_, uint32_t msg_id_ = 0, uint32_t callback_id_ = 0, uint32_t bridge_route_id_ = 0);
     //! 获取任务队列对象
     task_queue_t& get_tq();
     //! 定时重连 broker master
@@ -61,6 +64,9 @@ public:
     int trigger_callback(broker_route_t::in_t& msg_);
 
     timer_service_t& get_timer() { return m_timer; }
+    //! 通过bridge broker调用远程的service
+    int bridge_call_impl(const string& broker_group_, const string& service_name_, const string& msg_name_,
+                         const string& body_, ffslot_t::callback_t* callback_);
 private:
     //! 处理连接断开
     int handle_broken_impl(socket_ptr_t sock_);
@@ -145,5 +151,12 @@ int ffrpc_t::call(const string& name_, T& req_, ffslot_t::callback_t* callback_)
     return 0;
 }
 
+//! 调用其他broker master 组的远程的接口
+template <typename T>
+int ffrpc_t::bridge_call(const string& broker_group_, const string& name_, T& req_, ffslot_t::callback_t* callback_)
+{
+    m_tq.produce(task_binder_t::gen(&ffrpc_t::bridge_call_impl, this, broker_group_, name_, TYPE_NAME(T), req_.encode_data(), callback_));   
+    return 0;
+}
 }
 #endif

@@ -39,16 +39,17 @@ class ffresponser_t
 {
 public:
     virtual ~ffresponser_t(){}
-    virtual void response(uint32_t node_id_, uint32_t msg_id_, uint32_t callback_id_, const string& body_) = 0;
+    virtual void response(uint32_t node_id_, uint32_t msg_id_, uint32_t callback_id_, uint32_t bridge_route_id_, const string& body_) = 0;
 };
 
 class ffslot_req_arg: public ffslot_t::callback_arg_t
 {
 public:
-    ffslot_req_arg(const string& s_, uint32_t n_, uint32_t cb_id_, ffresponser_t* p):
+    ffslot_req_arg(const string& s_, uint32_t n_, uint32_t cb_id_, uint32_t bridge_route_id, ffresponser_t* p):
         body(s_),
         node_id(n_),
         callback_id(cb_id_),
+        bridge_route_id(0),
         responser(p)
     {}
     virtual int type()
@@ -58,6 +59,7 @@ public:
     string          body;
     uint32_t        node_id;//! 请求来自于那个node id
     uint32_t        callback_id;//! 回调函数标识id
+    uint32_t        bridge_route_id;
     ffresponser_t*  responser;
 };
 
@@ -75,16 +77,18 @@ struct ffreq_t
     ffreq_t():
         node_id(0),
         callback_id(0),
+        bridge_route_id(0),
         responser(NULL)
     {}
     IN              arg;
     uint32_t        node_id;
     uint32_t        callback_id;
+    uint32_t        bridge_route_id;
     ffresponser_t*  responser;
     void response(OUT& out_)
     {
         if (0 != callback_id)
-            responser->response(node_id, 0, callback_id, out_.encode_data());
+            responser->response(node_id, 0, callback_id, bridge_route_id, out_.encode_data());
     }
 };
 
@@ -188,6 +192,7 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (*func_)(ffreq_t<IN, OUT>&))
             req.arg.decode_data(msg_data->body);
             req.node_id = msg_data->node_id;
             req.callback_id = msg_data->callback_id;
+            req.bridge_route_id = msg_data->bridge_route_id;
             req.responser = msg_data->responser;
             m_func(req);
         }
@@ -214,6 +219,7 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<I
             req.arg.decode_data(msg_data->body);
             req.node_id = msg_data->node_id;
             req.callback_id = msg_data->callback_id;
+            req.bridge_route_id = msg_data->bridge_route_id;
             req.responser = msg_data->responser;
             (m_obj->*(m_func))(req);
         }
@@ -244,6 +250,7 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<I
             req.arg.decode_data(msg_data->body);
             req.node_id = msg_data->node_id;
             req.callback_id = msg_data->callback_id;
+            req.bridge_route_id = msg_data->bridge_route_id;
             req.responser = msg_data->responser;
             (m_obj->*(m_func))(req, m_arg1);
         }
@@ -277,6 +284,7 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<I
             req.arg.decode_data(msg_data->body);
             req.node_id = msg_data->node_id;
             req.callback_id = msg_data->callback_id;
+            req.bridge_route_id = msg_data->bridge_route_id;
             req.responser = msg_data->responser;
             (m_obj->*(m_func))(req, m_arg1, m_arg2);
         }
@@ -312,6 +320,7 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<I
             req.arg.decode_data(msg_data->body);
             req.node_id = msg_data->node_id;
             req.callback_id = msg_data->callback_id;
+            req.bridge_route_id = msg_data->bridge_route_id;
             req.responser = msg_data->responser;
             (m_obj->*(m_func))(req, m_arg1, m_arg2, m_arg3);
         }
@@ -348,6 +357,7 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<I
             req.arg.decode_data(msg_data->body);
             req.node_id = msg_data->node_id;
             req.callback_id = msg_data->callback_id;
+            req.bridge_route_id = msg_data->bridge_route_id;
             req.responser = msg_data->responser;
             (m_obj->*(m_func))(req, m_arg1, m_arg2, m_arg3, m_arg4);
         }
@@ -370,6 +380,9 @@ enum ffrpc_cmd_def_e
     BROKER_ROUTE_MSG,
     BROKER_SYNC_DATA_MSG,
     BROKER_TO_CLIENT_MSG,
+    BROKER_TO_BRIDGE_ROUTE_MSG,//![client to master]
+    BRIDGE_TO_BROKER_ROUTE_MSG,
+    BRIDGE_BROKER_TO_BROKER_MSG,
     CLIENT_REGISTER_TO_SLAVE_BROKER,
 };
 
@@ -485,17 +498,65 @@ struct broker_route_t//!broker 转发消息
     {
         void encode()
         {
-            encoder() << from_node_id << dest_node_id << msg_id << callback_id << body;
+            encoder() << from_node_id << dest_node_id << msg_id << callback_id << body << bridge_route_id;
         }
         void decode()
         {
-            decoder() >> from_node_id >> dest_node_id >> msg_id >> callback_id >> body;
+            decoder() >> from_node_id >> dest_node_id >> msg_id >> callback_id >> body >> bridge_route_id;
         }
         uint32_t                    from_node_id;//! 来自哪个节点
         uint32_t                    dest_node_id;//! 需要转发到哪个节点上
         uint32_t                    msg_id;//! 调用的是哪个接口
         uint32_t                    callback_id;
         string                      body;
+        uint32_t                    bridge_route_id;//! 需要转发给bridge broker标记，若此值不为0，说明目标node在其他broker组
+    };
+};
+
+
+struct broker_route_to_bridge_t//!bridge broker 转发消息
+{
+    struct in_t: public ffmsg_t<in_t>
+    {
+        void encode()
+        {
+            encoder() << from_broker_group_name << dest_broker_group_name << service_name << msg_name << body << from_node_id << dest_node_id << callback_id;
+        }
+        void decode()
+        {
+            decoder() >> from_broker_group_name >> dest_broker_group_name >> service_name >> msg_name >> body >> from_node_id >> dest_node_id >> callback_id;
+        }
+        string from_broker_group_name;//! broker 组名称
+        string dest_broker_group_name;//! broker 组名称
+        string service_name;//!  服务名
+        string msg_name;//!消息名
+        string body;//! msg data
+        uint32_t from_node_id;
+        uint32_t dest_node_id;
+        uint32_t callback_id;//! 回调函数的id
+    };
+};
+
+struct bridge_route_to_broker_t//!bridge broker 转发消息
+{
+    struct in_t: public ffmsg_t<in_t>
+    {
+        void encode()
+        {
+            encoder() << from_broker_group_name << dest_broker_group_name << service_name << msg_name << body << from_node_id << dest_node_id << callback_id;
+        }
+        void decode()
+        {
+            decoder() >> from_broker_group_name >> dest_broker_group_name >> service_name >> msg_name >> body >> from_node_id >> dest_node_id >> callback_id;
+        }
+        string from_broker_group_name;//! broker 组名称
+        string dest_broker_group_name;//! broker 组名称
+        string service_name;//!  服务名
+        string msg_name;//!消息名
+        string body;//! msg data
+        uint32_t from_node_id;
+        uint32_t dest_node_id;
+        uint32_t callback_id;//! 回调函数的id
     };
 };
 
