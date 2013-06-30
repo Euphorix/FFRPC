@@ -57,7 +57,7 @@ int ffrpc_t::open(const string& opt_)
     return 0;
 }
 
-//! ���ӵ�broker master
+//! 连接到broker master
 socket_ptr_t ffrpc_t::connect_to_broker(const string& host_, uint32_t node_id_)
 {
     LOGINFO((FFRPC, "ffrpc_t::connect_to_broker begin...host_<%s>,node_id_[%u]", host_.c_str(), node_id_));
@@ -70,12 +70,12 @@ socket_ptr_t ffrpc_t::connect_to_broker(const string& host_, uint32_t node_id_)
     session_data_t* psession = new session_data_t(node_id_);
     sock->set_data(psession);
 
-    //! ����ע����Ϣ��master broker
+    //! 发送注册消息给master broker
     if (node_id_ == BROKER_MASTER_NODE_ID)
     {
         register_all_interface(sock);
     }
-    //! ����ע����Ϣ��master slave broker
+    //! 发送注册消息给master slave broker
     else
     {
         register_client_to_slave_broker_t::in_t msg;
@@ -84,12 +84,12 @@ socket_ptr_t ffrpc_t::connect_to_broker(const string& host_, uint32_t node_id_)
     }
     return sock;
 }
-//! Ͷ�ݵ�ffrpc �ض����߳�
+//! 投递到ffrpc 特定的线程
 static void route_call_reconnect(ffrpc_t* ffrpc_)
 {
     ffrpc_->get_tq().produce(task_binder_t::gen(&ffrpc_t::timer_reconnect_broker, ffrpc_));
 }
-//! ��ʱ���� broker master
+//! 定时重连 broker master
 void ffrpc_t::timer_reconnect_broker()
 {
     LOGERROR((FFRPC, "ffrpc_t::timer_reconnect_broker begin..."));
@@ -97,7 +97,7 @@ void ffrpc_t::timer_reconnect_broker()
     if (NULL == m_master_broker_sock)
     {
         LOGERROR((FFRPC, "ffrpc_t::timer_reconnect_broker failed, can't connect to remote broker<%s>", m_host.c_str()));
-        //! ���ö�ʱ������
+        //! 设置定时器重连
         m_timer.once_timer(RECONNECT_TO_BROKER_TIMEOUT, task_binder_t::gen(&route_call_reconnect, this));
         return;
     }
@@ -118,7 +118,7 @@ int ffrpc_t::register_all_interface(socket_ptr_t sock)
     msg_sender_t::send(sock, BROKER_CLIENT_REGISTER, msg);
     return 0;
 }
-//! ��ȡ������ж���
+//! 获取任务队列对象
 task_queue_t& ffrpc_t::get_tq()
 {
     return m_tq;
@@ -144,7 +144,7 @@ int ffrpc_t::handle_broken_impl(socket_ptr_t sock_)
     if (BROKER_MASTER_NODE_ID == sock_->get_data<session_data_t>()->get_node_id())
     {
         m_master_broker_sock = NULL;
-        //! ���ӵ�broker master�����ӶϿ���
+        //! 连接到broker master的连接断开了
         map<uint32_t, slave_broker_info_t>::iterator it = m_slave_broker_sockets.begin();//! node id -> info
         for (; it != m_slave_broker_sockets.end(); ++it)
         {
@@ -153,13 +153,13 @@ int ffrpc_t::handle_broken_impl(socket_ptr_t sock_)
             slave_broker_info.sock->set_data(NULL);
             slave_broker_info.sock->close();
         }
-        m_slave_broker_sockets.clear();//! �������ӵ�broker slave�����ӶϿ�
-        m_ffslot_interface.clear();//! ע��Ľӿ����
-        m_ffslot_callback.clear();//! �ص��������
-        m_msg2id.clear();//! ��Ϣӳ������
-        m_broker_client_info.clear();//! ��������ļ�¼�����
-        m_broker_client_name2nodeid.clear();//! ������node id��ӳ��
-        //! ���ö�ʱ������
+        m_slave_broker_sockets.clear();//! 所有连接到broker slave的连接断开
+        m_ffslot_interface.clear();//! 注册的接口清除
+        m_ffslot_callback.clear();//! 回调函数清除
+        m_msg2id.clear();//! 消息映射表清除
+        m_broker_client_info.clear();//! 各个服务的记录表清除
+        m_broker_client_name2nodeid.clear();//! 服务名到node id的映射
+        //! 设置定时器重练
         m_timer.once_timer(RECONNECT_TO_BROKER_TIMEOUT, task_binder_t::gen(&route_call_reconnect, this));
     }
     else
@@ -250,13 +250,13 @@ int ffrpc_t::handle_broker_route_msg(broker_route_t::in_t& msg_, socket_ptr_t so
     return trigger_callback(msg_);
 }
 
-//! ������Ϣ��Ӧ�Ļص�����
+//! 调用消息对应的回调函数
 int ffrpc_t::trigger_callback(broker_route_t::in_t& msg_)
 {
     LOGTRACE((FFRPC, "ffrpc_t::handle_broker_route_msg msg_id[%u],callback_id[%u] begin", msg_.msg_id, msg_.callback_id));
     try
     {
-        if (msg_.msg_id == 0)//! msg_id Ϊ0��ʾ����һ���ص�����Ϣ��callback_id�Ѿ���ֵ
+        if (msg_.msg_id == 0)//! msg_id 为0表示这是一个回调的消息，callback_id已经有值
         {
             ffslot_t::callback_t* cb = m_ffslot_callback.get_callback(msg_.callback_id);
             if (cb)
@@ -271,7 +271,7 @@ int ffrpc_t::trigger_callback(broker_route_t::in_t& msg_)
                 LOGERROR((FFRPC, "ffrpc_t::handle_broker_route_msg callback_id[%u] not found", msg_.callback_id));
             }
         }
-        else//! ��ʾ���ýӿ�
+        else//! 表示调用接口
         {
             ffslot_t::callback_t* cb = m_ffslot_interface.get_callback(msg_.msg_id);
             if (cb)
@@ -335,7 +335,7 @@ int ffrpc_t::call_impl(const string& service_name_, const string& msg_name_, con
     return 0;
 }
 
-//! ͨ��node id ������Ϣ��broker
+//! 通过node id 发送消息给broker
 void ffrpc_t::send_to_broker_by_nodeid(uint32_t dest_node_id, const string& body_, uint32_t msg_id_, uint32_t callback_id_)
 {
     broker_client_info_t& broker_client_info = m_broker_client_info[dest_node_id];
@@ -348,12 +348,12 @@ void ffrpc_t::send_to_broker_by_nodeid(uint32_t dest_node_id, const string& body
     msg.body        = body_;
     msg.callback_id = callback_id_;
     
-    //!  �����response ��Ϣ����ô���ĸ�broker�����ٴ��ĸ�broker ��ȥ
+    //!  如果是response 消息，那么从哪个broker来，再从哪个broker 回去
     if (callback_id_ != 0)
     {
         broker_node_id = m_broker_client_info[m_node_id].bind_broker_id;
     }
-    //!�����ͬһ���������ô���ڴ�ת��
+    //!如果在同一个进程内那么，内存转发
     if (0 == singleton_t<ffrpc_memory_route_t>::instance().client_route_to_broker(broker_node_id, msg))
     {
         LOGTRACE((FFRPC, "ffrpc_t::send_to_broker_by_nodeid dest_node_id[%u], broker_node_id[%u], msgid<%u>, callback_id_[%u] same process",
@@ -377,7 +377,7 @@ void ffrpc_t::send_to_broker_by_nodeid(uint32_t dest_node_id, const string& body
                         dest_node_id, broker_node_id, msg_id_, callback_id_));
 }
 
-//! ���ýӿں���Ҫ�ص���Ϣ��������
+//! 调用接口后，需要回调消息给请求者
 void ffrpc_t::response(uint32_t node_id_, uint32_t msg_id_, uint32_t callback_id_, const string& body_)
 {
     m_tq.produce(task_binder_t::gen(&ffrpc_t::send_to_broker_by_nodeid, this, node_id_, body_, msg_id_, callback_id_));
