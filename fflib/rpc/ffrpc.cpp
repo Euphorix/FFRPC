@@ -337,7 +337,16 @@ int ffrpc_t::call_impl(const string& service_name_, const string& msg_name_, con
     LOGTRACE((FFRPC, "ffrpc_t::call_impl msgid<%u> callback_id[%u] end ok", msg_id, callback_id));
     return 0;
 }
-
+//! 判断某个service是否存在
+bool ffrpc_t::is_exist(const string& service_name_)
+{
+    map<string, uint32_t>::iterator it = m_broker_client_name2nodeid.find(service_name_);
+    if (it == m_broker_client_name2nodeid.end())
+    {
+        return false;
+    }
+    return true;
+}
 //! 通过bridge broker调用远程的service
 int ffrpc_t::bridge_call_impl(const string& broker_group_, const string& service_name_, const string& msg_name_,
                               const string& body_, ffslot_t::callback_t* callback_)

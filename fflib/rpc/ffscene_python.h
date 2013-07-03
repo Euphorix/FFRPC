@@ -35,7 +35,8 @@ public:
     			  .reg(&ffscene_python_t::close_session, "close_session")
                   .reg(&ffscene_python_t::change_session_scene, "change_session_scene")
                   .reg(&ffscene_python_t::once_timer, "once_timer")
-                  .reg(&ffscene_python_t::reload, "reload");
+                  .reg(&ffscene_python_t::reload, "reload")
+                  .reg(&ffscene_python_t::is_exist, "is_exist");
     
         m_ffpython.init("ff");
         m_ffpython.set_global_var("ff", "ffscene_obj", (ffscene_python_t*)this);
@@ -74,6 +75,11 @@ public:
         }
         LOGTRACE((FFSCENE_PYTHON, "ffscene_python_t::reload end ok name_[%s]", name_));
         return 0;
+    }
+    //! 判断某个service是否存在
+    bool is_exist(const string& service_name_)
+    {
+        return m_ffrpc->is_exist(service_name_);
     }
     ffslot_t::callback_t* gen_verify_callback()
     {

@@ -67,6 +67,9 @@ public:
     //! 通过bridge broker调用远程的service
     int bridge_call_impl(const string& broker_group_, const string& service_name_, const string& msg_name_,
                          const string& body_, ffslot_t::callback_t* callback_);
+
+    //! 判断某个service是否存在
+    bool is_exist(const string& service_name_);
 private:
     //! 处理连接断开
     int handle_broken_impl(socket_ptr_t sock_);
