@@ -1,3 +1,5 @@
+#include "python/ffpython.h"
+
 #include <stdio.h>
 #include "base/daemon_tool.h"
 #include "base/arg_helper.h"
@@ -9,25 +11,60 @@
 #include "base/log.h"
 #include "base/signal_helper.h"
 
+
 using namespace ff;
 #define FFRPC "FFRPC"
 
+socket_ptr_t sock = NULL;
+ffpython_t* g_ffpython = NULL;
+struct session_data_t
+{
+    session_data_t(int i = 0):index(i){}
+    int index;
+};
 class handler_t:public msg_handler_i
 {
 public:
     //! 处理连接断开
     int handle_broken(socket_ptr_t sock_)
     {
-        printf("handle_broken xxxxxxxx\n");
+        if (NULL == sock_->get_data<session_data_t>())
+        {
+            sock_->safe_delete();
+            return 0;
+        }
+        //socket_info[sock_->get_data<session_data_t>()->index] = NULL;
+        printf("handle_broken xxxxxxxx=%d\n", sock_->get_data<session_data_t>()->index);
+        delete sock_->get_data<session_data_t>();
+        sock_->safe_delete();
+        
+        if (sock == sock_)
+        {
+            sock = NULL;
+        }
         return 0;
     }
     //! 处理消息
     int handle_msg(const message_t& msg_, socket_ptr_t sock_)
     {
-        printf("handle_msg xxxxxxxxTTTT=%s\n", msg_.get_body().c_str());
+        printf("handle_msg xxxxxxxxTTTT cmd=%d\n", msg_.get_cmd());
+        
+        (*g_ffpython).call<void>("main", "process_recv", msg_.get_cmd(), msg_.get_body());
         return 0;
     }
+    
+    map<int, socket_ptr_t> socket_info;
 };
+
+struct ffext_t
+{
+    static void send_msg(int cmd_, const string& msg_)
+    {
+        cout << "ffext_t::send_msg:" << msg_.size() <<endl;
+        msg_sender_t::send(sock, cmd_, msg_);
+    }
+};
+
 int main(int argc, char* argv[])
 {
     //! 美丽的日志组件，shell输出是彩色滴！！
@@ -35,14 +72,14 @@ int main(int argc, char* argv[])
 
     if (argc == 1)
     {
-        printf("usage: %s -gate tcp://127.0.0.1:10241\n", argv[0]);
+        printf("usage: %s -gate tcp://127.0.0.1:10242\n", argv[0]);
         return 1;
     }
     string name ="helloworld";
     arg_helper_t arg_helper(argc, argv);
     if (false == arg_helper.is_enable_option("-gate"))
     {
-        printf("usage: %s -gate tcp://127.0.0.1:10241\n", argv[0]);
+        printf("usage: %s -gate tcp://127.0.0.1:10242\n", argv[0]);
         return 1;
     }
     if (arg_helper.is_enable_option("-name"))
@@ -52,20 +89,53 @@ int main(int argc, char* argv[])
     printf("name=%s\n", name.c_str());
     handler_t handler;
     string host_ = arg_helper.get_option_value("-gate");
-    socket_ptr_t sock = net_factory_t::connect(host_, &handler);
+    
+    
+    sock = net_factory_t::connect(host_, &handler);
     if (NULL == sock)
     {
         LOGERROR((FFRPC, "can't connect to remote broker<%s>", host_.c_str()));
         return -1;
     }
-    msg_sender_t::send(sock, 0, name);
+    sock->set_data(new session_data_t(0));
+    
+    ffpython_t ffpython;
+    ffpython_t::add_path("./");
+    
+    ffpython.reg(&ffext_t::send_msg, "send_msg");
+    ffpython.init("ff");
+    ffpython.load("main");
 
-    int cmd = 1;
-    while(cmd)
+    ffpython.call<void>("main", "process_connect");
+    //msg_sender_t::send(sock, 0, name);
+    g_ffpython = &ffpython;
+    string cmd;
+    while(cmd != "quit")
     {
         cin >> cmd;
-        msg_sender_t::send(sock, cmd, "[1,2,3]");
+        if (cmd.empty())
+        {
+            break;
+        }
+        try
+        {
+            if (cmd == "reload")
+            {
+                ffpython.reload("main");
+                continue;
+            }
+            int ret = ffpython.call<int>("main", "process_gm", cmd);
+            if (ret != 0)
+                break;
+        }
+        catch(exception& e_)
+        {
+            cout << e_.what() << endl;
+        }
+        cmd.clear();
+        sleep(1);
     }
-    sleep(100);
+    sleep(1);
     return 0;
 }
+
