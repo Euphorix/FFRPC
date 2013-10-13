@@ -314,5 +314,6 @@ struct fftraits_t<T&>
     typedef T value_t;
 };
 
+typedef int64_t userid_t;
 }
 #endif

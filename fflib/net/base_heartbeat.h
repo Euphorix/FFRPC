@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
-
+//#include <stdio.h>
 #include <map>
 #include <list>
 using namespace std;
@@ -55,7 +55,7 @@ private:
 
 template <typename T>
 base_heartbeat_t<T>::base_heartbeat_t():
-    m_timeout(2147483647 - ::time(NULL)),//! love you 1w year
+    m_timeout(10*3600*24*365),//! love you 1w year
     m_timeout_callback(NULL)
 {
     m_cur_tick = ::time(NULL);
@@ -79,9 +79,9 @@ template <typename T>
 int base_heartbeat_t<T>::set_option(const arg_helper_t& arg_helper, timeout_callback_t fn_)
 {
     lock_guard_t lock(m_mutex);
-    if (arg_helper.is_enable_option("-timeout"))
+    if (arg_helper.is_enable_option("-heartbeat_timeout"))
     {
-        m_timeout = time_t(atoi(arg_helper.get_option_value("-timeout").c_str()));
+        m_timeout = time_t(atoi(arg_helper.get_option_value("-heartbeat_timeout").c_str()));
     }
     
     m_timeout_callback = fn_;
@@ -107,6 +107,7 @@ int base_heartbeat_t<T>::add(const type_t& v_)
         return -1;
     }
 
+    //printf("add node this=%p m_time_sort_list=%u m_timeout=%ld\n", this, m_time_sort_list.size(), m_timeout);
     return 0;
 }
 
@@ -130,6 +131,7 @@ int base_heartbeat_t<T>::update(const type_t& v_)
     m_time_sort_list.push_front(tmp_info);
     it->second = m_time_sort_list.begin();
 
+    //printf("update node %ld\n", new_tm);
     return 0;
 }
 
@@ -146,7 +148,8 @@ int base_heartbeat_t<T>::del(const type_t& v_)
 
     m_time_sort_list.erase(it->second);
     m_data_map.erase(it);
-    
+
+    //printf("del node this=%p, m_time_sort_list size=%u\n", this, m_time_sort_list.size());
     return 0;
 }
 
@@ -162,6 +165,8 @@ int base_heartbeat_t<T>::timer_check()
         if (m_cur_tick >= info.timeout)
         {
             (*m_timeout_callback)(info.value);
+            //printf("timer_check node curTm=%ld, tm=%ld, this=%p, m_time_sort_list size=%u\n", m_cur_tick, info.timeout, this, m_time_sort_list.size());
+            m_data_map.erase(info.value);
             m_time_sort_list.pop_back();
         }
         else

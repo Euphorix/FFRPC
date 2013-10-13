@@ -4,6 +4,7 @@
 #include "net/acceptor_impl.h"
 #include "net/common_socket_controller.h"
 #include "net/net_stat.h"
+#include "base/arg_helper.h"
 
 namespace ff {
 
@@ -14,6 +15,7 @@ public:
     ~gateway_acceptor_t();
 
     int open(const string& address_);
+    int open(arg_helper_t& arg_helper);
 
 protected:
     virtual socket_i* create_socket(int new_fd_);

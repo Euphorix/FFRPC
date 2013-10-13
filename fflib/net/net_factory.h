@@ -113,6 +113,21 @@ public:
         singleton_t<global_data_t>::instance().all_acceptor.push_back(ret);
         return ret;
     }
+	static acceptor_i* gateway_listen(arg_helper_t& arg_helper, msg_handler_i* msg_handler_)
+    {
+        singleton_t<global_data_t>::instance().start();
+        gateway_acceptor_t* ret = new gateway_acceptor_t(&(singleton_t<global_data_t>::instance().epoll),
+                                                   msg_handler_, 
+                                                   (singleton_t<global_data_t>::instance().tg));
+        
+        if (ret->open(arg_helper))
+        {
+            delete ret;
+            return NULL;
+        }
+        singleton_t<global_data_t>::instance().all_acceptor.push_back(ret);
+        return ret;
+    }
     static acceptor_i* http_listen(const string& host_, msg_handler_i* msg_handler_)
     {
         singleton_t<global_data_t>::instance().start();

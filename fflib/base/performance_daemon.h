@@ -17,15 +17,18 @@ namespace ff {
 
 #define AUTO_PERF() performance_daemon_t::perf_tool_t __tmp__(__FUNCTION__)
 #define PERF(m)     performance_daemon_t::perf_tool_t __tmp__(m)
+#define AUTO_CMD_PERF(X, Y) performance_daemon_t::perf_tool_t __tmp__(X, Y)
+#define PERF_MONITOR singleton_t<performance_daemon_t>::instance()
 
-//! ÐÔÄÜ¼à¿Ø
+//! ï¿½ï¿½ï¿½Ü¼ï¿½ï¿½
 class performance_daemon_t
 {
 public:
     struct perf_tool_t
     {
-        perf_tool_t(const char* mod_):
-            mod(mod_)
+        perf_tool_t(const char* mod_, long arg_ = -1):
+            mod(mod_),
+            arg(arg_)
         {
             gettimeofday(&tm, NULL);
         }
@@ -34,9 +37,10 @@ public:
             struct timeval now;
             gettimeofday(&now, NULL);
             long cost = (now.tv_sec - tm.tv_sec)*1000000 + (now.tv_usec - tm.tv_usec);
-            singleton_t<performance_daemon_t>::instance().post(mod, cost);
+            singleton_t<performance_daemon_t>::instance().post(mod, arg, cost);
         }
         const char*    mod;
+        long           arg;
         struct timeval tm;
     };
     struct perf_info_t
@@ -47,6 +51,13 @@ public:
             total(0),
             times(0)
         {}
+        void clear()
+        {
+            max = 0;
+            min = 2147483647;
+            total = 0;
+            times = 0;
+        }
         long max;
         long min;
         long total;
@@ -69,23 +80,23 @@ public:
     performance_daemon_t();
     ~performance_daemon_t();
 
-    //! Æô¶¯Ïß³Ì£¬´´½¨ÎÄ¼þ
-    int start(const string& path_, int seconds_);
-    //! ¹Ø±ÕÏß³Ì
+    //! ï¿½ï¿½ï¿½ï¿½ï¿½ß³Ì£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½
+    int start(const string& path_ = "./perf", int seconds_ = 30*60);
+    //! ï¿½Ø±ï¿½ï¿½ß³ï¿½
     int stop();
 
-    //! Ôö¼ÓÐÔÄÜ¼à¿ØÊý¾Ý
-    void post(const string& mod_, long us);
+    //! ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ü¼ï¿½ï¿½ï¿½ï¿½ï¿½
+    void post(const string& mod_, long arg_, long us);
 
-    //! ¸üÐÂÐÔÄÜÈÕÖ¾
+    //! ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö¾
     void flush();
 
-    //! ËùÓÐ¶ÓÁÐ
+    //! ï¿½ï¿½ï¿½Ð¶ï¿½ï¿½ï¿½
     void run();
 
     task_queue_t& get_task_queue() { return m_task_queue; }
 public:
-    void add_perf_data(const string& mod_, long us);
+    void add_perf_data(const string& mod_, long arg_, long us);
 
 private:
     void handle_timer();
@@ -96,7 +107,7 @@ private:
     map<string, perf_info_t>    m_perf_info;
     task_queue_t                m_task_queue;
     thread_t                    m_thread;
-    ofstream                    m_fstream;
+    string                      m_path;
     timer_service_t*            m_timer_service;
 };
 

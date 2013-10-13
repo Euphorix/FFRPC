@@ -15,6 +15,7 @@ using namespace std;
 #include "base/task_queue_impl.h"
 #include "base/thread.h"
 #include "base/singleton.h"
+#include "base/arg_helper.h"
 
 namespace ff
 {
@@ -296,6 +297,7 @@ public:
 	log_service_t();
 	~log_service_t();
 	int start(const string& opt_);
+    int start(arg_helper_t& arg_helper);
 	int stop();
 
 	LOG_IMPL_MACRO(async_logdebug, LOG_DEBUG);

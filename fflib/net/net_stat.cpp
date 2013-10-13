@@ -4,7 +4,7 @@ using namespace ff;
 
 net_stat_t::net_stat_t():
     m_timer_service(NULL),
-    m_max_packet_size(1000)
+    m_max_packet_size(1000*1000)
 {
 }
 
@@ -36,7 +36,7 @@ int net_stat_t::start(arg_helper_t& arg_helper_)
     
     m_heartbeat.set_option(arg_helper_, timer_close);
     
-    m_timer_service = new timer_service_t(1); //! 1s tick
+    m_timer_service = new timer_service_t();
     
     m_timer_service->timer_callback(m_heartbeat.timeout(), task_t(&timer_check, (void*)this));
     return 0;
