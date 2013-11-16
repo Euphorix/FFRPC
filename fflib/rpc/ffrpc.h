@@ -86,11 +86,16 @@ private:
     //! 连接到broker master
     socket_ptr_t connect_to_broker(const string& host_, uint32_t node_id_);
     
+    //! 新版实现
+    //! 处理注册, 
+    int handle_broker_reg_response(register_to_broker_t::out_t& msg_, socket_ptr_t sock_);
+    //! 新版 调用消息对应的回调函数
+    int handle_call_service_msg(broker_route_msg_t::in_t& msg_, socket_ptr_t sock_);
 private:
     string                                  m_host;
     timer_service_t                         m_timer;
     string                                  m_service_name;//! 注册的服务名称
-    uint32_t                                m_node_id;     //! 通过注册broker，分配的node id
+    uint64_t                                m_node_id;     //! 通过注册broker，分配的node id
     uint32_t                                m_callback_id;//! 回调函数的唯一id值
     task_queue_t                            m_tq;
     thread_t                                m_thread;
@@ -110,12 +115,14 @@ template <typename R, typename IN, typename OUT>
 ffrpc_t& ffrpc_t::reg(R (*func_)(ffreq_t<IN, OUT>&))
 {
     m_reg_iterface[TYPE_NAME(IN)] = ffrpc_ops_t::gen_callback(func_);
+    m_ffslot_interface.bind(TYPE_NAME(IN), ffrpc_ops_t::gen_callback(func_));
     return *this;
 }
 template <typename R, typename CLASS_TYPE, typename IN, typename OUT>
 ffrpc_t& ffrpc_t::reg(R (CLASS_TYPE::*func_)(ffreq_t<IN, OUT>&), CLASS_TYPE* obj)
 {
     m_reg_iterface[TYPE_NAME(IN)] = ffrpc_ops_t::gen_callback(func_, obj);
+    m_ffslot_interface.bind(TYPE_NAME(IN), ffrpc_ops_t::gen_callback(func_, obj));
     return *this;
 }
 

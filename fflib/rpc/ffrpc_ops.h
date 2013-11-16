@@ -191,10 +191,10 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (*func_)(ffreq_t<IN, OUT>&))
             ffslot_req_arg* msg_data = (ffslot_req_arg*)args_;
             ffreq_t<IN, OUT> req;
             req.arg.decode_data(msg_data->body);
-            req.node_id = msg_data->node_id;
-            req.callback_id = msg_data->callback_id;
-            req.bridge_route_id = msg_data->bridge_route_id;
-            req.responser = msg_data->responser;
+            //req.node_id = msg_data->node_id;
+            //req.callback_id = msg_data->callback_id;
+            //req.bridge_route_id = msg_data->bridge_route_id;
+            //req.responser = msg_data->responser;
             m_func(req);
         }
         virtual ffslot_t::callback_t* fork() { return new lambda_cb(m_func); }
@@ -379,13 +379,17 @@ enum ffrpc_cmd_def_e
     BROKER_SLAVE_REGISTER  = 1,
     BROKER_BRIDGE_REGISTER,//! 注册到broker bridge
     BROKER_CLIENT_REGISTER,
-    BROKER_ROUTE_MSG,
+    //BROKER_ROUTE_MSG,
     BROKER_SYNC_DATA_MSG,
     BROKER_TO_CLIENT_MSG,
     BROKER_TO_BRIDGE_ROUTE_MSG,//![client to master]
     BRIDGE_TO_BROKER_ROUTE_MSG,
     BRIDGE_BROKER_TO_BROKER_MSG,
     CLIENT_REGISTER_TO_SLAVE_BROKER,
+    //!新版本*********
+    REGISTER_TO_BROKER_REQ,
+    REGISTER_TO_BROKER_RET,
+    BROKER_ROUTE_MSG,
 };
 
 
@@ -848,6 +852,69 @@ struct ffrpc_memory_route_t
     //! 获取本进程内的broker 节点
     uint32_t get_broker_node_same_process();
     map<uint32_t/*node id*/, dest_node_info_t>      m_node_info;
+};
+
+//!新版本的实现*********************************************************************************************
+
+//! 处理其他broker或者client注册到此server
+struct register_to_broker_t
+{
+    struct in_t: public ffmsg_t<in_t>
+    {
+        void encode()
+        {
+            encoder() << host << service_name << node_id;
+        }
+        void decode()
+        {
+            decoder()>> host  >> service_name >> node_id;
+        }
+        string          host;
+        string          service_name;
+        uint64_t        node_id;
+    };
+    struct out_t: public ffmsg_t<in_t>
+    {
+        void encode()
+        {
+            encoder() << host << service_name << node_id;
+        }
+        void decode()
+        {
+            decoder()>> host  >> service_name >> node_id;
+        }
+        string          host;
+        string          service_name;
+        uint64_t        node_id;
+    };
+};
+//! 处理转发消息的操作
+struct broker_route_msg_t
+{
+    struct in_t: public ffmsg_t<in_t>
+    {
+        void encode()
+        {
+            encoder() << dest_namespace << dest_service_name << dest_msg_name << dest_node_id << from_namespace << from_service_name << from_msg_name << from_node_id << callback_id;
+        }
+        void decode()
+        {
+            decoder() >> dest_namespace >> dest_service_name >> dest_msg_name >> dest_node_id >> from_namespace >> from_service_name >> from_msg_name >> from_node_id >> callback_id;
+        }
+        
+        string      dest_namespace;
+        string      dest_service_name;
+        string      dest_msg_name;
+        uint64_t    dest_node_id;
+        
+        string      from_namespace;
+        string      from_service_name;
+        string      from_msg_name;
+        uint64_t    from_node_id;
+        
+        int64_t     callback_id;
+        string      body;
+    };
 };
 
 }

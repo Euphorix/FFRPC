@@ -69,28 +69,6 @@ int main(int argc, char* argv[])
     arg_helper_t arg_helper(argc, argv);
     ffbroker.open(arg_helper);
 
-    //! broker客户端，可以注册到broker，并注册服务以及接口，也可以远程调用其他节点的接口
-    ffrpc_t ffrpc_service("echo");
-    foo_t foo;
-    ffrpc_service.reg(&foo_t::echo, &foo);
-    ffrpc_service.open("tcp://127.0.0.1:10241");
-    
-    ffrpc_t ffrpc_client;
-    ffrpc_client.open("tcp://127.0.0.1:10241");
-    echo_t::in_t in;
-    in.data = "helloworld";
-
-    //! 你没有看见get_type_name定义，但是他确定存在
-    printf("测试获取类名:%s\n", in.get_type_name());//输出为:测试获取类名:echo_t::in_t
-    
-    for (int i = 0; i < 100; ++i)
-    {
-        sleep(3);
-        //! 如你所想，echo接口被调用，然后echo_callback被调用，每一秒重复该过程
-        ffrpc_client.bridge_call("ff", "echo", in, ffrpc_ops_t::gen_callback(&foo_t::echo_callback, &foo, i));
-        sleep(30);
-    }
-    
     sleep(300);
     ffbroker.close();
     return 0;

@@ -32,7 +32,7 @@ public:
     {
         clear();
     }
-    ffslot_t& bind(int cmd_, callback_t* callback_)
+    ffslot_t& bind(long cmd_, callback_t* callback_)
     {
         assert(callback_);
         m_cmd2callback.insert(make_pair(cmd_, callback_));
@@ -44,9 +44,9 @@ public:
         m_name2callback.insert(make_pair(cmd_, callback_));
         return *this;
     }
-    callback_t* get_callback(int cmd_)
+    callback_t* get_callback(long cmd_)
     {
-        map<int, callback_t*>::iterator it = m_cmd2callback.find(cmd_);
+        map<long, callback_t*>::iterator it = m_cmd2callback.find(cmd_);
         if (it != m_cmd2callback.end())
         {
             return it->second;
@@ -62,9 +62,9 @@ public:
         }
         return NULL;
     }
-    void del(int cmd_)
+    void del(long cmd_)
     {
-        map<int, callback_t*>::iterator it = m_cmd2callback.find(cmd_);
+        map<long, callback_t*>::iterator it = m_cmd2callback.find(cmd_);
         if (it != m_cmd2callback.end())
         {
             delete it->second;
@@ -82,7 +82,7 @@ public:
     }
     void clear()
     {
-        map<int, callback_t*>::iterator it = m_cmd2callback.begin();
+        map<long, callback_t*>::iterator it = m_cmd2callback.begin();
         for (; it != m_cmd2callback.end(); ++it)
         {
             delete it->second;
@@ -96,7 +96,7 @@ public:
         m_name2callback.clear();
     }
 private:
-    map<int, callback_t*>       m_cmd2callback;
+    map<long, callback_t*>       m_cmd2callback;
     map<string, callback_t*>    m_name2callback;
 };
 

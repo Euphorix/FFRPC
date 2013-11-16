@@ -31,6 +31,19 @@ class ffbroker_t: public msg_handler_i
     struct broker_bridge_info_t;
     //! broker bridge 上所有的 broker master group 信息
     struct broker_group_info_t;
+    
+    //!新版本*****************************
+    //!所有的注册到此broker的节点信息
+    struct registered_node_info_t;
+    
+    //!新版本*****************************
+    //!所有的注册到此broker的节点信息
+    struct registered_node_info_t
+    {
+        //!各个节点对应的连接信息
+        map<uint64_t/* node id*/, socket_ptr_t>     node_sockets;
+    };
+
 public:
     ffbroker_t();
     virtual ~ffbroker_t();
@@ -40,6 +53,28 @@ public:
     //! 当有消息到来，被回调
     int handle_msg(const message_t& msg_, socket_ptr_t sock_);
 
+    //! 处理其他broker或者client注册到此server
+    int handle_regiter_to_broker(register_to_broker_t::in_t& msg_, socket_ptr_t sock_);
+    //! 处理转发消息的操作
+    int handle_broker_route_msg(broker_route_msg_t::in_t& msg_, socket_ptr_t sock_);
+
+protected:
+    //!此broker归属于哪一个组
+    string                              m_namespace;
+    //!本broker的host信息
+    //!此broker的上级broker的host配置
+    string                              m_higher_broker_host;
+    //!本身的node id[ip_port]
+    uint64_t                            m_node_id;
+    //!所有的注册到此broker的节点信息
+    registered_node_info_t              m_all_registered_info;
+
+    //!工具类
+    task_queue_t                            m_tq;
+    thread_t                                m_thread;
+    //! 用于绑定回调函数
+    ffslot_t                                m_ffslot;
+public:
     int open(arg_helper_t& opt_);
     int close();
     //! 分配一个nodeid
@@ -105,15 +140,15 @@ private:
     //! 连接到master 的连接socket
     socket_ptr_t                            m_master_broker_sock;
     //! broker 分配的slave node id
-    uint32_t                                m_node_id;
+    //uint32_t                                m_node_id;
     timer_service_t                         m_timer;
     //! 用于分配nodeid
     uint32_t                                m_node_id_index;
     //! 记录所有注册到此节点上的连接
-    task_queue_t                            m_tq;
-    thread_t                                m_thread;
+    //task_queue_t                            m_tq;
+    //thread_t                                m_thread;
     //! 用于绑定回调函数
-    ffslot_t                                m_ffslot;
+    //ffslot_t                                m_ffslot;
     //! 记录所有的broker socket对应node id
     map<uint32_t, slave_broker_info_t>      m_slave_broker_sockets;
     //! 记录所有的消息名称对应的消息id值
@@ -177,6 +212,7 @@ struct ffbroker_t::broker_group_info_t
     {}
     socket_ptr_t    sock;
 };
+
 }
 
 #endif

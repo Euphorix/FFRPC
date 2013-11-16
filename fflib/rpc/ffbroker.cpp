@@ -39,7 +39,7 @@ int ffbroker_t::open(arg_helper_t& arg)
     //! 绑定cmd 对应的回调函数
     m_ffslot.bind(BROKER_SLAVE_REGISTER, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_slave_register, this))
             .bind(BROKER_CLIENT_REGISTER, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_client_register, this))
-            .bind(BROKER_ROUTE_MSG, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_route_msg, this))
+            //.bind(BROKER_ROUTE_MSG, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_route_msg, this))
             .bind(CLIENT_REGISTER_TO_SLAVE_BROKER, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_client_register_slave_broker, this))
             .bind(BROKER_SYNC_DATA_MSG, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_broker_sync_data, this))
             .bind(BROKER_TO_BRIDGE_ROUTE_MSG, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_broker_to_bridge_route_msg, this))
@@ -47,7 +47,11 @@ int ffbroker_t::open(arg_helper_t& arg)
             .bind(BRIDGE_BROKER_TO_BROKER_MSG, ffrpc_ops_t::gen_callback(&ffbroker_t::bridge_handle_broker_to_broker_msg, this))
             .bind(BROKER_BRIDGE_REGISTER, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_broker_register_bridge, this));
 
-            
+    //!新版本
+    //! 处理其他broker或者client注册到此server
+    m_ffslot.bind(REGISTER_TO_BROKER_REQ, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_regiter_to_broker, this))
+            .bind(BROKER_ROUTE_MSG, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_broker_route_msg, this));
+
 
     //! 任务队列绑定线程
     m_thread.create_thread(task_binder_t::gen(&task_queue_t::run, &m_tq), 1);
@@ -207,7 +211,12 @@ int ffbroker_t::handle_broken_impl(socket_ptr_t sock_)
         sock_->safe_delete();
         return 0;
     }
+    //!删除对应的node 信息
     uint32_t node_id = sock_->get_data<session_data_t>()->get_node_id();
+    m_all_registered_info.node_sockets.erase(node_id);
+    sock_->safe_delete();
+    return 0;
+    
     if (node_id == BROKER_MASTER_NODE_ID && false == is_master())
     {
         //! slave 连接到master 的连接断开，重连
@@ -632,5 +641,38 @@ int ffbroker_t::handle_broker_sync_data(broker_sync_all_registered_data_t::out_t
         LOGTRACE((BROKER, "ffbroker_t::handle_broker_sync_data name[%s] -> node id[%u]", broker_client_info.service_name, it4->first));
     }
     LOGTRACE((BROKER, "ffbroker_t::handle_broker_sync_data end ok"));
+    return 0;
+}
+
+//! 处理其他broker或者client注册到此server
+int ffbroker_t::handle_regiter_to_broker(register_to_broker_t::in_t& msg_, socket_ptr_t sock_)
+{
+    LOGTRACE((BROKER, "ffbroker_t::handle_regiter_to_broker begin"));
+    
+    m_all_registered_info.node_sockets[msg_.node_id] = sock_;
+    
+    register_to_broker_t::out_t ret_msg;
+    msg_sender_t::send(sock_, REGISTER_TO_BROKER_RET, ret_msg);
+    LOGTRACE((BROKER, "ffbroker_t::handle_regiter_to_broker end ok"));
+    return 0;
+}
+
+//! 处理转发消息的操作
+int ffbroker_t::handle_broker_route_msg(broker_route_msg_t::in_t& msg_, socket_ptr_t sock_)
+{
+    LOGTRACE((BROKER, "ffbroker_t::handle_broker_route_msg begin"));
+    
+    //!如果找到对应的节点，那么发给对应的节点
+    map<uint64_t/* node id*/, socket_ptr_t>::iterator it = m_all_registered_info.node_sockets.find(msg_.dest_node_id);
+    if (it != m_all_registered_info.node_sockets.end())
+    {
+        msg_sender_t::send(it->second, BROKER_TO_CLIENT_MSG, msg_);
+    }
+    else
+    {
+        LOGERROR((BROKER, "ffbroker_t::handle_broker_route_msg end failed"));
+        return 0;
+    }
+    LOGTRACE((BROKER, "ffbroker_t::handle_broker_route_msg end ok"));
     return 0;
 }
