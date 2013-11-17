@@ -877,15 +877,17 @@ struct register_to_broker_t
     {
         void encode()
         {
-            encoder() << register_flag << node_id << service2node_id;
+            encoder() << register_flag << node_id << bind_broker_id << service2node_id << slave_broker_data;
         }
         void decode()
         {
-            decoder()>> register_flag >> node_id >> service2node_id;
+            decoder()>> register_flag >> node_id >> bind_broker_id >> service2node_id >> slave_broker_data;
         }
-        bool            register_flag;
-        uint64_t        node_id;
-        map<string, uint64_t>   service2node_id;
+        int8_t                        register_flag;//! -1表示注册失败，0表示同步消息，1表示注册成功
+        uint64_t                      node_id;
+        uint64_t                      bind_broker_id;//!绑定的brokerid
+        map<string, uint64_t>         service2node_id;
+        map<string/*host*/, uint64_t> slave_broker_data;//!slave broker对应的数据
     };
 };
 //! 处理转发消息的操作

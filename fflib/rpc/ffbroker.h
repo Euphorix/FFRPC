@@ -59,9 +59,13 @@ public:
     int handle_regiter_to_broker(register_to_broker_t::in_t& msg_, socket_ptr_t sock_);
     //! 处理转发消息的操作
     int handle_broker_route_msg(broker_route_msg_t::in_t& msg_, socket_ptr_t sock_);
-
+    //!处理注册到master broker的消息
+    int handle_register_master_ret(register_to_broker_t::out_t& msg_, socket_ptr_t sock_);
+    
     //!ff 获取节点信息
     uint64_t alloc_node_id(socket_ptr_t sock_);
+    //!本身是否是master broker
+    bool is_master_broker() { return m_broker_host.empty() == true; }
 protected:
     //!此broker归属于哪一个组
     string                              m_namespace;
@@ -78,6 +82,8 @@ protected:
     thread_t                                m_thread;
     //! 用于绑定回调函数
     ffslot_t                                m_ffslot;
+    //! 如果本身是一个slave broker，需要连接到master broker
+    socket_ptr_t                            m_master_broker_sock;
 public:
     int open(arg_helper_t& opt_);
     int close();
@@ -89,6 +95,10 @@ public:
     
     //! 内存间传递消息
     int memory_route_msg(broker_route_t::in_t& msg_);
+       
+    //!ff
+    //! 连接到broker master
+    int connect_to_master_broker();
 private:
     //! 当有连接断开，则被回调
     int handle_broken_impl(socket_ptr_t sock_);
@@ -97,7 +107,7 @@ private:
     
     //! 转发消息
     int handle_route_msg(broker_route_t::in_t& msg_, socket_ptr_t sock_);
-   
+
 private:
     //! 本 broker的监听信息
     string                                  m_listen_host;

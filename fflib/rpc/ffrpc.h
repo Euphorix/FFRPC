@@ -70,6 +70,9 @@ public:
 
     //! 判断某个service是否存在
     bool is_exist(const string& service_name_);
+    
+    //!获取broker socket
+    socket_ptr_t get_broker_socket();
 private:
     //! 处理连接断开
     int handle_broken_impl(socket_ptr_t sock_);
@@ -78,8 +81,6 @@ private:
 
     //!  register all interface
     int register_all_interface(socket_ptr_t sock);
-    //! 处理broker同步消息，broker master 会把master上注册的所有信息同步给所有的client
-    int handle_broker_sync_data(broker_sync_all_registered_data_t::out_t& msg_, socket_ptr_t sock_);
     int handle_broker_route_msg(broker_route_t::in_t& msg_, socket_ptr_t sock_);
     
 
@@ -96,6 +97,7 @@ private:
     timer_service_t                         m_timer;
     string                                  m_service_name;//! 注册的服务名称
     uint64_t                                m_node_id;     //! 通过注册broker，分配的node id
+    
     uint32_t                                m_callback_id;//! 回调函数的唯一id值
     task_queue_t                            m_tq;
     thread_t                                m_thread;
@@ -109,6 +111,10 @@ private:
     map<uint32_t, broker_client_info_t>     m_broker_client_info;//! node id -> service
     map<string, uint32_t>                   m_broker_client_name2nodeid;//! service name -> service node id
     
+    //!ff绑定的broker id
+    uint64_t                                m_bind_broker_id;
+    //!所有的broker socket
+    map<uint64_t, socket_ptr_t>             m_broker_sockets;
     //!ff new impl
     register_to_broker_t::out_t             m_broker_data;
 };

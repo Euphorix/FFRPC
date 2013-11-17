@@ -115,6 +115,7 @@ int main(int argc, char* argv[])
 
     gettimeofday(&foo.tm_begin, NULL);
 
+    sleep(1);
     ffrpc_client.call("echo", in, ffrpc_ops_t::gen_callback(&foo_t::echo_callback, &foo, 1, &ffrpc_client));
 
     signal_helper_t::wait();

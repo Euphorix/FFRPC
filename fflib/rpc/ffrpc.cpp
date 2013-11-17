@@ -11,7 +11,8 @@ ffrpc_t::ffrpc_t(string service_name_):
     m_service_name(service_name_),
     m_node_id(0),
     m_callback_id(0),
-    m_master_broker_sock(NULL)
+    m_master_broker_sock(NULL),
+    m_bind_broker_id(0)
 {
     if (m_service_name.empty())
     {
@@ -32,13 +33,10 @@ int ffrpc_t::open(const string& opt_)
     m_host = opt_;
 
     m_thread.create_thread(task_binder_t::gen(&task_queue_t::run, &m_tq), 1);
-    m_ffslot.bind(BROKER_SYNC_DATA_MSG, ffrpc_ops_t::gen_callback(&ffrpc_t::handle_broker_sync_data, this));
-            //.bind(BROKER_TO_CLIENT_MSG, ffrpc_ops_t::gen_callback(&ffrpc_t::handle_broker_route_msg, this));
             
     //!新版本
     m_ffslot.bind(REGISTER_TO_BROKER_RET, ffrpc_ops_t::gen_callback(&ffrpc_t::handle_broker_reg_response, this))
             .bind(BROKER_TO_CLIENT_MSG, ffrpc_ops_t::gen_callback(&ffrpc_t::handle_call_service_msg, this));
-    
 
     m_master_broker_sock = connect_to_broker(m_host, BROKER_MASTER_NODE_ID);
 
@@ -77,9 +75,8 @@ socket_ptr_t ffrpc_t::connect_to_broker(const string& host_, uint32_t node_id_)
 
     //!新版发送注册消息
     register_to_broker_t::in_t reg_msg;
-    reg_msg.host = host_;
-    reg_msg.service_name = "todo";
-    reg_msg.node_id = (uint64_t)this;
+    reg_msg.service_name = m_service_name;
+    reg_msg.node_id = m_node_id;
     msg_sender_t::send(sock, REGISTER_TO_BROKER_REQ, reg_msg);
     return sock;
 
@@ -105,16 +102,42 @@ static void route_call_reconnect(ffrpc_t* ffrpc_)
 //! 定时重连 broker master
 void ffrpc_t::timer_reconnect_broker()
 {
-    LOGERROR((FFRPC, "ffrpc_t::timer_reconnect_broker begin..."));
-    m_master_broker_sock = connect_to_broker(m_host, BROKER_MASTER_NODE_ID);
+    LOGINFO((FFRPC, "ffrpc_t::timer_reconnect_broker begin..."));
     if (NULL == m_master_broker_sock)
     {
-        LOGERROR((FFRPC, "ffrpc_t::timer_reconnect_broker failed, can't connect to remote broker<%s>", m_host.c_str()));
-        //! 设置定时器重连
-        m_timer.once_timer(RECONNECT_TO_BROKER_TIMEOUT, task_binder_t::gen(&route_call_reconnect, this));
-        return;
+        m_master_broker_sock = connect_to_broker(m_host, BROKER_MASTER_NODE_ID);
+        if (NULL == m_master_broker_sock)
+        {
+            LOGERROR((FFRPC, "ffrpc_t::timer_reconnect_broker failed, can't connect to remote broker<%s>", m_host.c_str()));
+            //! 设置定时器重连
+            m_timer.once_timer(RECONNECT_TO_BROKER_TIMEOUT, task_binder_t::gen(&route_call_reconnect, this));
+        }
+        else
+        {
+            LOGWARN((FFRPC, "ffrpc_t::timer_reconnect_broker failed, connect to master remote broker<%s> ok", m_host.c_str()));
+        }
     }
-    LOGERROR((FFRPC, "ffrpc_t::timer_reconnect_broker  end ok"));
+    //!检测是否需要连接slave broker
+    map<string/*host*/, uint64_t>::iterator it = m_broker_data.slave_broker_data.begin();
+    for (; it != m_broker_data.slave_broker_data.end(); ++it)
+    {
+        uint64_t node_id = it->second;
+        string host = it->first;
+        if (m_broker_sockets.find(node_id) == m_broker_sockets.end())//!重连
+        {
+            socket_ptr_t sock = connect_to_broker(host, node_id);
+            if (sock == NULL)
+            {
+                LOGERROR((FFRPC, "ffrpc_t::timer_reconnect_broker failed, can't connect to remote broker<%s>", host.c_str()));
+            }
+            else
+            {
+                m_broker_sockets[node_id] = sock;
+                LOGWARN((FFRPC, "ffrpc_t::timer_reconnect_broker failed, connect to slave remote broker<%s> ok", host.c_str()));
+            }
+        }
+    }
+    LOGINFO((FFRPC, "ffrpc_t::timer_reconnect_broker  end ok"));
 }
 
 //!  register all interface
@@ -149,39 +172,22 @@ int ffrpc_t::handle_msg(const message_t& msg_, socket_ptr_t sock_)
 
 int ffrpc_t::handle_broken_impl(socket_ptr_t sock_)
 {
-    if (NULL == sock_->get_data<session_data_t>())
-    {
-        sock_->safe_delete();
-        return 0;
-    }
-    if (BROKER_MASTER_NODE_ID == sock_->get_data<session_data_t>()->get_node_id())
+    //! 设置定时器重练
+    if (m_master_broker_sock == sock_)
     {
         m_master_broker_sock = NULL;
-        //! 连接到broker master的连接断开了
-        map<uint32_t, slave_broker_info_t>::iterator it = m_slave_broker_sockets.begin();//! node id -> info
-        for (; it != m_slave_broker_sockets.end(); ++it)
-        {
-            slave_broker_info_t& slave_broker_info = it->second;
-            delete slave_broker_info.sock->get_data<session_data_t>();
-            slave_broker_info.sock->set_data(NULL);
-            slave_broker_info.sock->close();
-        }
-        m_slave_broker_sockets.clear();//! 所有连接到broker slave的连接断开
-        m_ffslot_interface.clear();//! 注册的接口清除
-        m_ffslot_callback.clear();//! 回调函数清除
-        m_msg2id.clear();//! 消息映射表清除
-        m_broker_client_info.clear();//! 各个服务的记录表清除
-        m_broker_client_name2nodeid.clear();//! 服务名到node id的映射
-        //! 设置定时器重练
-        m_timer.once_timer(RECONNECT_TO_BROKER_TIMEOUT, task_binder_t::gen(&route_call_reconnect, this));
     }
     else
     {
-        m_slave_broker_sockets.erase(sock_->get_data<session_data_t>()->get_node_id());
+        map<uint64_t, socket_ptr_t>::iterator it = m_broker_sockets.begin();
+        for (; it != m_broker_sockets.end(); ++it)
+        {
+            m_broker_sockets.erase(it);
+            break;
+        }
     }
-    delete sock_->get_data<session_data_t>();
-    sock_->set_data(NULL);
     sock_->safe_delete();
+    m_timer.once_timer(RECONNECT_TO_BROKER_TIMEOUT, task_binder_t::gen(&route_call_reconnect, this));
     return 0;
 }
 
@@ -208,57 +214,6 @@ int ffrpc_t::handle_msg_impl(const message_t& msg_, socket_ptr_t sock_)
     }
     LOGWARN((FFRPC, "ffrpc_t::handle_msg_impl cmd[%u] end ok", cmd));
     return -1;
-}
-
-int ffrpc_t::handle_broker_sync_data(broker_sync_all_registered_data_t::out_t& msg_, socket_ptr_t sock_)
-{
-    LOGTRACE((FFRPC, "ffrpc_t::handle_broker_sync_data node_id[%u] begin", msg_.node_id));
-    if (msg_.node_id != 0)
-    {
-        m_node_id = msg_.node_id;
-    }
-    
-    m_msg2id = msg_.msg2id;
-    map<string, uint32_t>::iterator it = msg_.msg2id.begin();
-    for (; it != msg_.msg2id.end(); ++it)
-    {
-        map<string, ffslot_t::callback_t*>::iterator it2 = m_reg_iterface.find(it->first);
-        if (it2 != m_reg_iterface.end() && NULL == m_ffslot_callback.get_callback(it->second))
-        {
-            m_ffslot_interface.bind(it->second, it2->second);
-            LOGTRACE((FFRPC, "ffrpc_t::handle_broker_sync_data msg name[%s] -> msg id[%u]", it->first.c_str(), it->second));
-        }
-    }
-    
-    map<uint32_t, broker_sync_all_registered_data_t::slave_broker_info_t>::iterator it3 = msg_.slave_broker_info.begin();
-    for (; it3 != msg_.slave_broker_info.end(); ++it3)
-    {
-        if (m_slave_broker_sockets.find(it3->first) == m_slave_broker_sockets.end())//! new broker
-        {
-            //connect to and register to
-            m_slave_broker_sockets[it3->first].host = it3->second.host;
-            m_slave_broker_sockets[it3->first].sock = connect_to_broker(it3->second.host, it3->first);
-        }
-    }
-    
-    m_broker_client_info.clear();
-    m_broker_client_name2nodeid.clear();
-    map<uint32_t, broker_sync_all_registered_data_t::broker_client_info_t>::iterator it4 = msg_.broker_client_info.begin();
-    for (; it4 != msg_.broker_client_info.end(); ++it4)
-    {
-        ffrpc_t::broker_client_info_t& broker_client_info = m_broker_client_info[it4->first];
-        broker_client_info.bind_broker_id = it4->second.bind_broker_id;
-        broker_client_info.service_name   = it4->second.service_name;
-
-        if (false == broker_client_info.service_name.empty())
-        {
-            m_broker_client_name2nodeid[broker_client_info.service_name] = it4->first;
-        }
-        LOGTRACE((FFRPC, "ffrpc_t::handle_broker_sync_data name[%s] -> node id[%u],bind_broker_id[%u]",
-                    broker_client_info.service_name, it4->first, broker_client_info.bind_broker_id));
-    }
-    LOGTRACE((FFRPC, "ffrpc_t::handle_broker_sync_data end ok"));
-    return 0;
 }
 
 int ffrpc_t::handle_broker_route_msg(broker_route_t::in_t& msg_, socket_ptr_t sock_)
@@ -365,11 +320,12 @@ int ffrpc_t::call_impl(const string& service_name_, const string& msg_name_, con
     broker_route_msg_t::in_t dest_msg;
     dest_msg.dest_service_name = service_name_;
     dest_msg.dest_msg_name = msg_name_;
-    dest_msg.dest_node_id  = m_node_id;
+    dest_msg.dest_node_id  = m_broker_data.service2node_id[service_name_];
     dest_msg.from_node_id  = m_node_id;
     dest_msg.callback_id = callback_id;
     dest_msg.body = body_;
-    msg_sender_t::send(m_master_broker_sock, BROKER_ROUTE_MSG, dest_msg);
+    msg_sender_t::send(get_broker_socket(), BROKER_ROUTE_MSG, dest_msg);
+    LOGTRACE((FFRPC, "ffrpc_t::call_impl end dest_id=%u", dest_msg.dest_node_id));
     /*
     map<string, uint32_t>::iterator it = m_broker_client_name2nodeid.find(service_name_);
     if (it == m_broker_client_name2nodeid.end())
@@ -430,7 +386,7 @@ int ffrpc_t::bridge_call_impl(const string& broker_group_, const string& service
         m_ffslot_callback.bind(dest_msg.callback_id, callback_);
     }
 
-    msg_sender_t::send(m_master_broker_sock, BROKER_TO_BRIDGE_ROUTE_MSG, dest_msg);
+    msg_sender_t::send(get_broker_socket(), BROKER_TO_BRIDGE_ROUTE_MSG, dest_msg);
     LOGINFO((FFRPC, "ffrpc_t::bridge_call_impl group<%s> service[%s] end ok", broker_group_, service_name_));
     return 0;
 }
@@ -444,7 +400,7 @@ void ffrpc_t::send_to_broker_by_nodeid(uint32_t dest_node_id, const string& body
     dest_msg.dest_node_id = dest_node_id;
     dest_msg.callback_id = callback_id_;
     dest_msg.body = body_;
-    msg_sender_t::send(m_master_broker_sock, BROKER_ROUTE_MSG, dest_msg);
+    msg_sender_t::send(get_broker_socket(), BROKER_ROUTE_MSG, dest_msg);
     return;
     
     broker_route_t::in_t msg;
@@ -456,7 +412,6 @@ void ffrpc_t::send_to_broker_by_nodeid(uint32_t dest_node_id, const string& body
     msg.bridge_route_id  = bridge_route_id_;
 
     uint32_t broker_node_id = BROKER_MASTER_NODE_ID;
-    
     
     if (bridge_route_id_ != 0)
     {
@@ -484,7 +439,7 @@ void ffrpc_t::send_to_broker_by_nodeid(uint32_t dest_node_id, const string& body
 
     if (broker_node_id == BROKER_MASTER_NODE_ID)
     {
-        msg_sender_t::send(m_master_broker_sock, BROKER_ROUTE_MSG, msg);
+        msg_sender_t::send(get_broker_socket(), BROKER_ROUTE_MSG, msg);
     }
     else
     {
@@ -508,14 +463,29 @@ void ffrpc_t::response(uint32_t node_id_, uint32_t msg_id_, uint32_t callback_id
 int ffrpc_t::handle_broker_reg_response(register_to_broker_t::out_t& msg_, socket_ptr_t sock_)
 {
     LOGTRACE((FFRPC, "ffbroker_t::handle_broker_reg_response begin node_id=%d", msg_.node_id));
-    if (msg_.register_flag == false)
+    if (msg_.register_flag < 0)
     {
         LOGERROR((FFRPC, "ffbroker_t::handle_broker_reg_response register failed, service exist"));
         return -1;
     }
-    m_node_id = msg_.node_id; 
+    if (msg_.register_flag == 1)
+    {
+        m_node_id = msg_.node_id;//! -1表示注册失败，0表示同步消息，1表示注册成功
+        m_bind_broker_id = msg_.bind_broker_id;
+    }
     m_broker_data = msg_;
-    LOGTRACE((FFRPC, "ffbroker_t::handle_broker_reg_response end"));
+    
+    timer_reconnect_broker();
+    LOGTRACE((FFRPC, "ffbroker_t::handle_broker_reg_response end service num=%d", m_broker_data.service2node_id.size()));
     return 0;
 }
 
+//!获取broker socket
+socket_ptr_t ffrpc_t::get_broker_socket()
+{
+    if (m_bind_broker_id == 0)
+    {
+        return m_master_broker_sock;
+    }
+    return m_broker_sockets[m_bind_broker_id];     
+}
