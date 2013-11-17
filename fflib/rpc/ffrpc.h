@@ -60,8 +60,6 @@ public:
     task_queue_t& get_tq();
     //! 定时重连 broker master
     void timer_reconnect_broker();
-    //! 调用消息对应的回调函数
-    int trigger_callback(broker_route_t::in_t& msg_);
 
     timer_service_t& get_timer() { return m_timer; }
     //! 通过bridge broker调用远程的service
@@ -78,12 +76,6 @@ private:
     int handle_broken_impl(socket_ptr_t sock_);
     //! 处理消息
     int handle_msg_impl(const message_t& msg_, socket_ptr_t sock_);
-
-    //!  register all interface
-    int register_all_interface(socket_ptr_t sock);
-    int handle_broker_route_msg(broker_route_t::in_t& msg_, socket_ptr_t sock_);
-    
-
     //! 连接到broker master
     socket_ptr_t connect_to_broker(const string& host_, uint32_t node_id_);
     

@@ -79,20 +79,6 @@ socket_ptr_t ffrpc_t::connect_to_broker(const string& host_, uint32_t node_id_)
     reg_msg.node_id = m_node_id;
     msg_sender_t::send(sock, REGISTER_TO_BROKER_REQ, reg_msg);
     return sock;
-
-    //! 发送注册消息给master broker
-    if (node_id_ == BROKER_MASTER_NODE_ID)
-    {
-        register_all_interface(sock);
-    }
-    //! 发送注册消息给master slave broker
-    else
-    {
-        register_client_to_slave_broker_t::in_t msg;
-        msg.node_id = m_node_id;
-        msg_sender_t::send(sock, CLIENT_REGISTER_TO_SLAVE_BROKER, msg);
-    }
-    return sock;
 }
 //! 投递到ffrpc 特定的线程
 static void route_call_reconnect(ffrpc_t* ffrpc_)
@@ -140,20 +126,6 @@ void ffrpc_t::timer_reconnect_broker()
     LOGINFO((FFRPC, "ffrpc_t::timer_reconnect_broker  end ok"));
 }
 
-//!  register all interface
-int ffrpc_t::register_all_interface(socket_ptr_t sock)
-{
-    register_broker_client_t::in_t msg;
-    msg.binder_broker_node_id = singleton_t<ffrpc_memory_route_t>::instance().get_broker_node_same_process();
-    msg.service_name          = m_service_name;
-    
-    for (map<string, ffslot_t::callback_t*>::iterator it = m_reg_iterface.begin(); it != m_reg_iterface.end(); ++it)
-    {
-        msg.msg_names.insert(it->first);
-    }
-    msg_sender_t::send(sock, BROKER_CLIENT_REGISTER, msg);
-    return 0;
-}
 //! 获取任务队列对象
 task_queue_t& ffrpc_t::get_tq()
 {
@@ -216,10 +188,6 @@ int ffrpc_t::handle_msg_impl(const message_t& msg_, socket_ptr_t sock_)
     return -1;
 }
 
-int ffrpc_t::handle_broker_route_msg(broker_route_t::in_t& msg_, socket_ptr_t sock_)
-{
-    return trigger_callback(msg_);
-}
 
 //! 新版 调用消息对应的回调函数
 int ffrpc_t::handle_call_service_msg(broker_route_msg_t::in_t& msg_, socket_ptr_t sock_)
@@ -261,55 +229,6 @@ int ffrpc_t::handle_call_service_msg(broker_route_msg_t::in_t& msg_, socket_ptr_
     return 0;
 }
 
-int ffrpc_t::trigger_callback(broker_route_t::in_t& msg_)
-{
-    LOGTRACE((FFRPC, "ffrpc_t::handle_broker_route_msg msg_id[%u],callback_id[%u] begin", msg_.msg_id, msg_.callback_id));
-    try
-    {
-        if (msg_.msg_id == 0)//! msg_id 为0表示这是一个回调的消息，callback_id已经有值
-        {
-            ffslot_t::callback_t* cb = m_ffslot_callback.get_callback(msg_.callback_id);
-            if (cb)
-            {
-                ffslot_req_arg arg(msg_.body, msg_.from_node_id, msg_.callback_id, msg_.bridge_route_id, this);
-                cb->exe(&arg);
-                m_ffslot_callback.del(msg_.callback_id);
-                return 0;
-            }
-            else
-            {
-                LOGERROR((FFRPC, "ffrpc_t::handle_broker_route_msg callback_id[%u] not found", msg_.callback_id));
-            }
-        }
-        else//! 表示调用接口
-        {
-            ffslot_t::callback_t* cb = m_ffslot_interface.get_callback(msg_.msg_id);
-            if (cb)
-            {
-                ffslot_req_arg arg(msg_.body, msg_.from_node_id, msg_.callback_id, msg_.bridge_route_id, this);
-                cb->exe(&arg);
-                LOGINFO((FFRPC, "ffrpc_t::handle_broker_route_msg end ok msg_.bridge_route_id=%u", msg_.bridge_route_id));
-                return 0;
-            }
-            else
-            {
-                LOGERROR((FFRPC, "ffrpc_t::handle_broker_route_msg msg_id[%u] not found", msg_.msg_id));
-            }
-        }
-    }
-    catch(exception& e_)
-    {
-        LOGERROR((BROKER, "ffbroker_t::handle_broker_route_msg exception<%s>", e_.what()));
-        if (msg_.msg_id == 0)//! callback msg
-        {
-            m_ffslot.del(msg_.callback_id);
-        }
-        return -1;
-    }
-    LOGTRACE((FFRPC, "ffrpc_t::handle_broker_route_msg end"));
-    return 0;
-}
-
 int ffrpc_t::call_impl(const string& service_name_, const string& msg_name_, const string& body_, ffslot_t::callback_t* callback_)
 {
     //!调用远程消息
@@ -326,36 +245,7 @@ int ffrpc_t::call_impl(const string& service_name_, const string& msg_name_, con
     dest_msg.body = body_;
     msg_sender_t::send(get_broker_socket(), BROKER_ROUTE_MSG, dest_msg);
     LOGTRACE((FFRPC, "ffrpc_t::call_impl end dest_id=%u", dest_msg.dest_node_id));
-    /*
-    map<string, uint32_t>::iterator it = m_broker_client_name2nodeid.find(service_name_);
-    if (it == m_broker_client_name2nodeid.end())
-    {
-        delete callback_;
-        return -1;
-    }
 
-    uint32_t dest_node_id = it->second;
-    uint32_t msg_id       = 0;
-    map<string, uint32_t>::iterator msg_it = m_msg2id.find(msg_name_);
-    if (msg_it == m_msg2id.end())
-    {
-        delete callback_;
-        LOGERROR((FFRPC, "ffrpc_t::call_impl begin service_name_<%s>, no msg_name_<%s> registed", service_name_.c_str(), msg_name_.c_str()));
-        return -1;
-    }
-    msg_id = msg_it->second;
-    
-    uint32_t callback_id  = 0;
-
-    if (callback_)
-    {
-        callback_id = get_callback_id();
-        m_ffslot_callback.bind(callback_id, callback_);
-    }
-
-    send_to_broker_by_nodeid(dest_node_id, body_, msg_id, callback_id);
-    */
-    LOGTRACE((FFRPC, "ffrpc_t::call_impl callback_id[%u] end ok", callback_id));
     return 0;
 }
 //! 判断某个service是否存在
@@ -368,7 +258,7 @@ bool ffrpc_t::is_exist(const string& service_name_)
     }
     return true;
 }
-//! 通过bridge broker调用远程的service
+//! 通过bridge broker调用远程的service TODO
 int ffrpc_t::bridge_call_impl(const string& broker_group_, const string& service_name_, const string& msg_name_,
                               const string& body_, ffslot_t::callback_t* callback_)
 {
@@ -402,55 +292,6 @@ void ffrpc_t::send_to_broker_by_nodeid(uint32_t dest_node_id, const string& body
     dest_msg.body = body_;
     msg_sender_t::send(get_broker_socket(), BROKER_ROUTE_MSG, dest_msg);
     return;
-    
-    broker_route_t::in_t msg;
-    msg.dest_node_id     = dest_node_id;
-    msg.from_node_id     = m_node_id;
-    msg.msg_id           = msg_id_;
-    msg.body             = body_;
-    msg.callback_id      = callback_id_;
-    msg.bridge_route_id  = bridge_route_id_;
-
-    uint32_t broker_node_id = BROKER_MASTER_NODE_ID;
-    
-    if (bridge_route_id_ != 0)
-    {
-        //! 需要转发给bridge broker标记，若此值不为0，说明目标node在其他broker组
-        //! 需要broker master转发到bridge broker上
-        broker_node_id = BROKER_MASTER_NODE_ID;
-    }
-    //!  如果是response 消息，那么从哪个broker来，再从哪个broker 回去
-    else if (msg_id_ == 0)
-    {
-        broker_node_id = m_broker_client_info[m_node_id].bind_broker_id;
-    }
-    else//! call消息，需要找到目标节点绑定的broker
-    {
-        broker_client_info_t& broker_client_info = m_broker_client_info[dest_node_id];
-        broker_node_id = broker_client_info.bind_broker_id;
-    }
-    //!如果在同一个进程内那么，内存转发
-    if (false && 0 == singleton_t<ffrpc_memory_route_t>::instance().client_route_to_broker(broker_node_id, msg))
-    {
-        LOGTRACE((FFRPC, "ffrpc_t::send_to_broker_by_nodeid dest_node_id[%u], broker_node_id[%u], msgid<%u>, callback_id_[%u] same process",
-                        dest_node_id, broker_node_id, msg_id_, callback_id_));
-        return;
-    }
-
-    if (broker_node_id == BROKER_MASTER_NODE_ID)
-    {
-        msg_sender_t::send(get_broker_socket(), BROKER_ROUTE_MSG, msg);
-    }
-    else
-    {
-        map<uint32_t, slave_broker_info_t>::iterator it_slave_broker = m_slave_broker_sockets.find(broker_node_id);
-        if (it_slave_broker != m_slave_broker_sockets.end())
-        {
-            msg_sender_t::send(it_slave_broker->second.sock, BROKER_ROUTE_MSG, msg);
-        }
-    }
-    LOGTRACE((FFRPC, "ffrpc_t::send_to_broker_by_nodeid dest_node_id[%u], broker_node_id[%u], msgid<%u>, callback_id_[%u] end ok",
-                        dest_node_id, broker_node_id, msg_id_, callback_id_));
 }
 
 //! 调用接口后，需要回调消息给请求者
