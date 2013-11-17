@@ -877,15 +877,15 @@ struct register_to_broker_t
     {
         void encode()
         {
-            encoder() << host << service_name << node_id;
+            encoder() << register_flag << node_id << service2node_id;
         }
         void decode()
         {
-            decoder()>> host  >> service_name >> node_id;
+            decoder()>> register_flag >> node_id >> service2node_id;
         }
-        string          host;
-        string          service_name;
+        bool            register_flag;
         uint64_t        node_id;
+        map<string, uint64_t>   service2node_id;
     };
 };
 //! 处理转发消息的操作
@@ -895,11 +895,11 @@ struct broker_route_msg_t
     {
         void encode()
         {
-            encoder() << dest_namespace << dest_service_name << dest_msg_name << dest_node_id << from_namespace << from_service_name << from_msg_name << from_node_id << callback_id;
+            encoder() << dest_namespace << dest_service_name << dest_msg_name << dest_node_id << from_namespace << from_service_name << from_msg_name << from_node_id << callback_id << body;
         }
         void decode()
         {
-            decoder() >> dest_namespace >> dest_service_name >> dest_msg_name >> dest_node_id >> from_namespace >> from_service_name >> from_msg_name >> from_node_id >> callback_id;
+            decoder() >> dest_namespace >> dest_service_name >> dest_msg_name >> dest_node_id >> from_namespace >> from_service_name >> from_msg_name >> from_node_id >> callback_id >> body;
         }
         
         string      dest_namespace;

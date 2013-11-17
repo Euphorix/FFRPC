@@ -108,6 +108,9 @@ private:
     map<string, uint32_t>                   m_msg2id;
     map<uint32_t, broker_client_info_t>     m_broker_client_info;//! node id -> service
     map<string, uint32_t>                   m_broker_client_name2nodeid;//! service name -> service node id
+    
+    //!ff new impl
+    register_to_broker_t::out_t             m_broker_data;
 };
 
 //! 注册接口

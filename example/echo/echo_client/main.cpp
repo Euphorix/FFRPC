@@ -50,13 +50,14 @@ struct foo_t
     {
         echo_t::out_t out;
         out.data = req_.arg.data;
-        //LOGDEBUG(("XX", "foo_t::echo: %s", req_.arg.data.c_str()));
+        LOGDEBUG(("XX", "foo_t::echo: %s", req_.arg.data.c_str()));
         req_.response(out);
     }
     //! 远程调用接口，可以指定回调函数（也可以留空），同样使用ffreq_t指定输入消息类型，并且可以使用lambda绑定参数
     void echo_callback(ffreq_t<echo_t::out_t>& req_, int index, ffrpc_t* ffrpc_client)
     {
         LOGDEBUG(("XX", "%s %s %d", __FUNCTION__, req_.arg.data.c_str(), index));
+        return;
         if (index != g_times)
         {
             echo_t::in_t in;
@@ -103,12 +104,15 @@ int main(int argc, char* argv[])
     //! 启动broker，负责网络相关的操作，如消息转发，节点注册，重连等
     string service_host = arg_helper.get_option_value("-l");
 
+    foo_t foo;
     //! broker客户端，可以注册到broker，并注册服务以及接口，也可以远程调用其他节点的接口
-    ffrpc_t ffrpc_client;
+    ffrpc_t ffrpc_client("echo");
+    ffrpc_client.reg(&foo_t::echo, &foo);
+
     ffrpc_client.open(service_host);
     echo_t::in_t in;
     in.data = "helloworld";
-    foo_t foo;
+
     gettimeofday(&foo.tm_begin, NULL);
 
     ffrpc_client.call("echo", in, ffrpc_ops_t::gen_callback(&foo_t::echo_callback, &foo, 1, &ffrpc_client));
