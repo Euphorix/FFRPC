@@ -35,6 +35,20 @@ public:
     socket_ptr_t sock;
 };
 
+struct msg_tool_t
+{
+    template<typename T>
+    static string encode(T& msg_)
+    {
+        return msg_.encode_data();
+    }
+    template<typename T>
+    static int decode(T& msg_, const string& data_)
+    {
+        msg_.decode_data(data_);
+        return 0;
+    }
+};
 
 class ffresponser_t
 {
@@ -81,15 +95,18 @@ struct ffreq_t
         bridge_route_id(0),
         responser(NULL)
     {}
-    IN              arg;
+    bool error() const { return err_info.empty() == false }
+    const string& error_msg() const { return err_info; }
+    IN              msg;
     uint32_t        node_id;
     uint32_t        callback_id;
     uint32_t        bridge_route_id;
     ffresponser_t*  responser;
+    string          err_info;
     void response(OUT& out_)
     {
         if (0 != callback_id)
-            responser->response(node_id, 0, callback_id, bridge_route_id, out_.encode_data());
+            responser->response(node_id, 0, callback_id, bridge_route_id, msg_tool_t::encode(out_));
     }
 };
 
@@ -141,7 +158,7 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (*func_)(T&, socket_ptr_t))
             }
             ffslot_msg_arg* msg_data = (ffslot_msg_arg*)args_;
             T msg;
-            msg.decode(msg_data->body);
+            msg_tool_t::decode(msg, msg_data->body);
             m_func(msg, msg_data->sock);
         }
         virtual ffslot_t::callback_t* fork() { return new lambda_cb(m_func); }
@@ -164,7 +181,7 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(T&, socke
             }
             ffslot_msg_arg* msg_data = (ffslot_msg_arg*)args_;
             T msg;
-            msg.decode_data(msg_data->body);
+            msg_tool_t::decode(msg, msg_data->body);
             (m_obj->*(m_func))(msg, msg_data->sock);
         }
         virtual ffslot_t::callback_t* fork() { return new lambda_cb(m_func, m_obj); }
@@ -190,7 +207,7 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (*func_)(ffreq_t<IN, OUT>&))
             }
             ffslot_req_arg* msg_data = (ffslot_req_arg*)args_;
             ffreq_t<IN, OUT> req;
-            req.arg.decode_data(msg_data->body);
+            msg_tool_t::decode(req.msg, msg_data->body);
             //req.node_id = msg_data->node_id;
             //req.callback_id = msg_data->callback_id;
             //req.bridge_route_id = msg_data->bridge_route_id;
@@ -217,7 +234,7 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<I
             }
             ffslot_req_arg* msg_data = (ffslot_req_arg*)args_;
             ffreq_t<IN, OUT> req;
-            req.arg.decode_data(msg_data->body);
+            msg_tool_t::decode(req.msg, msg_data->body);
             req.node_id = msg_data->node_id;
             req.callback_id = msg_data->callback_id;
             req.bridge_route_id = msg_data->bridge_route_id;
@@ -248,7 +265,7 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<I
             }
             ffslot_req_arg* msg_data = (ffslot_req_arg*)args_;
             ffreq_t<IN, OUT> req;
-            req.arg.decode_data(msg_data->body);
+            msg_tool_t::decode(req.msg, msg_data->body);
             req.node_id = msg_data->node_id;
             req.callback_id = msg_data->callback_id;
             req.bridge_route_id = msg_data->bridge_route_id;
@@ -282,7 +299,7 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<I
             }
             ffslot_req_arg* msg_data = (ffslot_req_arg*)args_;
             ffreq_t<IN, OUT> req;
-            req.arg.decode_data(msg_data->body);
+            msg_tool_t::decode(req.msg, msg_data->body);
             req.node_id = msg_data->node_id;
             req.callback_id = msg_data->callback_id;
             req.bridge_route_id = msg_data->bridge_route_id;
@@ -318,7 +335,7 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<I
             }
             ffslot_req_arg* msg_data = (ffslot_req_arg*)args_;
             ffreq_t<IN, OUT> req;
-            req.arg.decode_data(msg_data->body);
+            msg_tool_t::decode(req.msg, msg_data->body);
             req.node_id = msg_data->node_id;
             req.callback_id = msg_data->callback_id;
             req.bridge_route_id = msg_data->bridge_route_id;
@@ -355,7 +372,7 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<I
             }
             ffslot_req_arg* msg_data = (ffslot_req_arg*)args_;
             ffreq_t<IN, OUT> req;
-            req.arg.decode_data(msg_data->body);
+            msg_tool_t::decode(req.msg, msg_data->body);
             req.node_id = msg_data->node_id;
             req.callback_id = msg_data->callback_id;
             req.bridge_route_id = msg_data->bridge_route_id;
