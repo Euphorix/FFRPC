@@ -48,14 +48,14 @@ struct foo_t
     void echo(ffreq_t<echo_t::in_t, echo_t::out_t>& req_)
     {
         echo_t::out_t out;
-        out.data = req_.arg.data;
-        LOGDEBUG(("XX", "foo_t::echo: %s", req_.arg.data.c_str()));
+        out.data = req_.msg.data;
+        LOGDEBUG(("XX", "foo_t::echo: %s", req_.msg.data.c_str()));
         req_.response(out);
     }
     //! 远程调用接口，可以指定回调函数（也可以留空），同样使用ffreq_t指定输入消息类型，并且可以使用lambda绑定参数
     void echo_callback(ffreq_t<echo_t::out_t>& req_, int index)
     {
-        LOGDEBUG(("XX", "%s %s %d", __FUNCTION__, req_.arg.data.c_str(), index));
+        LOGDEBUG(("XX", "%s %s %d", __FUNCTION__, req_.msg.data.c_str(), index));
     }
 };
 
