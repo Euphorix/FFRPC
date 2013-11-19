@@ -200,7 +200,7 @@ int ffrpc_t::handle_call_service_msg(broker_route_msg_t::in_t& msg_, socket_ptr_
         if (cb)
         {
             //ffslot_req_arg arg(msg_.body, msg_.from_node_id, msg_.callback_id, msg_.bridge_route_id, this);
-            ffslot_req_arg arg(msg_.body, msg_.from_node_id, msg_.callback_id, 0, this);
+            ffslot_req_arg arg(msg_.body, msg_.from_node_id, msg_.callback_id, 0, err_info_, this);
             cb->exe(&arg);
             return 0;
         }
@@ -215,7 +215,7 @@ int ffrpc_t::handle_call_service_msg(broker_route_msg_t::in_t& msg_, socket_ptr_
         if (cb)
         {
             //ffslot_req_arg arg(msg_.body, msg_.from_node_id, msg_.callback_id, msg_.bridge_route_id, this);
-            ffslot_req_arg arg(msg_.body, 0, 0, 0, this);
+            ffslot_req_arg arg(msg_.body, 0, 0, 0, err_info_, this);
             cb->exe(&arg);
             m_ffslot_callback.del(msg_.callback_id);
             return 0;

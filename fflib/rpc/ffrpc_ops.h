@@ -60,11 +60,12 @@ public:
 class ffslot_req_arg: public ffslot_t::callback_arg_t
 {
 public:
-    ffslot_req_arg(const string& s_, uint32_t n_, uint32_t cb_id_, uint32_t bridge_route_id, ffresponser_t* p):
+    ffslot_req_arg(const string& s_, uint32_t n_, uint32_t cb_id_, uint32_t bridge_route_id, , string err_info_, ffresponser_t* p):
         body(s_),
         node_id(n_),
         callback_id(cb_id_),
         bridge_route_id(bridge_route_id),
+        err_info(err_info_),
         responser(p)
     {}
     virtual int type()
@@ -75,6 +76,7 @@ public:
     uint32_t        node_id;//! 请求来自于那个node id
     uint32_t        callback_id;//! 回调函数标识id
     uint32_t        bridge_route_id;
+    string          err_info;
     ffresponser_t*  responser;
 };
 
@@ -207,7 +209,14 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (*func_)(ffreq_t<IN, OUT>&))
             }
             ffslot_req_arg* msg_data = (ffslot_req_arg*)args_;
             ffreq_t<IN, OUT> req;
-            msg_tool_t::decode(req.msg, msg_data->body);
+            if (msg_data->err_info.empty())
+            {
+                msg_tool_t::decode(req.msg, msg_data->body);
+            }
+            else
+            {
+                req.err_info = msg_data->err_info;
+            }
             //req.node_id = msg_data->node_id;
             //req.callback_id = msg_data->callback_id;
             //req.bridge_route_id = msg_data->bridge_route_id;
@@ -234,7 +243,14 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<I
             }
             ffslot_req_arg* msg_data = (ffslot_req_arg*)args_;
             ffreq_t<IN, OUT> req;
-            msg_tool_t::decode(req.msg, msg_data->body);
+            if (msg_data->err_info.empty())
+            {
+                msg_tool_t::decode(req.msg, msg_data->body);
+            }
+            else
+            {
+                req.err_info = msg_data->err_info;
+            }
             req.node_id = msg_data->node_id;
             req.callback_id = msg_data->callback_id;
             req.bridge_route_id = msg_data->bridge_route_id;
@@ -265,7 +281,14 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<I
             }
             ffslot_req_arg* msg_data = (ffslot_req_arg*)args_;
             ffreq_t<IN, OUT> req;
-            msg_tool_t::decode(req.msg, msg_data->body);
+            if (msg_data->err_info.empty())
+            {
+                msg_tool_t::decode(req.msg, msg_data->body);
+            }
+            else
+            {
+                req.err_info = msg_data->err_info;
+            }
             req.node_id = msg_data->node_id;
             req.callback_id = msg_data->callback_id;
             req.bridge_route_id = msg_data->bridge_route_id;
@@ -299,7 +322,14 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<I
             }
             ffslot_req_arg* msg_data = (ffslot_req_arg*)args_;
             ffreq_t<IN, OUT> req;
-            msg_tool_t::decode(req.msg, msg_data->body);
+            if (msg_data->err_info.empty())
+            {
+                msg_tool_t::decode(req.msg, msg_data->body);
+            }
+            else
+            {
+                req.err_info = msg_data->err_info;
+            }
             req.node_id = msg_data->node_id;
             req.callback_id = msg_data->callback_id;
             req.bridge_route_id = msg_data->bridge_route_id;
@@ -335,7 +365,14 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<I
             }
             ffslot_req_arg* msg_data = (ffslot_req_arg*)args_;
             ffreq_t<IN, OUT> req;
-            msg_tool_t::decode(req.msg, msg_data->body);
+            if (msg_data->err_info.empty())
+            {
+                msg_tool_t::decode(req.msg, msg_data->body);
+            }
+            else
+            {
+                req.err_info = msg_data->err_info;
+            }
             req.node_id = msg_data->node_id;
             req.callback_id = msg_data->callback_id;
             req.bridge_route_id = msg_data->bridge_route_id;
@@ -372,7 +409,14 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<I
             }
             ffslot_req_arg* msg_data = (ffslot_req_arg*)args_;
             ffreq_t<IN, OUT> req;
-            msg_tool_t::decode(req.msg, msg_data->body);
+            if (msg_data->err_info.empty())
+            {
+                msg_tool_t::decode(req.msg, msg_data->body);
+            }
+            else
+            {
+                req.err_info = msg_data->err_info;
+            }
             req.node_id = msg_data->node_id;
             req.callback_id = msg_data->callback_id;
             req.bridge_route_id = msg_data->bridge_route_id;
@@ -914,11 +958,15 @@ struct broker_route_msg_t
     {
         void encode()
         {
-            encoder() << dest_namespace << dest_service_name << dest_msg_name << dest_node_id << from_namespace << from_service_name << from_msg_name << from_node_id << callback_id << body;
+            encoder() << dest_namespace << dest_service_name << dest_msg_name << dest_node_id
+                      << from_namespace << from_service_name << from_msg_name << from_node_id
+                      << callback_id << body << err_info;
         }
         void decode()
         {
-            decoder() >> dest_namespace >> dest_service_name >> dest_msg_name >> dest_node_id >> from_namespace >> from_service_name >> from_msg_name >> from_node_id >> callback_id >> body;
+            decoder() >> dest_namespace >> dest_service_name >> dest_msg_name >> dest_node_id
+                      >> from_namespace >> from_service_name >> from_msg_name >> from_node_id
+                      >> callback_id >> body >> err_info;
         }
         
         string      dest_namespace;
@@ -933,6 +981,7 @@ struct broker_route_msg_t
         
         int64_t     callback_id;
         string      body;
+        string      err_info;
     };
 };
 
