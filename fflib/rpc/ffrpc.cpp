@@ -281,23 +281,25 @@ int ffrpc_t::bridge_call_impl(const string& broker_group_, const string& service
     return 0;
 }
 //! 通过node id 发送消息给broker
-void ffrpc_t::send_to_broker_by_nodeid(uint32_t dest_node_id, const string& body_, uint32_t msg_id_, uint32_t callback_id_, uint32_t bridge_route_id_)
+void ffrpc_t::send_to_dest_node(const string& dest_namespace_, const string& msg_name_,  uint64_t dest_node_id_, uint32_t callback_id_, const string& body_)
 {
     LOGINFO((FFRPC, "ffrpc_t::send_to_broker_by_nodeid begin dest_node_id[%u]", dest_node_id));
     broker_route_msg_t::in_t dest_msg;
-    //dest_msg.dest_service_name = service_name_;
-    //dest_msg.dest_msg_name = msg_name_;
-    dest_msg.dest_node_id = dest_node_id;
+    dest_msg.dest_service_name = dest_namespace_;
+    dest_msg.dest_msg_name = msg_name_;
+    dest_msg.dest_node_id = dest_node_id_;
     dest_msg.callback_id = callback_id_;
     dest_msg.body = body_;
+
+    dest_msg.from_node_id = m_node_id;
     msg_sender_t::send(get_broker_socket(), BROKER_ROUTE_MSG, dest_msg);
     return;
 }
 
 //! 调用接口后，需要回调消息给请求者
-void ffrpc_t::response(uint32_t node_id_, uint32_t msg_id_, uint32_t callback_id_, uint32_t bridge_route_id_, const string& body_)
+void ffrpc_t::response(const string& dest_namespace_, const string& msg_name_,  uint64_t dest_node_id_, uint32_t callback_id_, const string& body_)
 {
-    m_tq.produce(task_binder_t::gen(&ffrpc_t::send_to_broker_by_nodeid, this, node_id_, body_, msg_id_, callback_id_, bridge_route_id_));
+    m_tq.produce(task_binder_t::gen(&ffrpc_t::send_to_dest_node, this, dest_namespace_, msg_name_, dest_node_id_, callback_id_, body_));
 }
 
 //! 处理注册, 

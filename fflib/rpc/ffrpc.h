@@ -53,9 +53,9 @@ public:
     //! call 接口的实现函数，call会将请求投递到该线程，保证所有请求有序
     int call_impl(const string& service_name_, const string& msg_name_, const string& body_, ffslot_t::callback_t* callback_);
     //! 调用接口后，需要回调消息给请求者
-    virtual void response(uint32_t node_id_, uint32_t msg_id_, uint32_t callback_id_, uint32_t bridge_route_id_, const string& body_);
+    virtual void response(const string& dest_namespace_, const string& msg_name_,  uint64_t dest_node_id_, uint32_t callback_id_, const string& body_);
     //! 通过node id 发送消息给broker
-    void send_to_broker_by_nodeid(uint32_t node_id_, const string& body_, uint32_t msg_id_ = 0, uint32_t callback_id_ = 0, uint32_t bridge_route_id_ = 0);
+    void send_to_dest_node(const string& dest_namespace_, const string& msg_name_,  uint64_t dest_node_id_, uint32_t callback_id_, const string& body_);
     //! 获取任务队列对象
     task_queue_t& get_tq();
     //! 定时重连 broker master
