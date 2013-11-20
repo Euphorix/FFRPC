@@ -39,7 +39,7 @@ int ffrpc_memory_route_t::broker_route_to_client(broker_route_t::in_t& msg_)
     {
         return -1;
     }
-    ffrpc->get_tq().produce(task_binder_t::gen(&ffrpc_t::trigger_callback, ffrpc, msg_));
+    //!TODO ffrpc->get_tq().produce(task_binder_t::gen(&ffrpc_t::trigger_callback, ffrpc, msg_));
     return 0;
 }
 

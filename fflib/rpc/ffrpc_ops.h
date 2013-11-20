@@ -15,6 +15,15 @@ using namespace std;
 namespace ff
 {
 
+//! 各个节点的类型
+enum node_type_e
+{
+    BRIDGE_BROKER, //! 连接各个区服的代理服务器
+    MASTER_BROKER, //! 每个区服的主服务器
+    SLAVE_BROKER,  //! 从服务器
+    RPC_NODE,      //! rpc节点
+};
+
 #define BROKER_MASTER_NODE_ID   0
 #define GEN_SERVICE_NAME(M, X, Y) snprintf(M, sizeof(M), "%s@%u", X, Y)
 #define RECONNECT_TO_BROKER_TIMEOUT       1000//! ms
@@ -37,13 +46,11 @@ public:
 
 struct msg_tool_t
 {
-    template<typename T>
-    static string encode(T& msg_)
+    static string encode(msg_i& msg_)
     {
         return msg_.encode_data();
     }
-    template<typename T>
-    static int decode(T& msg_, const string& data_)
+    static int decode(msg_i& msg_, const string& data_)
     {
         msg_.decode_data(data_);
         return 0;
@@ -96,7 +103,7 @@ struct ffreq_t
         callback_id(0),
         responser(NULL)
     {}
-    bool error() const { return err_info.empty() == false }
+    bool error() const { return err_info.empty() == false; }
     const string& error_msg() const { return err_info; }
     IN              msg;
 
@@ -108,7 +115,7 @@ struct ffreq_t
     void response(OUT& out_)
     {
         if (0 != callback_id)
-            responser->response(dest_namespace, TYPE_NAME(out_), dest_node_id, callback_id, msg_tool_t::encode(out_));
+            responser->response(dest_namespace, TYPE_NAME(OUT), dest_node_id, callback_id, msg_tool_t::encode(out_));
     }
 };
 
@@ -672,7 +679,7 @@ struct session_verify_t
         {
             decoder() >> session_id >> err >> extra_data;
         }
-        string session_id;//! 分配的sessionid
+        userid_t session_id;//! 分配的sessionid
         string err;//! 错误信息
         //! 需要额外的返回给client的消息内容
         string          extra_data;
@@ -691,7 +698,7 @@ struct session_enter_scene_t
         {
             decoder() >> session_id >> from_gate >> from_scene >> to_scene >> extra_data;
         }
-        string    session_id;//! 包含用户id
+        userid_t    session_id;//! 包含用户id
         string    from_gate;
         string    from_scene;//! 从哪个scene跳转过来,若是第一次上线，from_scene为空
         string    to_scene;//! 跳到哪个scene上面去,若是下线，to_scene为空
@@ -723,7 +730,7 @@ struct session_offline_t
         {
             decoder() >> session_id >> online_time;
         }
-        string    session_id;//! 包含用户id
+        userid_t    session_id;//! 包含用户id
         int64_t   online_time;
     };
     struct out_t: public ffmsg_t<out_t>
@@ -752,7 +759,7 @@ struct route_logic_msg_t
         {
             decoder() >> session_id >> cmd >> body;
         }
-        string session_id;//! 包含用户id
+        userid_t session_id;//! 包含用户id
         uint16_t cmd;
         string body;
     };
@@ -781,7 +788,7 @@ struct gate_change_logic_node_t
         {
             decoder() >> session_id >> alloc_logic_service >> extra_data;
         }
-        string session_id;//! 包含用户id
+        userid_t session_id;//! 包含用户id
         string alloc_logic_service;//! 分配的logic service
         string extra_data;
     };
@@ -811,7 +818,7 @@ struct gate_close_session_t
         {
             decoder() >> session_id;
         }
-        string session_id;//! 包含用户id
+        userid_t session_id;//! 包含用户id
     };
     struct out_t: public ffmsg_t<out_t>
     {
@@ -838,7 +845,7 @@ struct gate_route_msg_to_session_t
         {
             decoder() >> session_id >> cmd >> body;
         }
-        vector<string>  session_id;//! 包含用户id
+        vector<userid_t>  session_id;//! 包含用户id
         uint16_t        cmd;
         string          body;//! 数据
     };
@@ -882,6 +889,41 @@ struct gate_broadcast_msg_to_session_t
         }
     };
 };
+
+
+//! scene 之间的互调用
+
+struct scene_call_msg_t
+{
+    struct in_t: public ffmsg_t<in_t>
+    {
+        void encode()
+        {
+            encoder() << cmd << body;
+        }
+        void decode()
+        {
+            decoder() >> cmd >> body;
+        }
+        uint16_t        cmd;
+        string          body;//! 数据
+    };
+    struct out_t: public ffmsg_t<out_t>
+    {
+        void encode()
+        {
+            encoder() << err << msg_type << body;
+        }
+        void decode()
+        {
+            decoder() >> err >> msg_type >> body;
+        }
+        string err;
+        string msg_type;
+        string body;
+    };
+};
+
 
 //! 用于broker 和 rpc 在内存间投递消息
 class ffrpc_t;
@@ -939,17 +981,18 @@ struct register_to_broker_t
     {
         void encode()
         {
-            encoder() << register_flag << node_id << bind_broker_id << service2node_id << slave_broker_data;
+            encoder() << register_flag << node_id << service2node_id << slave_broker_data << rpc_bind_broker_info;
         }
         void decode()
         {
-            decoder()>> register_flag >> node_id >> bind_broker_id >> service2node_id >> slave_broker_data;
+            decoder()>> register_flag >> node_id >> service2node_id >> slave_broker_data >> rpc_bind_broker_info;
         }
         int8_t                        register_flag;//! -1表示注册失败，0表示同步消息，1表示注册成功
         uint64_t                      node_id;
-        uint64_t                      bind_broker_id;//!绑定的brokerid
         map<string, uint64_t>         service2node_id;
         map<string/*host*/, uint64_t> slave_broker_data;//!slave broker对应的数据
+        //!记录各个rpc节点绑定的slave broker,如果没有slave broker,绑定master broker
+        map<uint64_t, uint64_t>       rpc_bind_broker_info;
     };
 };
 //! 处理转发消息的操作

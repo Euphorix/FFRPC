@@ -75,6 +75,7 @@ socket_ptr_t ffrpc_t::connect_to_broker(const string& host_, uint32_t node_id_)
 
     //!新版发送注册消息
     register_to_broker_t::in_t reg_msg;
+    reg_msg.node_type = RPC_NODE;
     reg_msg.service_name = m_service_name;
     reg_msg.node_id = m_node_id;
     msg_sender_t::send(sock, REGISTER_TO_BROKER_REQ, reg_msg);
@@ -192,15 +193,15 @@ int ffrpc_t::handle_msg_impl(const message_t& msg_, socket_ptr_t sock_)
 //! 新版 调用消息对应的回调函数
 int ffrpc_t::handle_call_service_msg(broker_route_msg_t::in_t& msg_, socket_ptr_t sock_)
 {
-    LOGTRACE((FFRPC, "ffrpc_t::handle_call_service_msg msg begin dest_msg_name=%s callback_id=%u", msg_.dest_msg_name, msg_.callback_id));
+    LOGTRACE((FFRPC, "ffrpc_t::handle_call_service_msg msg begin service_name=%s dest_msg_name=%s callback_id=%u, body_size=%d",
+                     msg_.dest_service_name, msg_.dest_msg_name, msg_.callback_id, msg_.body.size()));
     
     if (msg_.dest_service_name.empty() == false)
     {
         ffslot_t::callback_t* cb = m_ffslot_interface.get_callback(msg_.dest_msg_name);
         if (cb)
         {
-            //ffslot_req_arg arg(msg_.body, msg_.from_node_id, msg_.callback_id, msg_.bridge_route_id, this);
-            ffslot_req_arg arg(msg_.body, msg_.from_node_id, msg_.callback_id, 0, err_info_, this);
+            ffslot_req_arg arg(msg_.body, msg_.from_node_id, msg_.callback_id, msg_.from_namespace, msg_.err_info, this);
             cb->exe(&arg);
             return 0;
         }
@@ -214,8 +215,7 @@ int ffrpc_t::handle_call_service_msg(broker_route_msg_t::in_t& msg_, socket_ptr_
         ffslot_t::callback_t* cb = m_ffslot_callback.get_callback(msg_.callback_id);
         if (cb)
         {
-            //ffslot_req_arg arg(msg_.body, msg_.from_node_id, msg_.callback_id, msg_.bridge_route_id, this);
-            ffslot_req_arg arg(msg_.body, 0, 0, 0, err_info_, this);
+            ffslot_req_arg arg(msg_.body, msg_.from_node_id, 0, msg_.from_namespace, msg_.err_info, this);
             cb->exe(&arg);
             m_ffslot_callback.del(msg_.callback_id);
             return 0;
@@ -283,7 +283,7 @@ int ffrpc_t::bridge_call_impl(const string& broker_group_, const string& service
 //! 通过node id 发送消息给broker
 void ffrpc_t::send_to_dest_node(const string& dest_namespace_, const string& msg_name_,  uint64_t dest_node_id_, uint32_t callback_id_, const string& body_)
 {
-    LOGINFO((FFRPC, "ffrpc_t::send_to_broker_by_nodeid begin dest_node_id[%u]", dest_node_id));
+    LOGINFO((FFRPC, "ffrpc_t::send_to_broker_by_nodeid begin dest_node_id[%u]", dest_node_id_));
     broker_route_msg_t::in_t dest_msg;
     dest_msg.dest_service_name = dest_namespace_;
     dest_msg.dest_msg_name = msg_name_;
@@ -314,12 +314,12 @@ int ffrpc_t::handle_broker_reg_response(register_to_broker_t::out_t& msg_, socke
     if (msg_.register_flag == 1)
     {
         m_node_id = msg_.node_id;//! -1表示注册失败，0表示同步消息，1表示注册成功
-        m_bind_broker_id = msg_.bind_broker_id;
     }
+    m_bind_broker_id = msg_.rpc_bind_broker_info[m_node_id];
     m_broker_data = msg_;
     
     timer_reconnect_broker();
-    LOGTRACE((FFRPC, "ffbroker_t::handle_broker_reg_response end service num=%d", m_broker_data.service2node_id.size()));
+    LOGTRACE((FFRPC, "ffbroker_t::handle_broker_reg_response end service num=%d, m_bind_broker_id=%d", m_broker_data.service2node_id.size(), m_bind_broker_id));
     return 0;
 }
 

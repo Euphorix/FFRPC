@@ -55,9 +55,9 @@ private:
     //! 逻辑处理,转发消息到logic service
     int route_logic_msg(const message_t& msg_, socket_ptr_t sock_);
     //! 逻辑处理,转发消息到logic service
-    int route_logic_msg_callback(ffreq_t<route_logic_msg_t::out_t>& req_, const string& session_id_, socket_ptr_t sock_);
+    int route_logic_msg_callback(ffreq_t<route_logic_msg_t::out_t>& req_, const userid_t& session_id_, socket_ptr_t sock_);
     //! enter scene 回调函数
-    int enter_scene_callback(ffreq_t<session_enter_scene_t::out_t>& req_, const string& session_id_);
+    int enter_scene_callback(ffreq_t<session_enter_scene_t::out_t>& req_, const userid_t& session_id_);
     
     //! 改变处理client 逻辑的对应的节点
     int change_session_logic(ffreq_t<gate_change_logic_node_t::in_t, gate_change_logic_node_t::out_t>& req_);
@@ -71,7 +71,7 @@ private:
     string                                      m_gate_name;
     shared_ptr_t<ffrpc_t>                       m_ffrpc;
     set<socket_ptr_t>                           m_wait_verify_set;
-    map<string/*sessionid*/, client_info_t>     m_client_set;
+    map<userid_t/*sessionid*/, client_info_t>     m_client_set;
 };
 
 
@@ -79,15 +79,16 @@ struct ffgate_t::session_data_t
 {
     session_data_t()
     {
+        session_id = 0;
         ::time(&online_time);
     }
     bool is_valid()
     {
-        return false == session_id.empty();
+        return 0 != session_id;
     }
-    const string& id() const        { return session_id;    }
-    void set_id(const string& s_)   { session_id = s_;      }
-    string session_id;
+    const userid_t& id() const        { return session_id;    }
+    void set_id(const userid_t& s_)   { session_id = s_;      }
+    userid_t session_id;
     time_t online_time;
 };
 

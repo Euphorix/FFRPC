@@ -19,14 +19,6 @@ using namespace std;
 
 namespace ff
 {
-//! 各个节点的类型
-enum node_type_e
-{
-    BRIDGE_BROKER, //! 连接各个区服的代理服务器
-    MASTER_BROKER, //! 每个区服的主服务器
-    SLAVE_BROKER,  //! 从服务器
-    RPC_NODE,      //! rpc节点
-};
 
 class ffbroker_t: public msg_handler_i
 {
@@ -63,6 +55,7 @@ public:
     uint64_t alloc_node_id(socket_ptr_t sock_);
     //!本身是否是master broker
     bool is_master_broker() { return m_broker_host.empty() == true; }
+
 protected:
     //!此broker归属于哪一个组
     string                              m_namespace;
@@ -105,6 +98,8 @@ private:
     //! 转发消息
     int handle_route_msg(broker_route_t::in_t& msg_, socket_ptr_t sock_);
 
+    //! 同步给所有的节点，当前的各个节点的信息
+    int sync_node_info(register_to_broker_t::out_t& ret_msg, socket_ptr_t sock_ = NULL);
 private:
     //! 本 broker的监听信息
     string                                  m_listen_host;
