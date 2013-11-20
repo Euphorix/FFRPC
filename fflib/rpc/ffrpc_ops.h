@@ -924,12 +924,13 @@ struct register_to_broker_t
     {
         void encode()
         {
-            encoder() << host << service_name << node_id;
+            encoder() << node_type << host << service_name << node_id;
         }
         void decode()
         {
-            decoder()>> host  >> service_name >> node_id;
+            decoder() >> node_type >> host  >> service_name >> node_id;
         }
+        int32_t         node_type;//! 节点类型
         string          host;
         string          service_name;
         uint64_t        node_id;

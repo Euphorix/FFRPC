@@ -19,23 +19,20 @@ using namespace std;
 
 namespace ff
 {
+//! 各个节点的类型
+enum node_type_e
+{
+    BRIDGE_BROKER, //! 连接各个区服的代理服务器
+    MASTER_BROKER, //! 每个区服的主服务器
+    SLAVE_BROKER,  //! 从服务器
+    RPC_NODE,      //! rpc节点
+};
+
 class ffbroker_t: public msg_handler_i
 {
     //! 每个连接都要分配一个session，用于记录该socket，对应的信息s
     struct session_data_t;
-    //! 记录每个broker slave 的接口信息
-    struct slave_broker_info_t;
-    //! 记录每个broker client 的接口信息
-    struct broker_client_info_t;
-    //! broker master 上 所有的broker bridge 信息
-    struct broker_bridge_info_t;
-    //! broker bridge 上所有的 broker master group 信息
-    struct broker_group_info_t;
-    
-    //!新版本*****************************
-    //!所有的注册到此broker的节点信息
-    struct registered_node_info_t;
-    
+
     //!新版本*****************************
     //!所有的注册到此broker的节点信息
     struct registered_node_info_t
@@ -121,52 +118,19 @@ private:
 //! 每个连接都要分配一个session，用于记录该socket，对应的信息
 struct ffbroker_t::session_data_t
 {
-    session_data_t(uint32_t n = 0):
-        node_id(n)
+    session_data_t(int type_ = 0, uint64_t node_ = 0, string s_ = ""):
+        node_type(type_),
+        node_id(node_),
+        service_name(s_)
     {}
-    uint32_t get_node_id() { return node_id; }
+    uint64_t get_node_id() const { return node_id; }
+    int      get_type()    const { return node_type;}
+    //!节点的类型
+    int      node_type;
     //! 被分配的唯一的节点id
-    uint32_t node_id;
-};
-//! 记录每个broker client 的接口信息
-struct ffbroker_t::broker_client_info_t
-{
-    broker_client_info_t():
-        bind_broker_id(0),
-        sock(NULL)
-    {}
-    //! 被绑定的节点broker node id
-    uint32_t bind_broker_id;
+    uint64_t node_id;
+    //! 服务名
     string   service_name;
-    socket_ptr_t sock;
-};
-//! 记录每个broker slave 的接口信息
-struct ffbroker_t::slave_broker_info_t
-{
-    slave_broker_info_t():
-        sock(NULL)
-    {}
-    string          host;
-    socket_ptr_t    sock;
-};
-
-struct ffbroker_t::broker_bridge_info_t
-{
-    broker_bridge_info_t():
-        sock(NULL)
-    {}
-    string          host;
-    socket_ptr_t    sock;
-    map<string/*group name*/, uint32_t> broker_group_id;
-};
-
-//! broker bridge 上所有的 broker master group 信息
-struct ffbroker_t::broker_group_info_t
-{
-    broker_group_info_t():
-        sock(NULL)
-    {}
-    socket_ptr_t    sock;
 };
 
 }
