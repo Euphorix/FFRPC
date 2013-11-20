@@ -114,7 +114,7 @@ int ffbroker_t::handle_broken_impl(socket_ptr_t sock_)
         m_all_registered_info.broker_data.service2node_id.erase(psession->service_name);
     }
     delete psession;
-    sock_->set_data(psession);
+    sock_->set_data(NULL);
     sock_->safe_delete();
     LOGTRACE((BROKER, "ffbroker_t::handle_broken_impl end ok"));
     return 0;
