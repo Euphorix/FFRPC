@@ -966,26 +966,27 @@ struct register_to_broker_t
     {
         void encode()
         {
-            encoder() << node_type << host << service_name << node_id;
+            encoder() << node_type << host << service_name << node_id << reg_namespace;
         }
         void decode()
         {
-            decoder() >> node_type >> host  >> service_name >> node_id;
+            decoder() >> node_type >> host  >> service_name >> node_id >> reg_namespace;
         }
         int32_t         node_type;//! 节点类型
         string          host;
         string          service_name;
         uint64_t        node_id;
+        string          reg_namespace;//!如果需要注册到bridge broker,需要提供namespace名称
     };
     struct out_t: public ffmsg_t<in_t>
     {
         void encode()
         {
-            encoder() << register_flag << node_id << service2node_id << slave_broker_data << rpc_bind_broker_info;
+            encoder() << register_flag << node_id << service2node_id << slave_broker_data << rpc_bind_broker_info << reg_namespace_list;
         }
         void decode()
         {
-            decoder()>> register_flag >> node_id >> service2node_id >> slave_broker_data >> rpc_bind_broker_info;
+            decoder()>> register_flag >> node_id >> service2node_id >> slave_broker_data >> rpc_bind_broker_info >> reg_namespace_list;
         }
         int8_t                        register_flag;//! -1表示注册失败，0表示同步消息，1表示注册成功
         uint64_t                      node_id;
@@ -993,6 +994,8 @@ struct register_to_broker_t
         map<string/*host*/, uint64_t> slave_broker_data;//!slave broker对应的数据
         //!记录各个rpc节点绑定的slave broker,如果没有slave broker,绑定master broker
         map<uint64_t, uint64_t>       rpc_bind_broker_info;
+        //! bridge 上已经注册的各个namespace
+        vector<string>                reg_namespace_list;
     };
 };
 //! 处理转发消息的操作

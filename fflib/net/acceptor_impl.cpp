@@ -38,11 +38,11 @@ int acceptor_impl_t::open(const string& address_)
     //! example tcp://192.168.1.2:8080
     vector<string> vt;
     strtool::split(address_, vt, "://");
-    assert(vt.size() == 2);
+    if(vt.size() != 2) return -1;
 
     vector<string> vt2;
     strtool::split(vt[1], vt2, ":");
-    assert(vt2.size() == 2);
+    if(vt2.size() != 2) return -1;
 
     struct addrinfo hints;
     bzero(&hints, sizeof(struct addrinfo) );

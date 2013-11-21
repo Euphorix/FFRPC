@@ -107,6 +107,24 @@ int ffbroker_t::handle_broken_impl(socket_ptr_t sock_)
         LOGTRACE((BROKER, "ffbroker_t::handle_broken_impl check master reconnect"));
         return 0;
     }
+    else if (BRIDGE_BROKER == psession->get_type())
+    {
+        //! 如果需要连接bridge broker，记录各个bridge broker的配置
+        for (map<string, socket_ptr_t>::iterator it = m_bridge_broker_config.begin(); it != m_bridge_broker_config.end(); ++it)
+        {
+            if (it->second == sock_)
+            {
+                it->second = NULL;
+            }
+        }
+        //! 记录所有的namespace 注册在那些bridge broker 上
+        for (map<string, set<socket_ptr_t> >::iterator it2 = m_namespace2bridge.begin(); it2 != m_namespace2bridge.end(); ++it2)
+        {
+            it2->second.erase(sock_);
+        }
+        //!检测是否需要重连master broker
+        m_timer.once_timer(RECONNECT_TO_BROKER_TIMEOUT, task_binder_t::gen(&route_call_reconnect, this));
+    }
     else
     {
         m_all_registered_info.node_sockets.erase(psession->node_id);
@@ -210,6 +228,17 @@ int ffbroker_t::handle_regiter_to_broker(register_to_broker_t::in_t& msg_, socke
         }
         ret_msg = m_all_registered_info.broker_data;
         ret_msg.node_id = node_id;
+    }
+    else if (MASTER_BROKER == msg_.node_type)//!bridge broker接受master broker的注册
+    {
+        uint64_t node_id = alloc_node_id(sock_);
+        session_data_t* psession = new session_data_t(msg_.node_type, node_id);
+        psession->node_id = node_id;
+        sock_->set_data(psession);
+
+        m_all_registered_info.node_sockets[node_id] = sock_;
+        
+        m_all_registered_info.broker_data.reg_namespace_list.push_back(msg_.reg_namespace);
     }
     else
     {
@@ -335,6 +364,39 @@ int ffbroker_t::connect_to_master_broker()
     return 0;
 }
 
+//! 连接到bridge broker
+int ffbroker_t::connect_to_bridge_broker()
+{
+    LOGINFO((BROKER, "ffbroker_t::connect_to_bridge_broker begin"));
+    map<string, socket_ptr_t>::iterator it = m_bridge_broker_config.begin();
+    for (; it != m_bridge_broker_config.end(); ++it)
+    {
+        if (it->second)
+            continue;
+        const string& tmp_host = it->first;
+
+        vector<string> vt;
+        strtool::split(tmp_host, vt, "@");
+        if (vt.size() != 2)
+            continue;
+
+        it->second = net_factory_t::connect(vt[1], this);
+
+        session_data_t* psession = new session_data_t(BRIDGE_BROKER);
+        it->second->set_data(psession);
+
+        //! 发送注册消息给master broker
+        //!新版发送注册消息
+        register_to_broker_t::in_t reg_msg;
+        reg_msg.node_type = MASTER_BROKER;
+        reg_msg.node_id   = 0;
+        reg_msg.reg_namespace = vt[0];
+        msg_sender_t::send(it->second, REGISTER_TO_BROKER_REQ, reg_msg);
+    }
+    LOGINFO((BROKER, "ffbroker_t::connect_to_bridge_broker end ok"));
+    return 0;
+}
+
 //!处理注册到master broker的消息
 int ffbroker_t::handle_register_master_ret(register_to_broker_t::out_t& msg_, socket_ptr_t sock_)
 {
@@ -359,6 +421,14 @@ int ffbroker_t::handle_register_master_ret(register_to_broker_t::out_t& msg_, so
         }
         m_all_registered_info.broker_data = msg_;
     }
+    else if (psession->get_type() == BRIDGE_BROKER)//!注册到bridge broker的返回消息
+    {
+        LOGINFO((BROKER, "ffbroker_t::handle_register_master_ret BRIDGE_BROKER"));
+        for (size_t i = 0; i < msg_.reg_namespace_list.size(); ++i)
+        {
+            m_namespace2bridge[msg_.reg_namespace_list[i]].insert(sock_);
+        }
+    }
     LOGINFO((BROKER, "ffbroker_t::handle_register_master_ret end ok m_node_id=%d", m_node_id));
     return 0;
 }
@@ -366,6 +436,10 @@ int ffbroker_t::handle_register_master_ret(register_to_broker_t::out_t& msg_, so
 static void reconnect_loop(ffbroker_t* ffbroker_)
 {
     if (ffbroker_->connect_to_master_broker())
+    {
+        ffbroker_->get_timer().once_timer(RECONNECT_TO_BROKER_TIMEOUT, task_binder_t::gen(&route_call_reconnect, ffbroker_));
+    }
+    if (ffbroker_->connect_to_bridge_broker())
     {
         ffbroker_->get_timer().once_timer(RECONNECT_TO_BROKER_TIMEOUT, task_binder_t::gen(&route_call_reconnect, ffbroker_));
     }

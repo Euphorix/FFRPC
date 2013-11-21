@@ -56,24 +56,7 @@ public:
     //!本身是否是master broker
     bool is_master_broker() { return m_broker_host.empty() == true; }
 
-protected:
-    //!此broker归属于哪一个组
-    string                              m_namespace;
-    //!本broker的host信息
-    //!此broker的上级broker的host配置
-    string                              m_higher_broker_host;
-    //!本身的node id[ip_port]
-    uint64_t                            m_node_id;
-    //!所有的注册到此broker的节点信息
-    registered_node_info_t              m_all_registered_info;
 
-    //!工具类
-    task_queue_t                            m_tq;
-    thread_t                                m_thread;
-    //! 用于绑定回调函数
-    ffslot_t                                m_ffslot;
-    //! 如果本身是一个slave broker，需要连接到master broker
-    socket_ptr_t                            m_master_broker_sock;
 public:
     int open(arg_helper_t& opt_);
     int close();
@@ -89,6 +72,8 @@ public:
     //!ff
     //! 连接到broker master
     int connect_to_master_broker();
+    //! 连接到bridge broker
+    int connect_to_bridge_broker();
 private:
     //! 当有连接断开，则被回调
     int handle_broken_impl(socket_ptr_t sock_);
@@ -101,13 +86,32 @@ private:
     //! 同步给所有的节点，当前的各个节点的信息
     int sync_node_info(register_to_broker_t::out_t& ret_msg, socket_ptr_t sock_ = NULL);
 private:
+
+    //!本身的node id[ip_port]
+    uint64_t                                m_node_id;
+    //!所有的注册到此broker的节点信息
+    registered_node_info_t                  m_all_registered_info;
+
+    //!工具类
+    task_queue_t                            m_tq;
+    thread_t                                m_thread;
+    //! 用于绑定回调函数
+    ffslot_t                                m_ffslot;
+    //! 如果本身是一个slave broker，需要连接到master broker
+    socket_ptr_t                            m_master_broker_sock;
+    
     //! 本 broker的监听信息
     string                                  m_listen_host;
     //!broker master 的host信息
     string                                  m_broker_host;
     //! broker 分配的slave node id
-    //uint32_t                                m_node_id;
     timer_service_t                         m_timer;
+    //!此broker归属于哪一个组
+    string                                  m_namespace;
+    //! 如果需要连接bridge broker，记录各个bridge broker的配置
+    map<string, socket_ptr_t>               m_bridge_broker_config;
+    //! 记录所有的namespace 注册在那些bridge broker 上
+    map<string, set<socket_ptr_t> >         m_namespace2bridge;
 };
 
 //! 每个连接都要分配一个session，用于记录该socket，对应的信息
