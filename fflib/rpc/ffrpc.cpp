@@ -233,13 +233,30 @@ int ffrpc_t::call_impl(const string& service_name_, const string& msg_name_, con
 {
     //!调用远程消息
     LOGTRACE((FFRPC, "ffrpc_t::call_impl begin service_name_<%s>, msg_name_<%s> body_size=%u", service_name_.c_str(), msg_name_.c_str(), body_.size()));
+    
+    map<string, uint64_t>::iterator it = m_broker_data.service2node_id.find(service_name_);
+    if (it == m_broker_data.service2node_id.end())
+    {
+        LOGWARN((FFRPC, "ffrpc_t::call_impl end service not exist=%s", service_name_));
+        if (callback_){
+            try{
+                ffslot_req_arg arg("", 0, 0, "", "service not exist", this);
+                callback_->exe(&arg);
+            }
+            catch(exception& e_)
+            {
+                LOGWARN((FFRPC, "ffrpc_t::call_impl end exception=%s", e_.what()));
+            }
+        }
+        return -1;
+    }
     int64_t callback_id  = int64_t(callback_);
     m_ffslot_callback.bind(callback_id, callback_);
     
     broker_route_msg_t::in_t dest_msg;
     dest_msg.dest_service_name = service_name_;
     dest_msg.dest_msg_name = msg_name_;
-    dest_msg.dest_node_id  = m_broker_data.service2node_id[service_name_];
+    dest_msg.dest_node_id  = it->second;
     dest_msg.from_node_id  = m_node_id;
     dest_msg.callback_id = callback_id;
     dest_msg.body = body_;
@@ -317,8 +334,9 @@ int ffrpc_t::handle_broker_reg_response(register_to_broker_t::out_t& msg_, socke
     }
     m_bind_broker_id = msg_.rpc_bind_broker_info[m_node_id];
     m_broker_data = msg_;
-    
-    timer_reconnect_broker();
+
+    if (m_master_broker_sock)
+        timer_reconnect_broker();
     LOGTRACE((FFRPC, "ffbroker_t::handle_broker_reg_response end service num=%d, m_bind_broker_id=%d", m_broker_data.service2node_id.size(), m_bind_broker_id));
     return 0;
 }

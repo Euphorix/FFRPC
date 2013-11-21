@@ -152,7 +152,7 @@ int ffbroker_t::handle_msg_impl(const message_t& msg_, socket_ptr_t sock_)
 //! 处理其他broker或者client注册到此server
 int ffbroker_t::handle_regiter_to_broker(register_to_broker_t::in_t& msg_, socket_ptr_t sock_)
 {
-    LOGTRACE((BROKER, "ffbroker_t::handle_regiter_to_broker begin service_name=%s", msg_.service_name));
+    LOGINFO((BROKER, "ffbroker_t::handle_regiter_to_broker begin service_name=%s", msg_.service_name));
 
     session_data_t* psession = sock_->get_data<session_data_t>();
     if (NULL != psession)
@@ -273,18 +273,29 @@ int ffbroker_t::sync_node_info(register_to_broker_t::out_t& ret_msg, socket_ptr_
 int ffbroker_t::handle_broker_route_msg(broker_route_msg_t::in_t& msg_, socket_ptr_t sock_)
 {
     LOGTRACE((BROKER, "ffbroker_t::handle_broker_route_msg begin"));
-    
-    //!如果找到对应的节点，那么发给对应的节点
-    map<uint64_t/* node id*/, socket_ptr_t>::iterator it = m_all_registered_info.node_sockets.find(msg_.dest_node_id);
-    if (it != m_all_registered_info.node_sockets.end())
+    session_data_t* psession = sock_->get_data<session_data_t>();
+    if (NULL == psession)
     {
-        msg_sender_t::send(it->second, BROKER_TO_CLIENT_MSG, msg_);
-    }
-    else
-    {
-        LOGERROR((BROKER, "ffbroker_t::handle_broker_route_msg end failed node=%d none exist", msg_.dest_node_id));
+        sock_->close();
         return 0;
     }
+    if (RPC_NODE == psession->get_type())
+    {
+        //!如果找到对应的节点，那么发给对应的节点
+        map<uint64_t/* node id*/, socket_ptr_t>::iterator it = m_all_registered_info.node_sockets.find(msg_.dest_node_id);
+        if (it != m_all_registered_info.node_sockets.end())
+        {
+            msg_sender_t::send(it->second, BROKER_TO_CLIENT_MSG, msg_);
+        }
+        else
+        {
+            msg_.err_info = "dest node not exist";
+            msg_sender_t::send(sock_, BROKER_TO_CLIENT_MSG, msg_);
+            LOGERROR((BROKER, "ffbroker_t::handle_broker_route_msg end failed node=%d none exist", msg_.dest_node_id));
+            return 0;
+        }
+    }
+
     LOGTRACE((BROKER, "ffbroker_t::handle_broker_route_msg end ok msg body_size=%d", msg_.body.size()));
     return 0;
 }

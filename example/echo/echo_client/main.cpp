@@ -57,6 +57,10 @@ struct foo_t
     void echo_callback(ffreq_t<echo_t::out_t>& req_, int index, ffrpc_t* ffrpc_client)
     {
         LOGDEBUG(("XX", "%s %s %d", __FUNCTION__, req_.msg.data.c_str(), index));
+        if (req_.error())
+        {
+            LOGDEBUG(("XX", "error_msg <%s>", req_.error_msg()));
+        }
         return;
         if (index != g_times)
         {
