@@ -28,11 +28,11 @@ public:
         //! example tcp://192.168.1.1:1024
         vector<string> vt;
         strtool::split(host_, vt, "://");
-        assert(vt.size() == 2);
+        if (vt.size() != 2) return NULL;
         
         vector<string> vt2;
         strtool::split(vt[1], vt2, ":");
-        assert(vt2.size() == 2);
+        if (vt2.size() != 2) return NULL;
         
         int s;
         struct sockaddr_in addr;

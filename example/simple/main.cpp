@@ -67,7 +67,10 @@ int main(int argc, char* argv[])
     //! 启动broker，负责网络相关的操作，如消息转发，节点注册，重连等
     ffbroker_t ffbroker;
     arg_helper_t arg_helper(argc, argv);
-    ffbroker.open(arg_helper);
+    if (ffbroker.open(arg_helper))
+    {
+        return -1;
+    }
 
     sleep(300);
     ffbroker.close();

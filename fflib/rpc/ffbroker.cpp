@@ -43,7 +43,23 @@ int ffbroker_t::open(arg_helper_t& arg)
     //! 任务队列绑定线程
     m_thread.create_thread(task_binder_t::gen(&task_queue_t::run, &m_tq), 1);
 
-    if (arg.is_enable_option("-master_broker"))
+    //!如果需要连接bride broker 读取配置连接
+    if (arg.is_enable_option("-bridge_broker"))
+    {
+        string tmp_config =  arg.get_option_value("-bridge_broker");
+        vector<string> vt;
+        strtool::split(tmp_config, vt, ",");
+        for (size_t i = 0; i < vt.size(); ++i)
+        {
+            m_bridge_broker_config[vt[i]] = NULL;
+            LOGWARN((BROKER, "ffbroker_t::open bridge_broker<%s>", vt[i]));
+        }
+        if (connect_to_bridge_broker())
+        {
+            return -1;
+        }
+    }
+    else if (arg.is_enable_option("-master_broker"))
     {
         m_broker_host = arg.get_option_value("-master_broker");
         if (connect_to_master_broker())
@@ -237,9 +253,11 @@ int ffbroker_t::handle_regiter_to_broker(register_to_broker_t::in_t& msg_, socke
         psession->node_id = node_id;
         sock_->set_data(psession);
 
-        m_all_registered_info.node_sockets[node_id] = sock_;
-        
+        m_all_registered_info.node_sockets[node_id]   = sock_;
+        m_namespace2master_nodeid[msg_.reg_namespace] = node_id;
         m_all_registered_info.broker_data.reg_namespace_list.push_back(msg_.reg_namespace);
+        ret_msg = m_all_registered_info.broker_data;
+        LOGINFO((BROKER, "ffbroker_t::handle_regiter_to_broker reg_namespace=%s", msg_.reg_namespace));
     }
     else
     {
@@ -314,7 +332,60 @@ int ffbroker_t::handle_broker_route_msg(broker_route_msg_t::in_t& msg_, socket_p
         //!如果找到对应的节点，那么发给对应的节点
         send_to_rpc_node(msg_);
     }
-
+    else if (MASTER_BROKER == psession->get_type())//!需要转给其他的broker master
+    {
+        LOGTRACE((BROKER, "ffbroker_t::handle_broker_route_msg from MASTER_BROKER dest_namespace=%s", msg_.dest_namespace));
+        map<string, uint64_t>::iterator it = m_namespace2master_nodeid.find(msg_.dest_namespace);
+        if (it != m_namespace2master_nodeid.end())
+        {
+            map<uint64_t/* node id*/, socket_ptr_t>::iterator it2 = m_all_registered_info.node_sockets.find(it->second);
+            if (it2 != m_all_registered_info.node_sockets.end())
+            {
+                msg_sender_t::send(it2->second, BROKER_ROUTE_MSG, msg_);
+                return 0;
+            }
+        }
+        msg_.dest_namespace.clear();
+        msg_.dest_service_name.clear();
+        msg_.dest_node_id = msg_.from_node_id;
+        msg_.err_info = "dest_namespace named " + msg_.dest_namespace + " not exist in broker";
+        msg_sender_t::send(sock_, BROKER_TO_CLIENT_MSG, msg_);
+    }
+    else if (BRIDGE_BROKER == psession->get_type())//!需要转给其rpc node
+    {
+        LOGTRACE((BROKER, "ffbroker_t::handle_broker_route_msg from BRIDGE_BROKER dest_namespace=%s", msg_.dest_namespace));
+        if (msg_.dest_service_name.empty() == false)
+        {
+            map<string, uint64_t>::iterator it = m_all_registered_info.broker_data.service2node_id.find(msg_.dest_service_name);
+            if (it != m_all_registered_info.broker_data.service2node_id.end())
+            {
+                uint64_t dest_node_id = it->second;
+                msg_.dest_node_id = dest_node_id;
+                map<uint64_t/* node id*/, socket_ptr_t>::iterator it = m_all_registered_info.node_sockets.find(msg_.dest_node_id);
+                if (it != m_all_registered_info.node_sockets.end())
+                {
+                    msg_sender_t::send(it->second, BROKER_TO_CLIENT_MSG, msg_);
+                    LOGTRACE((BROKER, "ffbroker_t::handle_broker_route_msg from BRIDGE_BROKER dest_node_id=%s", msg_.dest_node_id));
+                    return 0;
+                }
+            }
+        }
+        else
+        {
+            map<uint64_t/* node id*/, socket_ptr_t>::iterator it = m_all_registered_info.node_sockets.find(msg_.dest_node_id);
+            if (it != m_all_registered_info.node_sockets.end())
+            {
+                msg_sender_t::send(it->second, BROKER_TO_CLIENT_MSG, msg_);
+                LOGTRACE((BROKER, "ffbroker_t::handle_broker_route_msg from BRIDGE_BROKER callback dest_node_id=%s", msg_.dest_node_id));
+                return 0;
+            }
+        }
+        msg_.dest_namespace = msg_.from_namespace;
+        msg_.dest_service_name.clear();
+        msg_.dest_node_id = msg_.from_node_id;
+        msg_.err_info = "dest_namespace named " + msg_.dest_namespace + "::" + msg_.dest_service_name + " not exist in broker";
+        msg_sender_t::send(sock_, BROKER_TO_CLIENT_MSG, msg_);
+    }
     LOGTRACE((BROKER, "ffbroker_t::handle_broker_route_msg end ok msg body_size=%d", msg_.body.size()));
     return 0;
 }
@@ -323,6 +394,30 @@ int ffbroker_t::send_to_rpc_node(broker_route_msg_t::in_t& msg_)
 {
     //!如果找到对应的节点，那么发给对应的节点
     //!如果在内存中,那么内存间直接投递
+    //!如果赋值了 dest_namespace 不为空,不等于本身的namespace 要通过bridge转发
+    if (msg_.dest_namespace.empty() == false)
+    {
+        msg_.from_namespace = m_namespace;
+        LOGTRACE((BROKER, "ffbroker_t::send_to_rpc_node post to bridge dest_namespace=%s", msg_.dest_namespace));
+        set<socket_ptr_t>& bridge_socket = m_namespace2bridge[msg_.dest_namespace];
+        if (bridge_socket.empty())
+        {
+            map<uint64_t/* node id*/, socket_ptr_t>::iterator it = m_all_registered_info.node_sockets.find(msg_.from_node_id);
+            if (it != m_all_registered_info.node_sockets.end())
+            {
+                msg_.err_info = "dest_namespace named " + msg_.dest_namespace + " not exist in broker";
+                msg_.dest_namespace.clear();
+                msg_.dest_service_name.clear();
+                msg_sender_t::send(it->second, BROKER_TO_CLIENT_MSG, msg_);
+            }
+        }
+        else
+        {
+            msg_sender_t::send(*(bridge_socket.begin()), BROKER_ROUTE_MSG, msg_);
+        }
+        return 0;
+    }
+    
     ffrpc_t* pffrpc = singleton_t<ffrpc_memory_route_t>::instance().get_rpc(msg_.dest_node_id);
     if (pffrpc)
     {
@@ -354,7 +449,7 @@ int ffbroker_t::send_to_rpc_node(broker_route_msg_t::in_t& msg_)
 //! 连接到broker master
 int ffbroker_t::connect_to_master_broker()
 {
-    if (m_master_broker_sock)
+    if (m_master_broker_sock || m_broker_host.empty() == true)
     {
         return 0;
     }
@@ -384,19 +479,30 @@ int ffbroker_t::connect_to_master_broker()
 int ffbroker_t::connect_to_bridge_broker()
 {
     LOGINFO((BROKER, "ffbroker_t::connect_to_bridge_broker begin"));
+    int ret = 0;
     map<string, socket_ptr_t>::iterator it = m_bridge_broker_config.begin();
     for (; it != m_bridge_broker_config.end(); ++it)
     {
         if (it->second)
             continue;
         const string& tmp_host = it->first;
-
+        LOGINFO((BROKER, "ffbroker_t::connect_to_bridge_broker try connect <%s>", tmp_host));
+        
         vector<string> vt;
         strtool::split(tmp_host, vt, "@");
         if (vt.size() != 2)
+        {
+            ret = -1;
             continue;
-
+        }
         it->second = net_factory_t::connect(vt[1], this);
+            
+        if (NULL == it->second)
+        {
+            LOGERROR((BROKER, "ffbroker_t::connect_to_bridge_broker can't connect to <%s>", vt[1]));
+            ret = -1;
+            continue;
+        }
 
         session_data_t* psession = new session_data_t(BRIDGE_BROKER);
         it->second->set_data(psession);
@@ -407,10 +513,14 @@ int ffbroker_t::connect_to_bridge_broker()
         reg_msg.node_type = MASTER_BROKER;
         reg_msg.node_id   = 0;
         reg_msg.reg_namespace = vt[0];
+        if (m_namespace.empty())
+        {
+            m_namespace = reg_msg.reg_namespace;
+        }
         msg_sender_t::send(it->second, REGISTER_TO_BROKER_REQ, reg_msg);
     }
     LOGINFO((BROKER, "ffbroker_t::connect_to_bridge_broker end ok"));
-    return 0;
+    return ret;
 }
 
 //!处理注册到master broker的消息
@@ -440,10 +550,11 @@ int ffbroker_t::handle_register_master_ret(register_to_broker_t::out_t& msg_, so
     }
     else if (psession->get_type() == BRIDGE_BROKER)//!注册到bridge broker的返回消息
     {
-        LOGINFO((BROKER, "ffbroker_t::handle_register_master_ret BRIDGE_BROKER"));
+        LOGINFO((BROKER, "ffbroker_t::handle_register_master_ret BRIDGE_BROKER size=%u", msg_.reg_namespace_list.size()));
         for (size_t i = 0; i < msg_.reg_namespace_list.size(); ++i)
         {
             m_namespace2bridge[msg_.reg_namespace_list[i]].insert(sock_);
+            LOGINFO((BROKER, "ffbroker_t::handle_register_master_ret BRIDGE_BROKER reg_namespace=%s", msg_.reg_namespace_list[i]));
         }
     }
     LOGINFO((BROKER, "ffbroker_t::handle_register_master_ret end ok m_node_id=%d", m_node_id));

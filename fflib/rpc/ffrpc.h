@@ -47,7 +47,7 @@ public:
     int call(const string& name_, T& req_, ffslot_t::callback_t* callback_ = NULL);
     //! 调用其他broker master 组的远程的接口
     template <typename T>
-    int bridge_call(const string& broker_group_, const string& name_, T& req_, ffslot_t::callback_t* callback_ = NULL);
+    int call(const string& namespace_, const string& name_, T& req_, ffslot_t::callback_t* callback_ = NULL);
     
     uint32_t get_callback_id() { return ++m_callback_id; }
     //! call 接口的实现函数，call会将请求投递到该线程，保证所有请求有序
@@ -63,7 +63,7 @@ public:
 
     timer_service_t& get_timer() { return m_timer; }
     //! 通过bridge broker调用远程的service
-    int bridge_call_impl(const string& broker_group_, const string& service_name_, const string& msg_name_,
+    int bridge_call_impl(const string& namespace_, const string& service_name_, const string& msg_name_,
                          const string& body_, ffslot_t::callback_t* callback_);
 
     //! 判断某个service是否存在
@@ -165,9 +165,15 @@ int ffrpc_t::call(const string& name_, T& req_, ffslot_t::callback_t* callback_)
 
 //! 调用其他broker master 组的远程的接口
 template <typename T>
-int ffrpc_t::bridge_call(const string& broker_group_, const string& name_, T& req_, ffslot_t::callback_t* callback_)
+int ffrpc_t::call(const string& namespace_, const string& name_, T& req_, ffslot_t::callback_t* callback_)
 {
-    m_tq.produce(task_binder_t::gen(&ffrpc_t::bridge_call_impl, this, broker_group_, name_, TYPE_NAME(T), req_.encode_data(), callback_));   
+    if (namespace_.empty())
+    {
+        return this->call(name_, req_, callback_);
+    }
+    else{
+        m_tq.produce(task_binder_t::gen(&ffrpc_t::bridge_call_impl, this, namespace_, name_, TYPE_NAME(T), req_.encode_data(), callback_));
+    }
     return 0;
 }
 }

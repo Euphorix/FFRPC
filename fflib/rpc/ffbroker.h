@@ -106,8 +106,10 @@ private:
     string                                  m_namespace;
     //! 如果需要连接bridge broker，记录各个bridge broker的配置
     map<string, socket_ptr_t>               m_bridge_broker_config;
-    //! 记录所有的namespace 注册在那些bridge broker 上
+    //! 记录所有的namespace 注册在那些bridge broker 上, master broker 使用的数据
     map<string, set<socket_ptr_t> >         m_namespace2bridge;
+    //! 记录namespace master broker对应的node id, brideg broker使用的数据
+    map<string, uint64_t>                   m_namespace2master_nodeid;
 };
 
 //! 每个连接都要分配一个session，用于记录该socket，对应的信息

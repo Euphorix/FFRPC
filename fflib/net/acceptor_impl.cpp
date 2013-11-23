@@ -96,7 +96,7 @@ void acceptor_impl_t::close()
 {
     if (m_listen_fd > 0)
     {
-        assert(0 == m_epoll->unregister_fd(this));
+        m_epoll->unregister_fd(this);
         ::close(m_listen_fd);
         m_listen_fd = -1;
     }
