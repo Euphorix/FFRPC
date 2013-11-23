@@ -384,7 +384,8 @@ int ffbroker_t::handle_broker_route_msg(broker_route_msg_t::in_t& msg_, socket_p
         msg_.dest_service_name.clear();
         msg_.dest_node_id = msg_.from_node_id;
         msg_.err_info = "dest_namespace named " + msg_.dest_namespace + "::" + msg_.dest_service_name + " not exist in broker";
-        msg_sender_t::send(sock_, BROKER_TO_CLIENT_MSG, msg_);
+        msg_sender_t::send(sock_, BROKER_ROUTE_MSG, msg_);
+        LOGTRACE((BROKER, "ffbroker_t::handle_broker_route_msg from BRIDGE_BROKER dest_service_name=%s not exist", msg_.dest_service_name));
     }
     LOGTRACE((BROKER, "ffbroker_t::handle_broker_route_msg end ok msg body_size=%d", msg_.body.size()));
     return 0;
