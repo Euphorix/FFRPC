@@ -1,6 +1,7 @@
 #include "rpc/ffbroker.h"
 #include "base/log.h"
 #include "base/arg_helper.h"
+#include "rpc/ffrpc.h"
 
 using namespace ff;
 
@@ -311,27 +312,42 @@ int ffbroker_t::handle_broker_route_msg(broker_route_msg_t::in_t& msg_, socket_p
     if (RPC_NODE == psession->get_type())
     {
         //!如果找到对应的节点，那么发给对应的节点
-        map<uint64_t/* node id*/, socket_ptr_t>::iterator it = m_all_registered_info.node_sockets.find(msg_.dest_node_id);
-        if (it != m_all_registered_info.node_sockets.end())
-        {
-            msg_sender_t::send(it->second, BROKER_TO_CLIENT_MSG, msg_);
-        }
-        else
-        {
-            msg_.err_info = "dest node not exist";
-            msg_sender_t::send(sock_, BROKER_TO_CLIENT_MSG, msg_);
-            LOGERROR((BROKER, "ffbroker_t::handle_broker_route_msg end failed node=%d none exist", msg_.dest_node_id));
-            return 0;
-        }
+        send_to_rpc_node(msg_);
     }
 
     LOGTRACE((BROKER, "ffbroker_t::handle_broker_route_msg end ok msg body_size=%d", msg_.body.size()));
     return 0;
 }
 
-//!ff TODO remove
-int ffbroker_t::memory_route_msg(broker_route_t::in_t& msg_)
+int ffbroker_t::send_to_rpc_node(broker_route_msg_t::in_t& msg_)
 {
+    //!如果找到对应的节点，那么发给对应的节点
+    //!如果在内存中,那么内存间直接投递
+    ffrpc_t* pffrpc = singleton_t<ffrpc_memory_route_t>::instance().get_rpc(msg_.dest_node_id);
+    if (pffrpc)
+    {
+        LOGTRACE((BROKER, "ffbroker_t::send_to_rpc_node memory post"));
+        pffrpc->get_tq().produce(task_binder_t::gen(&ffrpc_t::handle_rpc_call_msg, pffrpc, msg_, socket_ptr_t(NULL)));
+        return 0;
+    }
+    LOGINFO((BROKER, "ffbroker_t::send_to_rpc_node dest_node=%d by socket", msg_.dest_node_id));
+    map<uint64_t/* node id*/, socket_ptr_t>::iterator it = m_all_registered_info.node_sockets.find(msg_.dest_node_id);
+    if (it != m_all_registered_info.node_sockets.end())
+    {
+        msg_sender_t::send(it->second, BROKER_TO_CLIENT_MSG, msg_);
+    }
+    else
+    {
+        it = m_all_registered_info.node_sockets.find(msg_.from_node_id);
+        if (it != m_all_registered_info.node_sockets.end())
+        {
+            msg_.err_info = "service named " + msg_.dest_service_name + " not exist in broker";
+            msg_.dest_service_name.clear();
+            msg_sender_t::send(it->second, BROKER_TO_CLIENT_MSG, msg_);
+        }
+        LOGERROR((BROKER, "ffbroker_t::handle_broker_route_msg end failed node=%d none exist", msg_.dest_node_id));
+        return 0;
+    }
     return 0;
 }
 
@@ -418,6 +434,7 @@ int ffbroker_t::handle_register_master_ret(register_to_broker_t::out_t& msg_, so
         if (msg_.register_flag == 1)
         {
             m_node_id = msg_.node_id;//! -1表示注册失败，0表示同步消息，1表示注册成功
+            singleton_t<ffrpc_memory_route_t>::instance().add_node(m_node_id, this);
         }
         m_all_registered_info.broker_data = msg_;
     }

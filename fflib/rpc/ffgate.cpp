@@ -32,7 +32,7 @@ int ffgate_t::open(arg_helper_t& arg_helper)
     m_ffrpc->reg(&ffgate_t::route_msg_to_session, this);
     m_ffrpc->reg(&ffgate_t::broadcast_msg_to_session, this);
     
-    if (m_ffrpc->open(arg_helper.get_option_value("-broker")))
+    if (m_ffrpc->open(arg_helper))
     {
         LOGERROR((FFGATE, "ffgate_t::open failed check -broker argmuent"));
         return -1;

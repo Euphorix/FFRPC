@@ -16,9 +16,9 @@ using namespace std;
 #include "rpc/ffrpc_ops.h"
 #include "net/msg_sender.h"
 #include "base/timer_service.h"
+#include "base/arg_helper.h"
 
 namespace ff {
-
 class ffrpc_t: public msg_handler_i, ffresponser_t
 {
     struct session_data_t;
@@ -28,7 +28,7 @@ public:
     ffrpc_t(string service_name_ = "");
     virtual ~ffrpc_t();
 
-    int open(const string& opt_);
+    int open(arg_helper_t& arg_);
     int close() { return 0; }
     
     //! 处理连接断开
@@ -55,7 +55,7 @@ public:
     //! 调用接口后，需要回调消息给请求者
     virtual void response(const string& dest_namespace_, const string& msg_name_,  uint64_t dest_node_id_, uint32_t callback_id_, const string& body_);
     //! 通过node id 发送消息给broker
-    void send_to_dest_node(const string& dest_namespace_, const string& msg_name_,  uint64_t dest_node_id_, uint32_t callback_id_, const string& body_);
+    void send_to_dest_node(const string& dest_namespace_, const string& service_name_, const string& msg_name_,  uint64_t dest_node_id_, uint32_t callback_id_, const string& body_);
     //! 获取任务队列对象
     task_queue_t& get_tq();
     //! 定时重连 broker master
@@ -71,6 +71,8 @@ public:
     
     //!获取broker socket
     socket_ptr_t get_broker_socket();
+    //! 新版 调用消息对应的回调函数
+    int handle_rpc_call_msg(broker_route_msg_t::in_t& msg_, socket_ptr_t sock_);
 private:
     //! 处理连接断开
     int handle_broken_impl(socket_ptr_t sock_);
@@ -82,8 +84,7 @@ private:
     //! 新版实现
     //! 处理注册, 
     int handle_broker_reg_response(register_to_broker_t::out_t& msg_, socket_ptr_t sock_);
-    //! 新版 调用消息对应的回调函数
-    int handle_call_service_msg(broker_route_msg_t::in_t& msg_, socket_ptr_t sock_);
+    
 private:
     string                                  m_host;
     timer_service_t                         m_timer;

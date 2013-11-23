@@ -461,196 +461,6 @@ enum ffrpc_cmd_def_e
 };
 
 
-//! 向broker master 注册slave
-struct register_bridge_broker_t
-{
-    struct in_t: public ffmsg_t<in_t>
-    {
-        void encode()
-        {
-            encoder() << broker_group;
-        }
-        void decode()
-        {
-            decoder()>> broker_group;
-        }
-        string          broker_group;
-    };
-};
-
-//! 向broker master 注册slave
-struct register_slave_broker_t
-{
-    struct in_t: public ffmsg_t<in_t>
-    {
-        void encode()
-        {
-            encoder() << host;
-        }
-        void decode()
-        {
-            decoder()>> host;
-        }
-        string          host;
-    };
-};
-
-//! 向broker master 注册client
-struct register_broker_client_t
-{
-    struct in_t: public ffmsg_t<in_t>
-    {
-        void encode()
-        {
-            encoder() << service_name << msg_names << binder_broker_node_id;
-        }
-        void decode()
-        {
-            decoder() >> service_name >> msg_names >> binder_broker_node_id;
-        }
-        string                      service_name;
-        std::set<string>            msg_names;
-        //! 需要绑定到哪个broker node id 上，如果是-1，表示任意绑定
-        uint32_t                    binder_broker_node_id;
-    };
-};
-//! 向broker slave 注册client
-struct register_client_to_slave_broker_t
-{
-    struct in_t: public ffmsg_t<in_t>
-    {
-        void encode()
-        {
-            encoder() << node_id;
-        }
-        void decode()
-        {
-            decoder() >> node_id;
-        }
-        uint32_t                    node_id;//! master分配client的node id
-    };
-};
-
-struct broker_sync_all_registered_data_t
-{
-    //! 记录每个broker slave 的接口信息
-    struct slave_broker_info_t: public ffmsg_t<slave_broker_info_t>
-    {
-        void encode()
-        {
-            encoder() << host;
-        }
-        void decode()
-        {
-            decoder() >> host;
-        }
-        string          host;
-    };
-
-    struct broker_client_info_t: public ffmsg_t<broker_client_info_t>
-    {
-        void encode()
-        {
-            encoder() << bind_broker_id << service_name;
-        }
-        void decode()
-        {
-            decoder() >> bind_broker_id >> service_name;
-        }
-        //! 被绑定的节点broker node id
-        uint32_t bind_broker_id;
-        string   service_name;
-    };
-    struct out_t: public ffmsg_t<out_t>
-    {
-        out_t():
-            node_id(0)
-        {}
-        void encode()
-        {
-            encoder() << node_id << msg2id << slave_broker_info << broker_client_info;
-        }
-        void decode()
-        {
-            decoder() >> node_id >> msg2id >> slave_broker_info >> broker_client_info;
-        }
-        uint32_t                                node_id;//! 被分配的node id
-        map<string, uint32_t>                   msg2id; //! 消息名称对应的消息id 值
-        //!记录所有的broker slave 信息
-        map<uint32_t, slave_broker_info_t>      slave_broker_info;//! node id -> broker slave
-        //! 记录所有服务/接口信息
-        map<uint32_t, broker_client_info_t>     broker_client_info;//! node id -> service
-    };
-};
-
-struct broker_route_t//!broker 转发消息
-{
-    struct in_t: public ffmsg_t<in_t>
-    {
-        void encode()
-        {
-            encoder() << from_node_id << dest_node_id << msg_id << callback_id << body << bridge_route_id;
-        }
-        void decode()
-        {
-            decoder() >> from_node_id >> dest_node_id >> msg_id >> callback_id >> body >> bridge_route_id;
-        }
-        uint32_t                    from_node_id;//! 来自哪个节点
-        uint32_t                    dest_node_id;//! 需要转发到哪个节点上
-        uint32_t                    msg_id;//! 调用的是哪个接口
-        uint32_t                    callback_id;
-        string                      body;
-        uint32_t                    bridge_route_id;//! 需要转发给bridge broker标记，若此值不为0，说明目标node在其他broker组
-    };
-};
-
-
-struct broker_route_to_bridge_t//!bridge broker 转发消息
-{
-    struct in_t: public ffmsg_t<in_t>
-    {
-        void encode()
-        {
-            encoder() << from_broker_group_name << dest_broker_group_name << service_name << msg_name << body << from_node_id << dest_node_id << callback_id;
-        }
-        void decode()
-        {
-            decoder() >> from_broker_group_name >> dest_broker_group_name >> service_name >> msg_name >> body >> from_node_id >> dest_node_id >> callback_id;
-        }
-        string from_broker_group_name;//! broker 组名称
-        string dest_broker_group_name;//! broker 组名称
-        string service_name;//!  服务名
-        string msg_name;//!消息名
-        string body;//! msg data
-        uint32_t from_node_id;
-        uint32_t dest_node_id;
-        uint32_t callback_id;//! 回调函数的id
-    };
-};
-
-struct bridge_route_to_broker_t//!bridge broker 转发消息
-{
-    struct in_t: public ffmsg_t<in_t>
-    {
-        void encode()
-        {
-            encoder() << from_broker_group_name << dest_broker_group_name << service_name << msg_name << body << from_node_id << dest_node_id << callback_id;
-        }
-        void decode()
-        {
-            decoder() >> from_broker_group_name >> dest_broker_group_name >> service_name >> msg_name >> body >> from_node_id >> dest_node_id >> callback_id;
-        }
-        string from_broker_group_name;//! broker 组名称
-        string dest_broker_group_name;//! broker 组名称
-        string service_name;//!  服务名
-        string msg_name;//!消息名
-        string body;//! msg data
-        uint32_t from_node_id;
-        uint32_t dest_node_id;
-        uint32_t callback_id;//! 回调函数的id
-    };
-};
-
 //! gate 验证client的sessionid的消息
 struct session_verify_t
 {
@@ -932,29 +742,78 @@ struct ffrpc_memory_route_t
 {
     struct dest_node_info_t
     {
-        dest_node_info_t():
-            ffrpc(NULL),
-            ffbroker(NULL)
+        dest_node_info_t(ffrpc_t* rpc_ = NULL, ffbroker_t* broker_ = NULL):
+            ffrpc(rpc_),
+            ffbroker(broker_)
         {}
         ffrpc_t*        ffrpc;
         ffbroker_t*     ffbroker;
     };
-    int add_node(uint32_t node_id_, ffrpc_t* ffrpc_);
-    int add_node(uint32_t node_id_, ffbroker_t* ffbroker_);
-    int del_node(uint32_t node_id_);
 
-    //! 判断目标节点是否在同一进程中
-    bool is_same_process(uint32_t node_id_);
-    //! broker 转发消息到rpc client
-    int broker_route_to_client(broker_route_t::in_t& msg_);
-    //! client 转发消息到 broker, 再由broker转发到client
-    int client_route_to_broker(uint32_t broker_node_id, broker_route_t::in_t& msg_);
+    typedef map<uint64_t/*node id*/, dest_node_info_t> node_info_map_t;
+    int add_node(uint64_t node_id_, ffrpc_t* ffrpc_)
+    {
+        lock_guard_t lock(m_mutex);
+        node_info_map_t tmp_data = m_node_info.get_data();
+        for (node_info_map_t::iterator it = tmp_data.begin(); it != tmp_data.end(); ++it)
+        {
+            if (it->second.ffrpc == ffrpc_)
+            {
+                tmp_data.erase(it);
+                break;
+            }
+        }
+        tmp_data[node_id_].ffrpc = ffrpc_;
+        m_node_info.update_data(tmp_data);
+        return 0;
+    }
+    int add_node(uint64_t node_id_, ffbroker_t* ffbroker_)
+    {
+        lock_guard_t lock(m_mutex);
+        node_info_map_t tmp_data = m_node_info.get_data();
+        for (node_info_map_t::iterator it = tmp_data.begin(); it != tmp_data.end(); ++it)
+        {
+            if (it->second.ffbroker == ffbroker_)
+            {
+                tmp_data.erase(it);
+                break;
+            }
+        }
+        tmp_data[node_id_].ffbroker = ffbroker_;
+        m_node_info.update_data(tmp_data);
+        return 0;
+    }
+    int del_node(uint64_t node_id_)
+    {
+        lock_guard_t lock(m_mutex);
+        node_info_map_t tmp_data = m_node_info.get_data();
+        tmp_data.erase(node_id_);
+        m_node_info.update_data(tmp_data);
+        return 0;
+    }
+    ffrpc_t* get_rpc(uint64_t node_id_)
+    {
+        const node_info_map_t& tmp_data = m_node_info.get_data();
+        node_info_map_t::const_iterator it = tmp_data.find(node_id_);
+        if (it != tmp_data.end())
+        {
+            return it->second.ffrpc;
+        }
+        return NULL;
+    }
+    ffbroker_t* get_broker(uint64_t node_id_)
+    {
+        const node_info_map_t& tmp_data = m_node_info.get_data();
+        node_info_map_t::const_iterator it = tmp_data.find(node_id_);
+        if (it != tmp_data.end())
+        {
+            return it->second.ffbroker;
+        }
+        return NULL;
+    }
 
-    //! 所有已经注册的本进程的节点
-    vector<uint32_t> get_node_same_process();
-    //! 获取本进程内的broker 节点
-    uint32_t get_broker_node_same_process();
-    map<uint32_t/*node id*/, dest_node_info_t>      m_node_info;
+    safe_stl_t<node_info_map_t> m_node_info;
+    mutex_t                     m_mutex;
 };
 
 //!新版本的实现*********************************************************************************************

@@ -96,24 +96,32 @@ int main(int argc, char* argv[])
         return 1;
     }
     arg_helper_t arg_helper(argc, argv);
-    if (false == arg_helper.is_enable_option("-l"))
-    {
-        printf("usage: %s -l tcp://127.0.0.1:10241\n", argv[0]);
-        return 1;
-    }
     if (arg_helper.is_enable_option("-times"))
     {
         g_times = atoi(arg_helper.get_option_value("-times").c_str());
     }
     //! 启动broker，负责网络相关的操作，如消息转发，节点注册，重连等
-    string service_host = arg_helper.get_option_value("-l");
 
+    ffbroker_t ffbroker;
+    if (ffbroker.open(arg_helper))
+    {
+        return -1;
+    }
+    
     foo_t foo;
     //! broker客户端，可以注册到broker，并注册服务以及接口，也可以远程调用其他节点的接口
-    ffrpc_t ffrpc_client("echo");
-    ffrpc_client.reg(&foo_t::echo, &foo);
+    ffrpc_t ffrpc_service("echo");
+    ffrpc_service.reg(&foo_t::echo, &foo);
 
-    ffrpc_client.open(service_host);
+    if (ffrpc_service.open(arg_helper))
+    {
+        return -1;
+    }
+    ffrpc_t ffrpc_client;
+    if (ffrpc_client.open(arg_helper))
+    {
+        return -1;
+    }
     echo_t::in_t in;
     in.data = "helloworld";
 

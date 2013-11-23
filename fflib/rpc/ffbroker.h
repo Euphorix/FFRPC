@@ -56,7 +56,6 @@ public:
     //!本身是否是master broker
     bool is_master_broker() { return m_broker_host.empty() == true; }
 
-
 public:
     int open(arg_helper_t& opt_);
     int close();
@@ -66,9 +65,9 @@ public:
     //! 定时器
     timer_service_t& get_timer();
     
-    //! 内存间传递消息
-    int memory_route_msg(broker_route_t::in_t& msg_);
-       
+    //! 传递消息
+    int send_to_rpc_node(broker_route_msg_t::in_t& msg_);
+
     //!ff
     //! 连接到broker master
     int connect_to_master_broker();
@@ -80,9 +79,6 @@ private:
     //! 当有消息到来，被回调
     int handle_msg_impl(const message_t& msg_, socket_ptr_t sock_);
     
-    //! 转发消息
-    int handle_route_msg(broker_route_t::in_t& msg_, socket_ptr_t sock_);
-
     //! 同步给所有的节点，当前的各个节点的信息
     int sync_node_info(register_to_broker_t::out_t& ret_msg, socket_ptr_t sock_ = NULL);
 private:

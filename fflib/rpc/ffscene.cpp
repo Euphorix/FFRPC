@@ -29,7 +29,7 @@ int ffscene_t::open(arg_helper_t& arg_helper)
     m_ffrpc->reg(&ffscene_t::process_session_req, this);
     m_ffrpc->reg(&ffscene_t::process_scene_call, this);
     
-    if (m_ffrpc->open(arg_helper.get_option_value("-broker")))
+    if (m_ffrpc->open(arg_helper))
     {
         LOGERROR((FFSCENE, "ffscene_t::open failed check -broker argmuent"));
         return -1;

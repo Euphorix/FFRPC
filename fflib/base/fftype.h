@@ -4,6 +4,7 @@
 
 #include "base/singleton.h"
 #include "base/lock.h"
+#include "base/atomic_op.h"
 
 #include <stdint.h>
 #include <list>
@@ -19,6 +20,36 @@ namespace ff
 #define TYPE_NAME(X)           singleton_t<type_helper_t<X> >::instance().get_type_name()
 #define TYPE_NAME_TO_ID(name_) singleton_t<type_id_generator_t>::instance().get_id_by_name(name_)
 
+
+template<typename T>
+class safe_stl_t
+{
+public:
+    safe_stl_t()
+    {
+        m_cur_data = new T();
+        m_history_data.push_back(m_cur_data);
+    }
+    virtual ~safe_stl_t()
+    {
+        for (typename list<T*>::iterator it = m_history_data.begin(); it != m_history_data.end(); ++it)
+        {
+            delete (*it);
+        }
+        m_history_data.clear();
+    }
+    const T& get_data() const { return *m_cur_data; }
+    void update_data(T& data_)
+    {
+        T* pdata = new T(data_);
+        m_history_data.push_back(pdata);
+        ATOMIC_SET(&m_cur_data, pdata);
+    }
+private:
+    list<T*>    m_history_data;
+    T*          m_cur_data;
+};
+
     
 struct type_id_generator_t
 {
@@ -30,8 +61,9 @@ struct type_id_generator_t
         m_name2id[name_] = id;
         return id;
     }
-    int get_id_by_name(const string& name_) const
+    int get_id_by_name(const string& name_)
     {
+        lock_guard_t lock(m_mutex);
         map<string, int>::const_iterator it = m_name2id.find(name_);
         if (it != m_name2id.end())
         {
@@ -316,4 +348,5 @@ struct fftraits_t<T&>
 
 typedef int64_t userid_t;
 }
+
 #endif
