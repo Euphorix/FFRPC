@@ -252,16 +252,17 @@ int ffrpc_t::call_impl(const string& service_name_, const string& msg_name_, con
     int64_t callback_id  = int64_t(callback_);
     m_ffslot_callback.bind(callback_id, callback_);
     
+    LOGTRACE((FFRPC, "ffrpc_t::call_impl end dest_id=%u callback_id=%u", it->second, callback_id));
+
     static string null_str;
     send_to_dest_node(null_str, service_name_, msg_name_, it->second, callback_id, body_);
-    LOGTRACE((FFRPC, "ffrpc_t::call_impl end dest_id=%u", it->second));
 
     return 0;
 }
 
 //! 通过node id 发送消息给broker
 void ffrpc_t::send_to_dest_node(const string& dest_namespace_, const string& service_name_, const string& msg_name_,
-                                uint64_t dest_node_id_, uint32_t callback_id_, const string& body_)
+                                uint64_t dest_node_id_, int64_t callback_id_, const string& body_)
 {
     LOGTRACE((FFRPC, "ffrpc_t::send_to_broker_by_nodeid begin dest_node_id[%u]", dest_node_id_));
     broker_route_msg_t::in_t dest_msg;
@@ -319,7 +320,7 @@ int ffrpc_t::bridge_call_impl(const string& broker_group_, const string& service
 
 
 //! 调用接口后，需要回调消息给请求者
-void ffrpc_t::response(const string& dest_namespace_, const string& msg_name_,  uint64_t dest_node_id_, uint32_t callback_id_, const string& body_)
+void ffrpc_t::response(const string& dest_namespace_, const string& msg_name_,  uint64_t dest_node_id_, int64_t callback_id_, const string& body_)
 {
     static string null_str;
     m_tq.produce(task_binder_t::gen(&ffrpc_t::send_to_dest_node, this, dest_namespace_, null_str, msg_name_, dest_node_id_, callback_id_, body_));

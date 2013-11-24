@@ -37,7 +37,10 @@ int main(int argc, char* argv[])
     }
 
     //! 启动broker，负责网络相关的操作，如消息转发，节点注册，重连等
-    ffbroker.open(arg_helper);
+    if (ffbroker.open(arg_helper))
+    {
+        return -1;
+    }
     
     try
     {

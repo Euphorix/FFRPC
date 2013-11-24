@@ -53,9 +53,9 @@ public:
     //! call 接口的实现函数，call会将请求投递到该线程，保证所有请求有序
     int call_impl(const string& service_name_, const string& msg_name_, const string& body_, ffslot_t::callback_t* callback_);
     //! 调用接口后，需要回调消息给请求者
-    virtual void response(const string& dest_namespace_, const string& msg_name_,  uint64_t dest_node_id_, uint32_t callback_id_, const string& body_);
+    virtual void response(const string& dest_namespace_, const string& msg_name_,  uint64_t dest_node_id_, int64_t callback_id_, const string& body_);
     //! 通过node id 发送消息给broker
-    void send_to_dest_node(const string& dest_namespace_, const string& service_name_, const string& msg_name_,  uint64_t dest_node_id_, uint32_t callback_id_, const string& body_);
+    void send_to_dest_node(const string& dest_namespace_, const string& service_name_, const string& msg_name_,  uint64_t dest_node_id_, int64_t callback_id_, const string& body_);
     //! 获取任务队列对象
     task_queue_t& get_tq();
     //! 定时重连 broker master
@@ -159,7 +159,7 @@ struct ffrpc_t::broker_client_info_t
 template <typename T>
 int ffrpc_t::call(const string& name_, T& req_, ffslot_t::callback_t* callback_)
 {
-    m_tq.produce(task_binder_t::gen(&ffrpc_t::call_impl, this, name_, TYPE_NAME(T), req_.encode_data(), callback_));   
+    m_tq.produce(task_binder_t::gen(&ffrpc_t::call_impl, this, name_, TYPE_NAME(T), msg_tool_t::encode(req_), callback_));   
     return 0;
 }
 
@@ -172,7 +172,7 @@ int ffrpc_t::call(const string& namespace_, const string& name_, T& req_, ffslot
         return this->call(name_, req_, callback_);
     }
     else{
-        m_tq.produce(task_binder_t::gen(&ffrpc_t::bridge_call_impl, this, namespace_, name_, TYPE_NAME(T), req_.encode_data(), callback_));
+        m_tq.produce(task_binder_t::gen(&ffrpc_t::bridge_call_impl, this, namespace_, name_, TYPE_NAME(T), msg_tool_t::encode(req_), callback_));
     }
     return 0;
 }

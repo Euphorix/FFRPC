@@ -12,6 +12,10 @@ using namespace std;
 #include "net/codec.h"
 #include "base/singleton.h"
 
+#ifdef FF_ENABLE_PROTOBUF //! 如果需要开启对protobuf的支持，需要开启这个宏
+#include <google/protobuf/message.h>
+#endif
+
 namespace ff
 {
 
@@ -50,24 +54,49 @@ struct msg_tool_t
     {
         return msg_.encode_data();
     }
-    static int decode(msg_i& msg_, const string& data_)
+    static int decode(msg_i& msg_, const string& data_, string* err_ = NULL)
     {
-        msg_.decode_data(data_);
+        try{
+            msg_.decode_data(data_);
+        }
+        catch(exception& e)
+        {
+            if (err_) *err_ += e.what();
+        }
         return 0;
     }
+
+#ifdef FF_ENABLE_PROTOBUF //! 如果需要开启对protobuf的支持，需要开启这个宏
+    static string encode(::google::protobuf::Message& msg_)
+    {
+        string ret;
+        msg_.SerializeToString(&ret);
+        return ret;
+    }
+    static int decode(::google::protobuf::Message& msg_, const string& data_, string* err_ = NULL)
+    {
+        if (msg_.ParseFromString(data_))
+        {
+            return 0;
+        }
+        if (err_) *err_ += "ParseFromString failed";
+        return -1;
+    }
+#endif
+
 };
 
 class ffresponser_t
 {
 public:
     virtual ~ffresponser_t(){}
-    virtual void response(const string& dest_namespace_, const string& msg_name_,  uint64_t dest_node_id_, uint32_t callback_id_, const string& body_) = 0;
+    virtual void response(const string& dest_namespace_, const string& msg_name_,  uint64_t dest_node_id_, int64_t callback_id_, const string& body_) = 0;
 };
 
 class ffslot_req_arg: public ffslot_t::callback_arg_t
 {
 public:
-    ffslot_req_arg(const string& s_, uint32_t n_, uint32_t cb_id_, const string& name_space_, string err_info_, ffresponser_t* p):
+    ffslot_req_arg(const string& s_, uint64_t n_, int64_t cb_id_, const string& name_space_, string err_info_, ffresponser_t* p):
         body(s_),
         dest_node_id(n_),
         callback_id(cb_id_),
@@ -81,7 +110,7 @@ public:
     }
     string          body;
     uint64_t        dest_node_id;//! 请求来自于那个node id
-    uint32_t        callback_id;//! 回调函数标识id
+    int64_t         callback_id;//! 回调函数标识id
     string          dest_namespace;
     string          err_info;
     ffresponser_t*  responser;
@@ -109,7 +138,7 @@ struct ffreq_t
 
     string          dest_namespace;
     uint64_t        dest_node_id;
-    uint32_t        callback_id;
+    int64_t        callback_id;
     ffresponser_t*  responser;
     string          err_info;
     void response(OUT& out_)
@@ -218,7 +247,7 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (*func_)(ffreq_t<IN, OUT>&))
             ffreq_t<IN, OUT> req;
             if (msg_data->err_info.empty())
             {
-                msg_tool_t::decode(req.msg, msg_data->body);
+                msg_tool_t::decode(req.msg, msg_data->body, &(req.err_info));
             }
             else
             {
@@ -252,7 +281,7 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<I
             ffreq_t<IN, OUT> req;
             if (msg_data->err_info.empty())
             {
-                msg_tool_t::decode(req.msg, msg_data->body);
+                msg_tool_t::decode(req.msg, msg_data->body, &(req.err_info));
             }
             else
             {
@@ -290,7 +319,7 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<I
             ffreq_t<IN, OUT> req;
             if (msg_data->err_info.empty())
             {
-                msg_tool_t::decode(req.msg, msg_data->body);
+                msg_tool_t::decode(req.msg, msg_data->body, &(req.err_info));
             }
             else
             {
@@ -331,7 +360,7 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<I
             ffreq_t<IN, OUT> req;
             if (msg_data->err_info.empty())
             {
-                msg_tool_t::decode(req.msg, msg_data->body);
+                msg_tool_t::decode(req.msg, msg_data->body, &(req.err_info));
             }
             else
             {
@@ -374,7 +403,7 @@ ffslot_t::callback_t* ffrpc_ops_t::gen_callback(R (CLASS_TYPE::*func_)(ffreq_t<I
             ffreq_t<IN, OUT> req;
             if (msg_data->err_info.empty())
             {
-                msg_tool_t::decode(req.msg, msg_data->body);
+                msg_tool_t::decode(req.msg, msg_data->body, &(req.err_info));
             }
             else
             {
@@ -865,13 +894,13 @@ struct broker_route_msg_t
         void encode()
         {
             encoder() << dest_namespace << dest_service_name << dest_msg_name << dest_node_id
-                      << from_namespace << from_service_name << from_msg_name << from_node_id
+                      << from_namespace << from_msg_name << from_node_id
                       << callback_id << body << err_info;
         }
         void decode()
         {
             decoder() >> dest_namespace >> dest_service_name >> dest_msg_name >> dest_node_id
-                      >> from_namespace >> from_service_name >> from_msg_name >> from_node_id
+                      >> from_namespace >> from_msg_name >> from_node_id
                       >> callback_id >> body >> err_info;
         }
         
@@ -881,7 +910,6 @@ struct broker_route_msg_t
         uint64_t    dest_node_id;
         
         string      from_namespace;
-        string      from_service_name;
         string      from_msg_name;
         uint64_t    from_node_id;
         
