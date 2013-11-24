@@ -15,7 +15,7 @@ ARCH=
 BIN=app_rpc
 
 #源文件目录
-SrcDir= . ../../fflib/base ../../fflib/net ../../fflib/rpc
+SrcDir= ./gen-cpp/ . ../../fflib/base ../../fflib/net ../../fflib/rpc
 #头文件目录
 IncDir=  ../../fflib/ ./
 #连接库目录

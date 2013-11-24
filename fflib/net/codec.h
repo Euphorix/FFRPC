@@ -17,6 +17,8 @@ using namespace std;
 #include "base/fftype.h"
 #include "base/smart_ptr.h"
 
+#include <thrift/FFThrift.h>
+
 namespace ff {
 
 #define GEN_CODE_DECODE(X) \
@@ -389,6 +391,18 @@ public:
         msg_i(TYPE_NAME(T).c_str())
     {}
     virtual ~ffmsg_t(){}
+    void write(::apache::thrift::protocol::TProtocol* iprot)
+    {
+        ::apache::thrift::protocol::TTransport* trans_ = iprot->getTransport();
+        string tmp = this->encode_data();
+        trans_->write((const uint8_t*)tmp.c_str(), tmp.size());
+    }
+    void read(::apache::thrift::protocol::TProtocol* iprot)
+    {
+        ::apache::thrift::protocol::TTransport* trans_ = iprot->getTransport();
+        apache::thrift::transport::FFTMemoryBuffer* pmem = (apache::thrift::transport::FFTMemoryBuffer*)trans_;
+        this->decode_data(pmem->get_wbuff());
+    }
 };
 
 }

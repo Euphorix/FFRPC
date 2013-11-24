@@ -8,12 +8,11 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/syscall.h>
+
 #include <sys/time.h>
 
 using namespace ff;
 
-#define gettid() ::syscall(SYS_gettid)
 
 str_format_t::str_format_t(const char* fmt_):
 	m_fmt(fmt_),
@@ -249,7 +248,7 @@ static const char* g_log_color_tail[] =
 	"",
 	"\033[0m"
 };
-void log_t::log_content(int level_, const char* str_class_, const string& content_)
+void log_t::log_content(int level_, const char* str_class_, const string& content_, long tid_)
 {
 	struct timeval curtm;
 	gettimeofday(&curtm, NULL);
@@ -258,7 +257,7 @@ void log_t::log_content(int level_, const char* str_class_, const string& conten
 	char log_buff[512];
 	::snprintf(log_buff, sizeof(log_buff), "%02d:%02d:%02d.%03ld %s [%ld] [%s] ",
 			tm_val.tm_hour, tm_val.tm_min, tm_val.tm_sec, curtm.tv_usec/1000,
-			g_log_level_desp[level_], gettid(), str_class_);
+			g_log_level_desp[level_], tid_, str_class_);
 
 	if (m_enable_file && check_and_create_dir(&tm_val))
 	{

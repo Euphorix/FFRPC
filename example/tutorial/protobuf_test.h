@@ -52,7 +52,7 @@ static  int run_protobuf_test(arg_helper_t& arg_helper)
     protobuf_service_t foo;
     //! broker客户端，可以注册到broker，并注册服务以及接口，也可以远程调用其他节点的接口
     ffrpc_t ffrpc_service("echo");
-    ffrpc_service.reg(&protobuf_test_t::echo, &foo);
+    ffrpc_service.reg(&protobuf_service_t::echo, &foo);
 
     if (ffrpc_service.open(arg_helper))
     {

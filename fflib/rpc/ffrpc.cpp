@@ -202,11 +202,11 @@ int ffrpc_t::handle_rpc_call_msg(broker_route_msg_t::in_t& msg_, socket_ptr_t so
         }
         else
         {
+            LOGERROR((FFRPC, "ffrpc_t::handle_rpc_call_msg service=%s and msg_name=%s not found", msg_.dest_service_name, msg_.dest_msg_name));
             msg_.err_info = "interface named " + msg_.dest_msg_name + " not found in rpc";
             msg_.dest_node_id = msg_.from_node_id;
             msg_.dest_service_name.clear();
             msg_sender_t::send(sock_, BROKER_ROUTE_MSG, msg_);
-            LOGERROR((FFRPC, "ffrpc_t::handle_rpc_call_msg service=%s and msg_name=%s not found", msg_.dest_service_name, msg_.dest_msg_name));
         }
     }
     else

@@ -2,6 +2,8 @@
 #ifndef _FF_LOG_H_
 #define _FF_LOG_H_
 
+#include <sys/syscall.h>
+
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,6 +18,9 @@ using namespace std;
 #include "base/thread.h"
 #include "base/singleton.h"
 #include "base/arg_helper.h"
+
+
+#define gettid() ::syscall(SYS_gettid)
 
 namespace ff
 {
@@ -122,7 +127,7 @@ public:
 	bool is_level_enabled(int level_);
 	const char* find_class_name(const char* class_);
 
-	void log_content(int level_, const char* str_class_, const string& content_);
+	void log_content(int level_, const char* str_class_, const string& content_, long tid_);
 
 protected:
 	bool check_and_create_dir(struct tm* tm_val_);
@@ -154,7 +159,7 @@ protected:
 			if (class_name_str)																		\
 			{																						\
 				m_task_queue.produce(task_binder_t::gen(&log_t::log_content, m_log, LOG_LEVEL,		\
-									 class_name_str, string(fmt_)));								\
+									 class_name_str, string(fmt_), gettid()));								\
 			}																						\
 		}																							\
 	}
@@ -171,7 +176,7 @@ protected:
 				str_format_t dest(fmt_);															\
 				dest.append(arg1_);																	\
 				m_task_queue.produce(task_binder_t::gen(&log_t::log_content, m_log, LOG_LEVEL,		\
-									 class_name_str, dest.gen_result()));						 	\
+									 class_name_str, dest.gen_result(), gettid()));						 	\
 			}																						\
 		}																							\
 	}
@@ -190,7 +195,7 @@ protected:
 				dest.append(arg1_);																	\
 				dest.append(arg2_);																	\
 				m_task_queue.produce(task_binder_t::gen(&log_t::log_content, m_log, LOG_LEVEL,		\
-									 class_name_str, dest.gen_result()));						 	\
+									 class_name_str, dest.gen_result(), gettid()));						 	\
 			}																						\
 		}																							\
 	}
@@ -210,7 +215,7 @@ protected:
 				dest.append(arg2_);																	\
 				dest.append(arg3_);																	\
 				m_task_queue.produce(task_binder_t::gen(&log_t::log_content, m_log, LOG_LEVEL,		\
-									 class_name_str, dest.gen_result()));						 	\
+									 class_name_str, dest.gen_result(), gettid()));						 	\
 			}																						\
 		}																							\
 	}
@@ -231,7 +236,7 @@ protected:
 				dest.append(arg3_);																	\
 				dest.append(arg4_);																	\
 				m_task_queue.produce(task_binder_t::gen(&log_t::log_content, m_log, LOG_LEVEL,		\
-									 class_name_str, dest.gen_result()));						 	\
+									 class_name_str, dest.gen_result(), gettid()));						 	\
 			}																						\
 		}																							\
 	}
@@ -253,7 +258,7 @@ protected:
 				dest.append(arg4_);																	\
 				dest.append(arg5_);																	\
 				m_task_queue.produce(task_binder_t::gen(&log_t::log_content, m_log, LOG_LEVEL,		\
-									 class_name_str, dest.gen_result()));						 	\
+									 class_name_str, dest.gen_result(), gettid()));						 	\
 			}																						\
 		}																							\
 	}
@@ -277,7 +282,7 @@ protected:
 				dest.append(arg5_);																	\
 				dest.append(arg6_);																	\
 				m_task_queue.produce(task_binder_t::gen(&log_t::log_content, m_log, LOG_LEVEL,		\
-									 class_name_str, dest.gen_result()));						 	\
+									 class_name_str, dest.gen_result(), gettid()));						 	\
 			}																						\
 		}																							\
 	}

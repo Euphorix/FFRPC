@@ -10,13 +10,14 @@
 #include "base/signal_helper.h"
 #include "echo_test.h"
 #include "protobuf_test.h"
+#include "thrift_test.h"
 
 using namespace ff;
 
 int main(int argc, char* argv[])
 {
     //! 美丽的日志组件，shell输出是彩色滴！！
-    LOG.start("-log_path ./log -log_filename log -log_class XX,BROKER,FFRPC -log_print_screen true -log_print_file false -log_level 3");
+    LOG.start("-log_path ./log -log_filename log -log_class XX,BROKER,FFRPC -log_print_screen true -log_print_file false -log_level 4");
 
     if (argc == 1)
     {
@@ -41,6 +42,10 @@ int main(int argc, char* argv[])
     else if (arg_helper.is_enable_option("-protobuf_test"))
     {
         run_protobuf_test(arg_helper);
+    }
+    else if (arg_helper.is_enable_option("-thrift_test"))
+    {
+        run_thrift_test(arg_helper);
     }
     else
     {

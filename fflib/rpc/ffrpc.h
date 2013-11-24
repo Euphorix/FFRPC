@@ -42,6 +42,13 @@ public:
     template <typename R, typename CLASS_TYPE, typename IN, typename OUT>
     ffrpc_t& reg(R (CLASS_TYPE::*)(ffreq_t<IN, OUT>&), CLASS_TYPE* obj);
     
+#ifdef FF_ENABLE_THRIFT
+    template <typename R, typename IN, typename OUT>
+    ffrpc_t& reg(R (*)(ffreq_thrift_t<IN, OUT>&));
+    template <typename R, typename CLASS_TYPE, typename IN, typename OUT>
+    ffrpc_t& reg(R (CLASS_TYPE::*)(ffreq_thrift_t<IN, OUT>&), CLASS_TYPE* obj);
+#endif
+
     //! 调用远程的接口
     template <typename T>
     int call(const string& name_, T& req_, ffslot_t::callback_t* callback_ = NULL);
@@ -127,7 +134,22 @@ ffrpc_t& ffrpc_t::reg(R (CLASS_TYPE::*func_)(ffreq_t<IN, OUT>&), CLASS_TYPE* obj
     m_ffslot_interface.bind(TYPE_NAME(IN), ffrpc_ops_t::gen_callback(func_, obj));
     return *this;
 }
-
+#ifdef FF_ENABLE_THRIFT
+template <typename R, typename IN, typename OUT>
+ffrpc_t& ffrpc_t::reg(R (*func_)(ffreq_thrift_t<IN, OUT>&))
+{
+    m_reg_iterface[TYPE_NAME(IN)] = ffrpc_ops_t::gen_callback(func_);
+    m_ffslot_interface.bind(TYPE_NAME(IN), ffrpc_ops_t::gen_callback(func_));
+    return *this;
+}
+template <typename R, typename CLASS_TYPE, typename IN, typename OUT>
+ffrpc_t& ffrpc_t::reg(R (CLASS_TYPE::*func_)(ffreq_thrift_t<IN, OUT>&), CLASS_TYPE* obj)
+{
+    m_reg_iterface[TYPE_NAME(IN)] = ffrpc_ops_t::gen_callback(func_, obj);
+    m_ffslot_interface.bind(TYPE_NAME(IN), ffrpc_ops_t::gen_callback(func_, obj));
+    return *this;
+}
+#endif
 struct ffrpc_t::session_data_t
 {
     session_data_t(uint32_t n = 0):
@@ -159,7 +181,11 @@ struct ffrpc_t::broker_client_info_t
 template <typename T>
 int ffrpc_t::call(const string& name_, T& req_, ffslot_t::callback_t* callback_)
 {
+#ifdef FF_ENABLE_THRIFT
+    m_tq.produce(task_binder_t::gen(&ffrpc_t::call_impl, this, name_, TYPE_NAME(T), ffthrift_t::EncodeAsString(req_), callback_));
+#else
     m_tq.produce(task_binder_t::gen(&ffrpc_t::call_impl, this, name_, TYPE_NAME(T), msg_tool_t::encode(req_), callback_));   
+#endif
     return 0;
 }
 
@@ -172,7 +198,11 @@ int ffrpc_t::call(const string& namespace_, const string& name_, T& req_, ffslot
         return this->call(name_, req_, callback_);
     }
     else{
+#ifdef FF_ENABLE_THRIFT
+        m_tq.produce(task_binder_t::gen(&ffrpc_t::bridge_call_impl, this, namespace_, name_, TYPE_NAME(T), ffthrift_t::EncodeAsString(req_), callback_));
+#else
         m_tq.produce(task_binder_t::gen(&ffrpc_t::bridge_call_impl, this, namespace_, name_, TYPE_NAME(T), msg_tool_t::encode(req_), callback_));
+#endif
     }
     return 0;
 }
