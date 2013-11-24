@@ -1,6 +1,8 @@
 #ifndef _FF_THRIFT_ECHO_H_
 #define _FF_THRIFT_ECHO_H_
 
+#ifdef FF_ENABLE_THRIFT
+
 #include "echo_types.h"
 #include "rpc/ffrpc.h"
 
@@ -77,6 +79,13 @@ static  int run_thrift_test(arg_helper_t& arg_helper)
 }
 
 }
+#else
+static  int run_thrift_test(arg_helper_t& arg_helper)
+{
+    printf("±ØÐë¿ªÆôFF_ENABLE_THRIFT ºê\n");
+    return 0;
+}
+#endif
 
 #endif
 
