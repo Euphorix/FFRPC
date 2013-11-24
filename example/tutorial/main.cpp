@@ -17,7 +17,7 @@ using namespace ff;
 int main(int argc, char* argv[])
 {
     //! 美丽的日志组件，shell输出是彩色滴！！
-    LOG.start("-log_path ./log -log_filename log -log_class XX,BROKER,FFRPC -log_print_screen true -log_print_file false -log_level 4");
+    LOG.start("-log_path ./log -log_filename log -log_class XX,BROKER,FFRPC -log_print_screen true -log_print_file false -log_level 3");
 
     if (argc == 1)
     {
