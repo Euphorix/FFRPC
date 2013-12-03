@@ -55,7 +55,8 @@ public:
     uint64_t alloc_node_id(socket_ptr_t sock_);
     //!本身是否是master broker
     bool is_master_broker() { return m_broker_host.empty() == true; }
-
+    //! 处理同步客户端的调用请求
+    int process_sync_client_req(broker_route_msg_t::in_t& msg_, socket_ptr_t sock_);
 public:
     int open(arg_helper_t& opt_);
     int close();
@@ -82,7 +83,8 @@ private:
     //! 同步给所有的节点，当前的各个节点的信息
     int sync_node_info(register_to_broker_t::out_t& ret_msg, socket_ptr_t sock_ = NULL);
 private:
-
+		//! 用于分配node id
+		uint64_t 																m_for_alloc_id;
     //!本身的node id[ip_port]
     uint64_t                                m_node_id;
     //!所有的注册到此broker的节点信息

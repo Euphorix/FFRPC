@@ -8,6 +8,7 @@ using namespace ff;
 static void route_call_reconnect(ffbroker_t* ffbroker_);
 
 ffbroker_t::ffbroker_t():
+		m_for_alloc_id(0),
     m_node_id(0),
     m_master_broker_sock(NULL)
 {
@@ -19,8 +20,7 @@ ffbroker_t::~ffbroker_t()
 //!ff 获取节点信息
 uint64_t ffbroker_t::alloc_node_id(socket_ptr_t sock_)
 {
-    static uint64_t g_id = 0;
-    return ++g_id;
+    return ++m_for_alloc_id;
 }
 
 int ffbroker_t::open(arg_helper_t& arg)
@@ -38,7 +38,8 @@ int ffbroker_t::open(arg_helper_t& arg)
     //! 处理其他broker或者client注册到此server
     m_ffslot.bind(REGISTER_TO_BROKER_REQ, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_regiter_to_broker, this))
             .bind(BROKER_ROUTE_MSG, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_broker_route_msg, this))
-            .bind(REGISTER_TO_BROKER_RET, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_register_master_ret, this));
+            .bind(REGISTER_TO_BROKER_RET, ffrpc_ops_t::gen_callback(&ffbroker_t::handle_register_master_ret, this))
+            .bind(SYNC_CLIENT_REQ, ffrpc_ops_t::gen_callback(&ffbroker_t::process_sync_client_req, this));//! 处理同步客户端的调用请求
 
     //! 任务队列绑定线程
     m_thread.create_thread(task_binder_t::gen(&task_queue_t::run, &m_tq), 1);
@@ -388,6 +389,33 @@ int ffbroker_t::handle_broker_route_msg(broker_route_msg_t::in_t& msg_, socket_p
         LOGTRACE((BROKER, "ffbroker_t::handle_broker_route_msg from BRIDGE_BROKER dest_service_name=%s not exist", msg_.dest_service_name));
     }
     LOGTRACE((BROKER, "ffbroker_t::handle_broker_route_msg end ok msg body_size=%d", msg_.body.size()));
+    return 0;
+}
+
+//! 处理同步客户端的调用请求
+int ffbroker_t::process_sync_client_req(broker_route_msg_t::in_t& msg_, socket_ptr_t sock_)
+{
+    LOGTRACE((BROKER, "ffbroker_t::process_sync_client_req begin"));
+    session_data_t* psession = sock_->get_data<session_data_t>();
+    if (NULL == psession)
+    {
+        psession = new session_data_t(SYNC_CLIENT_NODE, alloc_node_id(sock_));
+        sock_->set_data(psession);
+    }
+    msg_.from_node_id = psession->get_node_id();
+    map<string, uint64_t>::iterator it = m_all_registered_info.broker_data.service2node_id.find(msg_.dest_service_name);
+    if (it == m_all_registered_info.broker_data.service2node_id.end())
+    {
+        LOGWARN((BROKER, "ffbroker_t::process_sync_client_req dest_service_name=%s none", msg_.dest_service_name));
+        msg_.err_info = "dest_service_name named " + msg_.dest_service_name + " not exist in broker";
+        msg_sender_t::send(sock_, BROKER_ROUTE_MSG, msg_);
+        return 0;
+    }
+
+    msg_.dest_node_id = it->second;
+    //!如果找到对应的节点，那么发给对应的节点
+    send_to_rpc_node(msg_);
+    LOGTRACE((BROKER, "ffbroker_t::process_sync_client_req end ok"));
     return 0;
 }
 

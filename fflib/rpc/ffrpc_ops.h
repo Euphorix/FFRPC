@@ -28,6 +28,7 @@ enum node_type_e
     MASTER_BROKER, //! 每个区服的主服务器
     SLAVE_BROKER,  //! 从服务器
     RPC_NODE,      //! rpc节点
+    SYNC_CLIENT_NODE, //! 同步调用client
 };
 
 #define BROKER_MASTER_NODE_ID   0
@@ -767,6 +768,7 @@ enum ffrpc_cmd_def_e
     REGISTER_TO_BROKER_REQ,
     REGISTER_TO_BROKER_RET,
     BROKER_ROUTE_MSG,
+    SYNC_CLIENT_REQ, //! 同步客户端的请求，如python,php
 };
 
 
