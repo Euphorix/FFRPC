@@ -1174,13 +1174,13 @@ struct broker_route_msg_t
         void encode()
         {
             encoder() << dest_namespace << dest_service_name << dest_msg_name << dest_node_id
-                      << from_namespace << from_msg_name << from_node_id
+                      << from_namespace << from_node_id
                       << callback_id << body << err_info;
         }
         void decode()
         {
             decoder() >> dest_namespace >> dest_service_name >> dest_msg_name >> dest_node_id
-                      >> from_namespace >> from_msg_name >> from_node_id
+                      >> from_namespace >> from_node_id
                       >> callback_id >> body >> err_info;
         }
         
@@ -1190,7 +1190,6 @@ struct broker_route_msg_t
         uint64_t    dest_node_id;
         
         string      from_namespace;
-        string      from_msg_name;
         uint64_t    from_node_id;
         
         int64_t     callback_id;
