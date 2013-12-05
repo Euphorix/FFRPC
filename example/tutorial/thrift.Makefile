@@ -4,7 +4,7 @@ CP=/bin/cp
 RM=-/bin/rm -rf
 LN=/bin/ln -s 
 CFLAGS=-g  -Wall -DFF_ENABLE_THRIFT
-LDFLAGS=  -lpthread -lprotobuf
+LDFLAGS=  -lpthread 
 #链接库名
 LIB_NAME=
 #链接库版本
@@ -33,8 +33,7 @@ OBJS = $(SRCS:%.cpp=%.o)
 
 all:$(BIN)
 $(BIN):$(OBJS)
-	@$(CC) $(CFLAGS)  -c echo.pb.cc -o echo.pb.o
-	g++ -o $(BIN) $(OBJS) echo.pb.o  $(LDFLAGS) 
+	g++ -o $(BIN) $(OBJS)  $(LDFLAGS) 
 	@echo -e " OK!\tCompile $@ "
 # @$(LN) $(shell pwd)/$(LIB_NAME).$(LIB_VER) /lib/$(LIB_NAME)
 

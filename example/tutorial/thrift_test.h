@@ -32,7 +32,7 @@ struct thrift_client_t
             LOGERROR(("XX", "error_msg <%s>", req_.error_msg()));
             return;
         }
-        else if (index < 10)
+        else if (index < 1)
         {
             echo_thrift_in_t in;
             in.data = "Ohnice";
