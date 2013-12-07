@@ -66,6 +66,7 @@ public:
                 tg->close();
                 epoll.close();
                 thread.join();
+                
                 delete tg;
                 tg = NULL;
                 started_flag = false;

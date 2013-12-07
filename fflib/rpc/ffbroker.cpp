@@ -8,7 +8,8 @@ using namespace ff;
 static void route_call_reconnect(ffbroker_t* ffbroker_);
 
 ffbroker_t::ffbroker_t():
-		m_for_alloc_id(0),
+    m_acceptor(NULL),
+    m_for_alloc_id(0),
     m_node_id(0),
     m_master_broker_sock(NULL)
 {
@@ -27,8 +28,8 @@ int ffbroker_t::open(arg_helper_t& arg)
 {
     net_factory_t::start(1);
     m_listen_host = arg.get_option_value("-broker");
-    acceptor_i* acceptor = net_factory_t::listen(m_listen_host, this);
-    if (NULL == acceptor)
+    m_acceptor = net_factory_t::listen(m_listen_host, this);
+    if (NULL == m_acceptor)
     {
         LOGERROR((BROKER, "ffbroker_t::open failed<%s>", m_listen_host));
         return -1;
@@ -89,8 +90,17 @@ timer_service_t& ffbroker_t::get_timer()
 
 int ffbroker_t::close()
 {
+    if (m_acceptor)
+        m_acceptor->close();
+    map<uint64_t/* node id*/, socket_ptr_t>::iterator it = m_all_registered_info.node_sockets.begin();
+    for (; it != m_all_registered_info.node_sockets.end(); ++it)
+    {
+        it->second->close();
+    }
+    m_all_registered_info.node_sockets.clear();
     m_tq.close();
     m_thread.join();
+    //usleep(100);
     return 0;
 }
 
@@ -180,6 +190,11 @@ int ffbroker_t::handle_msg_impl(const message_t& msg_, socket_ptr_t sock_)
             LOGERROR((BROKER, "ffbroker_t::handle_msg_impl exception<%s>", e_.what()));
             return -1;
         }
+    }
+    else
+    {
+        LOGERROR((BROKER, "ffbroker_t::handle_msg_impl cmd<%u> not supported", cmd));
+        return -1;
     }
     return -1;
 }

@@ -2,6 +2,8 @@
 #ifndef _CODEC_H_
 #define _CODEC_H_
 
+#include <arpa/inet.h>
+
 #include <string>
 #include <stdexcept>
 #include <vector>
@@ -20,13 +22,32 @@ using namespace std;
 #include <thrift/FFThrift.h>
 
 namespace ff {
+ 
 
-#define GEN_CODE_DECODE(X) \
-    bin_decoder_t& operator >> (X& dest_)       \
-    {                                           \
-        return copy_value(&dest_, sizeof(X));   \
+#define swap64_ops(ll) (((ll) >> 56) | \
+                    (((ll) & 0x00ff000000000000) >> 40) | \
+                    (((ll) & 0x0000ff0000000000) >> 24) | \
+                    (((ll) & 0x000000ff00000000) >> 8)    | \
+                    (((ll) & 0x00000000ff000000) << 8)    | \
+                    (((ll) & 0x0000000000ff0000) << 24) |   \
+                    (((ll) & 0x000000000000ff00) << 40) | \
+                    (((ll) << 56)))  
+
+struct endian_too_t
+{
+    static bool is_bigendian()  
+    { 
+        const int16_t n = 1;  
+        if(*(char *)&n)  
+        {  
+            return false;  
+        }  
+        return true;  
     }
-
+};
+#define hton64(ll) (endian_too_t::is_bigendian() ? ll : swap64_ops(ll) )
+#define ntoh64(ll) (endian_too_t::is_bigendian() ? swap64_ops(ll) : ll  )
+    
 struct codec_i
 {
     virtual ~codec_i(){}
@@ -111,7 +132,7 @@ public:
     }
     inline bin_encoder_t& copy_value(const string& str_)
     {
-        uint32_t str_size = str_.size();
+        uint32_t str_size =::htonl( str_.size());
         copy_value((const char*)(&str_size), sizeof(str_size));
         copy_value(str_.data(), str_.size());
         return *this;
@@ -158,11 +179,13 @@ public:
     {
         uint32_t str_len = 0;
         copy_value(&str_len, sizeof(str_len));
+        str_len = ::ntohl(str_len);
 
         if (m_remaindered < str_len)
         {
             throw runtime_error("bin_decoder_t:msg size not enough");
         }
+        
         dest_.assign((const char*)m_index_ptr, str_len);
         m_index_ptr     += str_len;
         m_remaindered   -= str_len;
@@ -206,6 +229,53 @@ struct codec_tool_t<X>                                              \
         de_.copy_value((void*)(&val_), sizeof(val_));         \
     }                                                               \
 };
+
+#define GEN_CODE_ENCODE_DECODE_SHORT(X)                                          \
+template<>                                                          \
+struct codec_tool_t<X>                                              \
+{                                                                   \
+    static void encode(bin_encoder_t& en_, const X& src_val_)       \
+    {                                                               \
+        X val_ = (X)::htons(src_val_);                                 \
+        en_.copy_value((const char*)(&val_), sizeof(val_));         \
+    }                                                               \
+    static void decode(bin_decoder_t& de_, X& val_)                 \
+    {                                                               \
+        de_.copy_value((void*)(&val_), sizeof(val_));               \
+        val_ = (X)::ntohs(val_);                                       \
+    }                                                               \
+};
+#define GEN_CODE_ENCODE_DECODE_LONG(X)                                          \
+template<>                                                          \
+struct codec_tool_t<X>                                              \
+{                                                                   \
+    static void encode(bin_encoder_t& en_, const X& src_val_)       \
+    {                                                               \
+        X val_ = (X)::htonl(src_val_);                                 \
+        en_.copy_value((const char*)(&val_), sizeof(val_));         \
+    }                                                               \
+    static void decode(bin_decoder_t& de_, X& val_)                 \
+    {                                                               \
+        de_.copy_value((void*)(&val_), sizeof(val_));               \
+        val_ = (X)::ntohl(val_);                                       \
+    }                                                               \
+};
+#define GEN_CODE_ENCODE_DECODE_64(X)                                \
+template<>                                                          \
+struct codec_tool_t<X>                                              \
+{                                                                   \
+    static void encode(bin_encoder_t& en_, const X& src_val_)       \
+    {                                                               \
+        X val_ = (X)hton64(src_val_);                                 \
+        en_.copy_value((const char*)(&val_), sizeof(val_));         \
+    }                                                               \
+    static void decode(bin_decoder_t& de_, X& val_)                 \
+    {                                                               \
+        de_.copy_value((void*)(&val_), sizeof(val_));               \
+        val_ = (X)ntoh64(val_);                                     \
+    }                                                               \
+};
+
 
 //! 用于traits 序列化的参数
 template<>
@@ -325,12 +395,12 @@ struct codec_tool_t<map<T, R> >
 GEN_CODE_ENCODE_DECODE(bool)
 GEN_CODE_ENCODE_DECODE(int8_t)
 GEN_CODE_ENCODE_DECODE(uint8_t)
-GEN_CODE_ENCODE_DECODE(int16_t)
-GEN_CODE_ENCODE_DECODE(uint16_t)
-GEN_CODE_ENCODE_DECODE(int32_t)
-GEN_CODE_ENCODE_DECODE(uint32_t)
-GEN_CODE_ENCODE_DECODE(int64_t)
-GEN_CODE_ENCODE_DECODE(uint64_t)
+GEN_CODE_ENCODE_DECODE_SHORT(int16_t)
+GEN_CODE_ENCODE_DECODE_SHORT(uint16_t)
+GEN_CODE_ENCODE_DECODE_LONG(int32_t)
+GEN_CODE_ENCODE_DECODE_LONG(uint32_t)
+GEN_CODE_ENCODE_DECODE_64(int64_t)
+GEN_CODE_ENCODE_DECODE_64(uint64_t)
 
 template<typename T>
 bin_encoder_t& bin_encoder_t::operator << (const T& val_)

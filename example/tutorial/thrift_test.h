@@ -72,6 +72,8 @@ static  int run_thrift_test(arg_helper_t& arg_helper)
     ffrpc_client.call("echo", in, ffrpc_ops_t::gen_callback(&thrift_client_t::echo_callback, &client, 1, &ffrpc_client));
 
 
+    //sleep(3);
+    
     signal_helper_t::wait();
     ffrpc_client.close();
     ffrpc_service.close();
@@ -82,7 +84,7 @@ static  int run_thrift_test(arg_helper_t& arg_helper)
 #else
 static  int run_thrift_test(arg_helper_t& arg_helper)
 {
-    printf("±ØÐë¿ªÆôFF_ENABLE_THRIFT ºê\n");
+    printf("must open macro FF_ENABLE_THRIFT or make -f thrift.Makefile\n");
     return 0;
 }
 #endif

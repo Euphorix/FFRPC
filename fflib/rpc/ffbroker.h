@@ -83,8 +83,9 @@ private:
     //! 同步给所有的节点，当前的各个节点的信息
     int sync_node_info(register_to_broker_t::out_t& ret_msg, socket_ptr_t sock_ = NULL);
 private:
-		//! 用于分配node id
-		uint64_t 																m_for_alloc_id;
+    acceptor_i*                             m_acceptor;
+	//! 用于分配node id
+    uint64_t 								m_for_alloc_id;
     //!本身的node id[ip_port]
     uint64_t                                m_node_id;
     //!所有的注册到此broker的节点信息

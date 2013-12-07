@@ -9,6 +9,7 @@ using namespace ff;
 #define FFRPC                   "FFRPC"
 
 ffrpc_t::ffrpc_t(string service_name_):
+    m_runing(false),
     m_service_name(service_name_),
     m_node_id(0),
     m_callback_id(0),
@@ -19,7 +20,7 @@ ffrpc_t::ffrpc_t(string service_name_):
 
 ffrpc_t::~ffrpc_t()
 {
-    
+    this->close();
 }
 
 int ffrpc_t::open(arg_helper_t& arg_helper)
@@ -50,8 +51,29 @@ int ffrpc_t::open(arg_helper_t& arg_helper)
             return -1;
         }
     }
-    
+    m_runing = true;
     LOGTRACE((FFRPC, "ffrpc_t::open end ok m_node_id[%u]", m_node_id));
+    return 0;
+}
+int ffrpc_t::close()
+{
+    if (false == m_runing)
+    {
+        return 0;
+    }
+    m_runing = false;
+    if (m_master_broker_sock)
+    {
+        m_master_broker_sock->close();
+    }
+    map<uint64_t, socket_ptr_t>::iterator it = m_broker_sockets.begin();
+    for (; it != m_broker_sockets.end(); ++it)
+    {
+        it->second->close();
+    }
+    m_tq.close();
+    m_thread.join();
+    //usleep(100);
     return 0;
 }
 
@@ -79,12 +101,17 @@ socket_ptr_t ffrpc_t::connect_to_broker(const string& host_, uint32_t node_id_)
 //! 投递到ffrpc 特定的线程
 static void route_call_reconnect(ffrpc_t* ffrpc_)
 {
+    if (ffrpc_->m_runing == false)
+        return;
     ffrpc_->get_tq().produce(task_binder_t::gen(&ffrpc_t::timer_reconnect_broker, ffrpc_));
 }
 //! 定时重连 broker master
 void ffrpc_t::timer_reconnect_broker()
 {
     LOGINFO((FFRPC, "ffrpc_t::timer_reconnect_broker begin..."));
+    if (m_runing == false)
+        return;
+
     if (NULL == m_master_broker_sock)
     {
         m_master_broker_sock = connect_to_broker(m_host, BROKER_MASTER_NODE_ID);
@@ -150,12 +177,19 @@ int ffrpc_t::handle_broken_impl(socket_ptr_t sock_)
         map<uint64_t, socket_ptr_t>::iterator it = m_broker_sockets.begin();
         for (; it != m_broker_sockets.end(); ++it)
         {
-            m_broker_sockets.erase(it);
-            break;
+            if (it->second == sock_)
+            {
+                m_broker_sockets.erase(it);
+                break;
+            }
         }
     }
     sock_->safe_delete();
-    m_timer.once_timer(RECONNECT_TO_BROKER_TIMEOUT, task_binder_t::gen(&route_call_reconnect, this));
+
+    if (true == m_runing)
+    {
+        m_timer.once_timer(RECONNECT_TO_BROKER_TIMEOUT, task_binder_t::gen(&route_call_reconnect, this));
+    }
     return 0;
 }
 

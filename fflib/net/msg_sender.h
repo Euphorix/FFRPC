@@ -19,6 +19,7 @@ public:
         {
             message_head_t h(cmd_);
             h.size = str_.size();
+            h.hton();
             string dest((const char*)&h, sizeof(h));
             dest += str_;
             socket_ptr_->async_send(dest);
@@ -31,6 +32,7 @@ public:
             string body = msg_.encode_data();
             message_head_t h(cmd_);
             h.size = body.size();
+            h.hton();
             string dest((const char*)&h, sizeof(h));
             dest += body;
 
@@ -51,6 +53,7 @@ public:
             string body = msg_.encode_data();
             message_head_t h(0);
             h.size = body.size();
+            h.hton();
             string dest((const char*)&h, sizeof(h));
             dest += body;
             socket_ptr_->async_send(body);

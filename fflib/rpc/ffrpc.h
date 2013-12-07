@@ -29,7 +29,7 @@ public:
     virtual ~ffrpc_t();
 
     int open(arg_helper_t& arg_);
-    int close() { return 0; }
+    int close();
     
     //! 处理连接断开
     int handle_broken(socket_ptr_t sock_);
@@ -92,6 +92,8 @@ private:
     //! 处理注册, 
     int handle_broker_reg_response(register_to_broker_t::out_t& msg_, socket_ptr_t sock_);
     
+public:
+    bool                                    m_runing;
 private:
     string                                  m_host;
     timer_service_t                         m_timer;

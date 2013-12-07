@@ -5,7 +5,7 @@
 #include <string>
 #include <string.h>
 using namespace std;
-
+#include <arpa/inet.h>
 namespace ff {
 
 struct message_head_t
@@ -20,6 +20,18 @@ struct message_head_t
         cmd(cmd_),
         flag(0)
     {}
+    void hton()
+    {
+        size = ::htonl(size);
+        cmd  = ::htons(cmd);
+        flag = ::htons(flag);
+    }
+    void ntoh()
+    {
+        size = ::ntohl(size);
+        cmd  = ::ntohs(cmd);
+        flag = ::ntohs(flag);
+    }
     uint32_t size;
     uint16_t cmd;
     uint16_t flag;
@@ -40,8 +52,16 @@ public:
     size_t append_head(size_t index_, char* buff, size_t len)
     {
         size_t will_append = sizeof(m_head) - index_;
-        if (will_append > len) will_append = len;
-        ::memcpy((char*)&m_head + index_, buff, will_append);
+        if (will_append > len)
+        {
+            will_append = len;
+            ::memcpy((char*)&m_head + index_, buff, will_append);
+        }
+        else
+        {
+            ::memcpy((char*)&m_head + index_, buff, will_append);
+            m_head.ntoh();
+        }
         return will_append;
     }
     size_t append_msg(char* buff, size_t len)
