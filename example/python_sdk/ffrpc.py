@@ -182,7 +182,7 @@ class ffclient_t:
 
 
 if __name__ == '__main__':
-	HOST = '112.124.57.159'
+	HOST = '127.0.0.1'
 	PORT = 10246
 	ffc = ffclient_t(HOST, PORT, 1.5)
 
