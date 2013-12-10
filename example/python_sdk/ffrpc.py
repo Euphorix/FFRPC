@@ -188,6 +188,6 @@ if __name__ == '__main__':
 
 	req = ttypes.echo_thrift_in_t('ohNice')
 	ret = ttypes.echo_thrift_out_t()
-	ffc.call('echo', req, ret, 'ff2')
+	ffc.call('echo', req, ret, 'ff')
 
 	print('error_info = %s' %(ffc.error_msg()), ret)
