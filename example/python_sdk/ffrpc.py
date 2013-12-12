@@ -118,7 +118,6 @@ class ffclient_t:
 		tcpCliSock.send(data)
 		#tcpCliSock.send('TTTTTTTTTTTTTTTTTTTTTt')
 		#先读取包头，在读取body
-		need_head_len = 8
 		head_recv     = ''
 		body_recv     = ''
 		try:
