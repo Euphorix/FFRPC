@@ -164,8 +164,7 @@ class ffclient_t:
 				body_field_data= body_recv[dest_service_name_len + 12 + dest_msg_name_len+28 + 4: dest_service_name_len + 12 + dest_msg_name_len + 28 + 4 + body_field_len]
 			#debub print('dest_msg_name_str', dest_msg_name_str, 'body_field_len', body_field_len)
 			
-			if len(body_field_data) > 0:
-				decode_msg(ret_msg, body_field_data)
+			decode_msg(ret_msg, body_field_data)
 			#debub print('body_field_data len=%d' % len(body_field_data), ret_msg)
 			self.err_info = body_recv[dest_service_name_len + 12 + dest_msg_name_len + 28 + 4 + body_field_len + 4:]
 		except Exception as e:

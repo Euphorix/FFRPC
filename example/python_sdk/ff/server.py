@@ -2,7 +2,7 @@
 from socket import *
 import datetime
 HOST = 'localhost'
-PORT = 21563
+PORT = 21564
 BUFSIZ = 1024
 ADDR = (HOST, PORT)
 serversock = socket(AF_INET, SOCK_STREAM)
