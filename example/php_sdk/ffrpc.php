@@ -41,16 +41,19 @@ class ffrpc_t {
 	}
 	public function call($service_name, $req, $ret, $namespace_ = '') {
 		//error_reporting(E_ALL);
-		echo "tcp/ip connection \n";
+		//echo "tcp/ip connection \n";
 
 		$socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
 		if ($socket === false) {
-			echo "socket_create() failed: reason: " . socket_strerror(socket_last_error()) . "\n";
+			//echo "socket_create() failed: reason: " . socket_strerror(socket_last_error()) . "\n";
+			$this->err_info =  "socket_create() failed.";
+			socket_close($socket);
+			return false;
 		} else {
-			echo "OK. \n";
+			//echo "OK. \n";
 		}
 
-		echo "Attempting to connect to '$this->host' on port '$this->port'...\n";
+		//echo "Attempting to connect to '$this->host' on port '$this->port'...\n";
 		$result = socket_connect($socket, $this->host, $this->port);
 		if($result === false) {
 			$this->err_info =  "socket_connect() failed." . socket_strerror(socket_last_error($socket));
@@ -86,7 +89,7 @@ class ffrpc_t {
 		$data = $head . $body;
 		
 		$out = "";
-		echo "sending http head request ...body_len=".strlen($body)."\n";
+		//echo "sending http head request ...body_len=".strlen($body)."\n";
 		if (false == socket_write($socket, $data))
 		{
 			$this->err_info =  "socket_write() failed." . socket_strerror(socket_last_error($socket));
@@ -94,7 +97,7 @@ class ffrpc_t {
 			return false;
 		}
 
-		echo "Reading response:\n";
+		//echo "Reading response:\n";
 		//先读取包头，在读取body
 		$head_recv     = '';
 		$body_recv     = '';
@@ -114,7 +117,7 @@ class ffrpc_t {
 		
 		$body_len   = $head_parse['len'];
 		$ret_cmd    = $head_parse['cmd'];
-		echo "Reading response head.len='$body_len', head.cmd='$ret_cmd'\n";
+		//echo "Reading response head.len='$body_len', head.cmd='$ret_cmd'\n";
 		//开始读取body
 		while (strlen($body_recv) < $body_len)
 		{
@@ -127,14 +130,14 @@ class ffrpc_t {
 			}
 			$body_recv .= $tmp_data;
 		}
-		echo "Reading response body_len=".strlen($body_recv)."\n";
+		//echo "Reading response body_len=".strlen($body_recv)."\n";
 		
 		//解析body
 		$dest_service_name_len_data = substr($body_recv, 4, 8);
 		$dest_service_name_len      = unpack("Nlen", $dest_service_name_len_data);
 		$dest_service_name_len		= $dest_service_name_len["len"];
 		$dest_service_name = substr($body_recv, 8, $dest_service_name_len); //从dest_msg_name开始
-		echo "service_len='$dest_service_name_len', service_naem='$dest_service_name'\n";
+		//echo "service_len='$dest_service_name_len', service_naem='$dest_service_name'\n";
 		
 		$dest_msg_name_field = substr($body_recv, 8 + $dest_service_name_len, 4); //从dest_msg_name开始
 		$dest_msg_name_len   = unpack("Nlen", $dest_msg_name_field);
@@ -152,7 +155,7 @@ class ffrpc_t {
 		{
 			$body_field_len_data = substr($body_recv, $dest_service_name_len + 12+28, 4);
 		}
-		echo "dest_msg_name_len='$dest_msg_name_len', dest_msg_name_str='$dest_msg_name_str'\n";
+		//echo "dest_msg_name_len='$dest_msg_name_len', dest_msg_name_str='$dest_msg_name_str'\n";
 
 		$body_field_len = unpack("Nlen", $body_field_len_data);
 		$body_field_len = $body_field_len["len"];
@@ -163,15 +166,15 @@ class ffrpc_t {
 		{
 			$body_field_data= substr($body_recv, $dest_service_name_len + 12 + $dest_msg_name_len+28 + 4, $body_field_len);
 		}
-		echo "body_field_len='$body_field_len'\n";
+		//echo "body_field_len='$body_field_len'\n";
 		
 		ffrpc_t::decode_msg($ret, $body_field_data);
 		//debub print('$body_field_data len=%d' % len($body_field_data), ret_msg)
 		$this->err_info = substr($body_recv, $dest_service_name_len + 12 + $dest_msg_name_len + 28 + 4 + $body_field_len + 4);
 
-		echo "closeing socket..\n";
+		//echo "closeing socket..\n";
 		socket_close($socket);
-		echo "ok .\n\n";
+		//echo "ok .\n\n";
 	}
 }
 
