@@ -36,7 +36,7 @@ namespace ff {
 struct endian_too_t
 {
     static bool is_bigendian()  
-    { 
+    {
         const int16_t n = 1;  
         if(*(char *)&n)  
         {  
@@ -46,7 +46,7 @@ struct endian_too_t
     }
 };
 #define hton64(ll) (endian_too_t::is_bigendian() ? ll : swap64_ops(ll) )
-#define ntoh64(ll) (endian_too_t::is_bigendian() ? swap64_ops(ll) : ll  )
+#define ntoh64(ll) (endian_too_t::is_bigendian() ? ll:  swap64_ops(ll))
     
 struct codec_i
 {

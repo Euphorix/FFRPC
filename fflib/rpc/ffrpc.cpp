@@ -225,6 +225,11 @@ int ffrpc_t::handle_rpc_call_msg(broker_route_msg_t::in_t& msg_, socket_ptr_t so
     LOGTRACE((FFRPC, "ffrpc_t::handle_rpc_call_msg msg begin service_name=%s dest_msg_name=%s callback_id=%u, body_size=%d",
                      msg_.dest_service_name, msg_.dest_msg_name, msg_.callback_id, msg_.body.size()));
     
+    if (false == msg_.err_info.empty())
+    {
+        LOGERROR((FFRPC, "ffrpc_t::handle_rpc_call_msg error=%s", msg_.err_info));
+        return 0;
+    }
     if (msg_.dest_service_name.empty() == false)
     {
         ffslot_t::callback_t* cb = m_ffslot_interface.get_callback(msg_.dest_msg_name);

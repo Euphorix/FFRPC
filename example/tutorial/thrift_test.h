@@ -18,6 +18,7 @@ struct thrift_service_t
         LOGINFO(("XX", "foo_t::echo: recv data=%s", req_.msg.data));
         echo_thrift_out_t out;
         out.data = "123456";
+        //sleep(1);
         req_.response(out);
     }
 };

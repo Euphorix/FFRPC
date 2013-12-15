@@ -416,6 +416,7 @@ int ffbroker_t::process_sync_client_req(broker_route_msg_t::in_t& msg_, socket_p
     {
         psession = new session_data_t(SYNC_CLIENT_NODE, alloc_node_id(sock_));
         sock_->set_data(psession);
+        m_all_registered_info.node_sockets[psession->get_node_id()] = sock_;
     }
     msg_.from_node_id = psession->get_node_id();
     map<string, uint64_t>::iterator it = m_all_registered_info.broker_data.service2node_id.find(msg_.dest_service_name);
@@ -428,9 +429,10 @@ int ffbroker_t::process_sync_client_req(broker_route_msg_t::in_t& msg_, socket_p
     }
 
     msg_.dest_node_id = it->second;
+    msg_.callback_id  = msg_.from_node_id;
     //!如果找到对应的节点，那么发给对应的节点
     send_to_rpc_node(msg_);
-    LOGTRACE((BROKER, "ffbroker_t::process_sync_client_req end ok"));
+    LOGTRACE((BROKER, "ffbroker_t::process_sync_client_req end ok from_node_id=%u", msg_.from_node_id));
     return 0;
 }
 

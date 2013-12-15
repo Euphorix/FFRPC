@@ -51,7 +51,7 @@ def decode_msg(dest_msg, body_data, g_protocol = 0):
 		dest_msg.SerializeFromString(body_data)
 	return dest_msg
 
-class ffclient_t:
+class ffrpc_t:
 	def __init__(self, host, port, timeout_ = 0):
 		self.host = host
 		self.port = port
@@ -182,7 +182,7 @@ class ffclient_t:
 if __name__ == '__main__':
 	HOST = '127.0.0.1'
 	PORT = 10246
-	ffc = ffclient_t(HOST, PORT, 1.5)
+	ffc = ffrpc_t(HOST, PORT, 1.5)
 
 	req = ttypes.echo_thrift_in_t('ohNice')
 	ret = ttypes.echo_thrift_out_t()

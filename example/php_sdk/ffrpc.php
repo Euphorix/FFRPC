@@ -29,9 +29,15 @@ class ffrpc_t {
 	}
 	static public function decode_msg($ret, $data)
 	{
-		$transport = new Thrift\Transport\TMemoryBuffer($data);
-		$protocol  = new Thrift\Protocol\TBinaryProtocol($transport);
-		$ret->read($protocol);
+	    try{
+    		$transport = new Thrift\Transport\TMemoryBuffer($data);
+    		$protocol  = new Thrift\Protocol\TBinaryProtocol($transport);
+    		$ret->read($protocol);
+    	}
+        catch(Exception $e)
+        {
+            return false;
+        }
 		return true;
 	}
 	public function __construct($host, $port, $timeout = 0) {
@@ -39,7 +45,7 @@ class ffrpc_t {
 		$this->port = $port;
 		$this->timeout = $timeout;
 	}
-	public function call($service_name, $req, $ret, $namespace_ = '') {
+	public function call($service_name, $req, $ret, $namespace_ = "") {
 		//error_reporting(E_ALL);
 		//echo "tcp/ip connection \n";
 
@@ -56,7 +62,7 @@ class ffrpc_t {
 		//echo "Attempting to connect to '$this->host' on port '$this->port'...\n";
 		$result = socket_connect($socket, $this->host, $this->port);
 		if($result === false) {
-			$this->err_info =  "socket_connect() failed." . socket_strerror(socket_last_error($socket));
+			$this->err_info =  "socket_connect() <$this->host:$this->port> failed." . socket_strerror(socket_last_error($socket));
 			socket_close($socket);
 			return false;
 		}
@@ -69,7 +75,16 @@ class ffrpc_t {
 		//string      dest_service_name;
 		$body .= pack("N", strlen($service_name)) . $service_name;
 		//string      dest_msg_name;
-		$dest_msg_name = $namespace_ . $req->getName();
+		if ($namespace_ != '')
+		{
+		    $dest_msg_name = $namespace_."::".$req->getName();
+		}
+		else
+		{
+		    $dest_msg_name = $req->getName();
+		}
+		
+		echo "$dest_msg_name $namespace_  \n";
 		//debub print('dest_msg_name', dest_msg_name)
 		$body .= pack("N", strlen($dest_msg_name)) . $dest_msg_name;
 		//uint64_t    dest_node_id;
@@ -168,13 +183,22 @@ class ffrpc_t {
 		}
 		//echo "body_field_len='$body_field_len'\n";
 		
-		ffrpc_t::decode_msg($ret, $body_field_data);
+		if (false == ffrpc_t::decode_msg($ret, $body_field_data))
+		{
+		    $this->err_info = "recv data can't decode to msg";
+		    return false;
+		}
 		//debub print('$body_field_data len=%d' % len($body_field_data), ret_msg)
 		$this->err_info = substr($body_recv, $dest_service_name_len + 12 + $dest_msg_name_len + 28 + 4 + $body_field_len + 4);
 
 		//echo "closeing socket..\n";
 		socket_close($socket);
 		//echo "ok .\n\n";
+		return true;
+	}
+	public function error_msg()
+	{
+	    return $this->err_info;
 	}
 }
 
@@ -186,10 +210,16 @@ function test()
 	$req   = new ff\echo_thrift_in_t();
 	$ret   = new ff\echo_thrift_out_t();
 	$req->data = 'OhNice!!!!';
-	$ffrpc = new ffrpc_t('127.0.0.1', 21564);
-	$ffrpc->call('echo', $req, $ret, 'ff');
-	var_dump($ret);
+	$ffrpc = new ffrpc_t('127.0.0.1', 10246);
+	if ($ffrpc->call('echo', $req, $ret, 'ff'))
+	{
+	    var_dump($ret);
+	}
+	else{
+	    echo "error_msg:".$ffrpc->error_msg()."\n";
+	}
 }
-test();
+
+//test();
 
 ?>
