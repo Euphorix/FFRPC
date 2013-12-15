@@ -72,11 +72,11 @@ class ffrpc_t:
 		except Exception as e:
 			tcpCliSock.close()
 			tcpCliSock = None
-			self.err_info = 'can\'t connect to dest address error:'+str(e)
+			self.err_info = 'can\'t connect to dest address <%s::%d>'%(host, port)+ ' error:' + str(e)
 		except:
 			tcpCliSock.close()
 			tcpCliSock = None
-			self.err_info = 'can\'t connect to dest address'
+			self.err_info = 'can\'t connect to dest address<%s::%d>'%(host, port)
 		return tcpCliSock
 	def call(self, service_name, req_msg, ret_msg, namespace_ = ''):
 		if len(namespace_) != 0:
