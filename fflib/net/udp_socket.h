@@ -10,6 +10,7 @@
 #include <arpa/inet.h>  
 #include <netdb.h>
 #include <unistd.h>
+#include <errno.h>
 
 #include <string>
 using namespace std;
@@ -63,7 +64,11 @@ public:
 
     int recv(char* pdata, int len)
     {
-        int ret = ::recvfrom(m_listen_fd, pdata, len, 0, (struct sockaddr *)&m_listen_sin, (socklen_t*)&m_listen_sin);
+        int ret = 0;
+        do
+        {
+            ret = ::recvfrom(m_listen_fd, pdata, len, MSG_NOSIGNAL, (struct sockaddr *)&m_listen_sin, (socklen_t*)&m_listen_sin);
+        }while(ret == EINTR);
         if (ret < 0)
         {
             return -1;
@@ -73,7 +78,16 @@ public:
 
     int sendto(const char* pdata, int len)
     {
-        return ::sendto(m_dest_fd, pdata, len, 0, (struct sockaddr *)&m_dest_sin, sizeof(m_dest_sin));
+        int ret = 0;
+        do
+        {
+            ret = ::sendto(m_dest_fd, pdata, len, 0, (struct sockaddr *)&m_dest_sin, sizeof(m_dest_sin));
+        }while(ret == EINTR);
+        if (ret < 0)
+        {
+            return -1;
+        }
+        return ret;
     }
     void close()
     {
