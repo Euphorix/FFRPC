@@ -18,6 +18,15 @@ using namespace std;
 
 #include <thrift/FFThrift.h>
 
+namespace apache
+{
+    namespace thrift{
+        namespace protocol
+        {
+            class TProtocol;
+        }
+    }
+}
 namespace ff
 {
 

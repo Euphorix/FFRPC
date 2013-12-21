@@ -42,6 +42,21 @@ int ffscene_t::close()
 {
     return 0;
 }
+//! 为session 分配session Id
+int ffscene_t::verify_session_id(long key, const userid_t& session_id_, string extra_data)
+{
+    map<long, ffreq_verify_t>::iterator it = m_cache_verify_req.find(key);
+    if (it != m_cache_verify_req.end())
+    {
+        session_verify_t::out_t out;
+        out.session_id = session_id_;
+        out.extra_data = extra_data;
+        it->second.response(out);
+        m_cache_verify_req.erase(it);
+        return -1;
+    }
+    return 0;
+}
 
 //! 处理client 上线
 int ffscene_t::process_session_verify(ffreq_t<session_verify_t::in_t, session_verify_t::out_t>& req_)
@@ -50,13 +65,22 @@ int ffscene_t::process_session_verify(ffreq_t<session_verify_t::in_t, session_ve
     session_verify_t::out_t out;
     if (m_callback_info.verify_callback)
     {
-        session_verify_arg arg(req_.msg.session_key, req_.msg.online_time, req_.msg.ip, req_.msg.gate_name);
+        long key_id = (long)&(req_.msg);
+        m_cache_verify_req[key_id] = req_;
+        session_verify_arg arg(req_.msg.session_key, req_.msg.online_time, req_.msg.ip, req_.msg.gate_name, key_id);
         m_callback_info.verify_callback->exe(&arg);
-        out.session_id = arg.alloc_session_id;
-        out.extra_data = arg.extra_data;
+        if (arg.flag_verify)
+        {
+            out.session_id = arg.alloc_session_id;
+            out.extra_data = arg.extra_data;
+            req_.response(out);
+            m_cache_verify_req.erase(key_id);
+        }
     }
-    
-    req_.response(out);
+    else
+    {
+        req_.response(out);
+    }
     LOGTRACE((FFSCENE, "ffscene_t::process_session_verify end ok"));
     return 0;
 }

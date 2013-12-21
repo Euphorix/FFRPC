@@ -1,7 +1,7 @@
 #ifndef _FF_FFSCENE_H_
 #define _FF_FFSCENE_H_
 
-#include <assert.h>
+//#include <assert.h>
 #include <string>
 using namespace std;
 
@@ -65,7 +65,8 @@ public:
     int close_session(const userid_t& session_id_);
     //! 切换scene
     int change_session_scene(const userid_t& session_id_, const string& to_scene_, const string& extra_data);
-
+    //! 为session 分配session Id
+    int verify_session_id(long key, const userid_t& session_id_, string extra_data = "");
     ffrpc_t& get_rpc() { return *m_ffrpc; }
 private:
     //! 处理client 上线
@@ -83,6 +84,8 @@ protected:
     shared_ptr_t<ffrpc_t>                       m_ffrpc;
     callback_info_t                             m_callback_info;
     map<userid_t/*sessionid*/, session_info_t>    m_session_info;
+    typedef ffreq_t<session_verify_t::in_t, session_verify_t::out_t> ffreq_verify_t;
+    map<long, ffreq_verify_t>                     m_cache_verify_req;
 };
 
 
@@ -90,12 +93,14 @@ protected:
 class ffscene_t::session_verify_arg: public ffslot_t::callback_arg_t
 {
 public:
-    session_verify_arg(const string& s_, int64_t t_, const string& ip_, const string& gate_):
+    session_verify_arg(const string& s_, int64_t t_, const string& ip_, const string& gate_, long key_id_):
         session_key(s_),
         online_time(t_),
         ip(ip_),
         gate_name(gate_),
-        alloc_session_id(0)
+        key_id(key_id_),
+        alloc_session_id(0),
+        flag_verify(false)
     {}
     virtual int type()
     {
@@ -107,9 +112,11 @@ public:
     string          gate_name;
 
     //! 验证后的sessionid
+    long            key_id;
     userid_t         alloc_session_id;
     //! 需要额外的返回给client的消息内容
     string          extra_data;
+    bool            flag_verify;//!是否完成了账号验证
 };
 
 class ffscene_t::session_enter_arg: public ffslot_t::callback_arg_t

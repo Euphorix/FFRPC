@@ -19,8 +19,15 @@ using namespace std;
 #include "base/fftype.h"
 #include "base/smart_ptr.h"
 
-#include <thrift/FFThrift.h>
-
+namespace apache
+{
+    namespace thrift{
+        namespace protocol
+        {
+            class TProtocol;
+        }
+    }
+}
 namespace ff {
  
 
@@ -452,6 +459,11 @@ public:
     bin_decoder_t m_decoder;
 };
 
+struct ffthrift_codec_tool_t
+{
+    static void write(msg_i& msg, ::apache::thrift::protocol::TProtocol* iprot);
+    static void read(msg_i& msg, ::apache::thrift::protocol::TProtocol* iprot);
+};
 
 template<typename T>
 class ffmsg_t: public msg_i
@@ -463,15 +475,12 @@ public:
     virtual ~ffmsg_t(){}
     void write(::apache::thrift::protocol::TProtocol* iprot)
     {
-        ::apache::thrift::protocol::TTransport* trans_ = iprot->getTransport();
         string tmp = this->encode_data();
-        trans_->write((const uint8_t*)tmp.c_str(), tmp.size());
+        ffthrift_codec_tool_t::write(*this, iprot);
     }
     void read(::apache::thrift::protocol::TProtocol* iprot)
     {
-        ::apache::thrift::protocol::TTransport* trans_ = iprot->getTransport();
-        apache::thrift::transport::FFTMemoryBuffer* pmem = (apache::thrift::transport::FFTMemoryBuffer*)trans_;
-        this->decode_data(pmem->get_wbuff());
+        ffthrift_codec_tool_t::read(*this, iprot);
     }
 };
 
