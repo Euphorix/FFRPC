@@ -5,9 +5,9 @@
 //#include <string>
 using namespace std;
 
-#include "rpc/ffscene.h"
+#include "server/ffscene.h"
 #include "base/log.h"
-#include "rpc/db_mgr.h"
+#include "server/db_mgr.h"
 class ffpython_t;
 namespace ff
 {

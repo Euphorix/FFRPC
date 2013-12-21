@@ -1,4 +1,4 @@
-#include "rpc/ffscene.h"
+#include "server/ffscene.h"
 #include "base/log.h"
 using namespace ff;
 

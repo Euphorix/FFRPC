@@ -1,5 +1,5 @@
 
-#include "rpc/ffscene_python.h"
+#include "server/ffscene_python.h"
 #include "base/performance_daemon.h"
 
 #include "python/ffpython.h"

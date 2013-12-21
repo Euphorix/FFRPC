@@ -1,4 +1,4 @@
-#include "rpc/ffgate.h"
+#include "server/ffgate.h"
 #include "net/net_factory.h"
 #include "base/log.h"
 #include "net/socket_op.h"
