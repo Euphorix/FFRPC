@@ -15,11 +15,11 @@ ARCH=
 BIN=app_rpc
 
 #源文件目录
-SrcDir= . ../../fflib/base ../../fflib/net ../../fflib/rpc
+SrcDir= . ../../fflib/base ../../fflib/net ../../fflib/rpc 
 #头文件目录
-IncDir=  ../../fflib/ ./
+IncDir=  ../../fflib/ ../../fflib/lib3party ./  
 #连接库目录
-LibDir= /usr/local/lib 
+LibDir= /usr/local/lib  
 SRCS=$(foreach dir,$(SrcDir),$(wildcard $(dir)/*.cpp))
 #INCS=$(foreach dir,$(IncDir),$(wildcard $(dir)/*.h))
 INCS=$(foreach dir,$(IncDir),$(addprefix -I,$(dir)))
