@@ -49,6 +49,11 @@ int ffgate_t::open(arg_helper_t& arg_helper)
 }
 int ffgate_t::close()
 {
+    map<userid_t/*sessionid*/, client_info_t>::iterator it = m_client_set.begin();
+    for (; it != m_client_set.end(); ++it)
+    {
+        it->second.sock->close();
+    }
     if (m_ffrpc)
     {
         m_ffrpc->close();

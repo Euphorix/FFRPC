@@ -12,7 +12,7 @@ LIB_VER=1.0.0
 #平台
 ARCH=
 # 二进制目标
-BIN=app_redrabbit
+BIN=app_game
 
 #源文件目录
 SrcDir= . ../../fflib/base ../../fflib/net ../../fflib/rpc ../../fflib/db ../../fflib/server

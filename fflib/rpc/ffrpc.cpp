@@ -289,7 +289,10 @@ int ffrpc_t::call_impl(const string& service_name_, const string& msg_name_, con
         return -1;
     }
     int64_t callback_id  = int64_t(callback_);
-    m_ffslot_callback.bind(callback_id, callback_);
+    if (callback_)
+    {
+        m_ffslot_callback.bind(callback_id, callback_);
+    }
     
     LOGTRACE((FFRPC, "ffrpc_t::call_impl end dest_id=%u callback_id=%u", it->second, callback_id));
 

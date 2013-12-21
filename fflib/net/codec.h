@@ -52,8 +52,8 @@ struct endian_too_t
         return true;  
     }
 };
-#define hton64(ll) (endian_too_t::is_bigendian() ? ll : swap64_ops(ll) )
-#define ntoh64(ll) (endian_too_t::is_bigendian() ? ll:  swap64_ops(ll))
+#define hton64(ll) (endian_too_t::is_bigendian() ? ll : (ll) )
+#define ntoh64(ll) (endian_too_t::is_bigendian() ? ll:  (ll))
     
 struct codec_i
 {

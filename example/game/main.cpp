@@ -97,6 +97,7 @@ int main(int argc, char* argv[])
 
     ffgate.close();
     singleton_t<ffscene_python_t>::instance().close();
+
     ffbroker.close();
     net_factory_t::stop();
     usleep(500);

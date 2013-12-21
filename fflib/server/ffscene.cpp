@@ -40,6 +40,10 @@ int ffscene_t::open(arg_helper_t& arg_helper)
 }
 int ffscene_t::close()
 {
+    if (m_ffrpc)
+    {
+        m_ffrpc->close();
+    }
     return 0;
 }
 //! 为session 分配session Id
@@ -53,7 +57,8 @@ int ffscene_t::verify_session_id(long key, const userid_t& session_id_, string e
         out.extra_data = extra_data;
         it->second.response(out);
         m_cache_verify_req.erase(it);
-        return -1;
+        LOGTRACE((FFSCENE, "ffscene_t::verify_session_id end ok session_id_=%d", session_id_));
+        return 0;
     }
     return 0;
 }
