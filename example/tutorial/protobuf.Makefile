@@ -17,7 +17,7 @@ BIN=app_rpc
 #源文件目录
 SrcDir= . ../../fflib/base ../../fflib/net ../../fflib/rpc
 #头文件目录
-IncDir=  ../../fflib/ ../../fflib/lib3party ./
+IncDir=  ../../fflib/ ../../lib3party ./
 #连接库目录
 LibDir= /usr/local/lib 
 SRCS=$(foreach dir,$(SrcDir),$(wildcard $(dir)/*.cpp))
