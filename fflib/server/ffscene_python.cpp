@@ -192,13 +192,20 @@ void ffscene_python_t::py_verify_session_id(long key, const userid_t& session_id
     singleton_t<ffscene_python_t>::instance().verify_session_id(key, session_id_, data_);
 }
 
-static void py_post_task(const string& func_name, const ffjson_tool_t& task_args)
+static bool py_post_task(const string& name, const string& func_name, const ffjson_tool_t& task_args, long callback_id)
 {
+    task_dispather_i* d = singleton_t<task_dispather_mgr_t>::instance().get(name);
+    if (d)
+    {
+        d->post_task(func_name, task_args, callback_id);
+    }
+    return d != NULL;
 }
 
 int ffscene_python_t::open(arg_helper_t& arg_helper)
 {
     LOGTRACE((FFSCENE_PYTHON, "ffscene_python_t::open begin"));
+    
     ffscene_python_t::g_arg_helper = arg_helper;
     m_ext_name = MOD_NAME;
     (*m_ffpython).reg_class<ffscene_python_t, PYCTOR()>("ffscene_t")
@@ -240,6 +247,12 @@ int ffscene_python_t::open(arg_helper_t& arg_helper)
     {
         ffpython_t::add_path(arg_helper.get_option_value("-python_path"));
     }
+    
+    if (arg_helper.is_enable_option("-python_mod"))
+    {
+        singleton_t<task_dispather_mgr_t>::instance().add(arg_helper.get_option_value("python_mod"), this);
+    }
+    
 
     m_db_mgr.start();
 
@@ -628,16 +641,16 @@ void ffscene_python_t::call_service_return_msg(ffreq_t<scene_call_msg_t::out_t>&
 }
 
 //! 线程间传递消息
-void ffscene_python_t::post_task(const string& func_name, const ffjson_tool_t& task_args)
+void ffscene_python_t::post_task(const string& func_name, const ffjson_tool_t& task_args, long callback_id)
 {
-    m_ffrpc->get_tq().produce(task_binder_t::gen(&ffscene_python_t::post_task_impl, this, func_name, task_args));
+    m_ffrpc->get_tq().produce(task_binder_t::gen(&ffscene_python_t::post_task_impl, this, func_name, task_args, callback_id));
 }
 
-void ffscene_python_t::post_task_impl(const string& func_name, const ffjson_tool_t& task_args)
+void ffscene_python_t::post_task_impl(const string& func_name, const ffjson_tool_t& task_args, long callback_id)
 {
     try
     {
-        (*m_ffpython).call<void>(m_ext_name, func_name.c_str(), task_args);
+        (*m_ffpython).call<void>(m_ext_name, func_name.c_str(), task_args, callback_id);
          
     }
     catch(exception& e_)

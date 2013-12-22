@@ -40,8 +40,26 @@ class task_dispather_i{
 public:
     virtual ~task_dispather_i(){}
     //! 线程间传递消息
-    virtual    void post_task(const string& func_name, const ffjson_tool_t& task_args) = 0;
+    virtual    void post_task(const string& func_name, const ffjson_tool_t& task_args, long callback_id) = 0;
 };
+
+
+class task_dispather_mgr_t{
+public:
+    void add(const string& name, task_dispather_i* d){ m_task_register[name] = d; }
+    void del(const string& name) { m_task_register.erase(name); }
+    task_dispather_i* get(const string& name)
+    {
+        map<string, task_dispather_i*>::iterator it = m_task_register.find(name);
+        if (it != m_task_register.end())
+        {
+            return it->second;
+        }
+        return NULL;
+    }
+    map<string, task_dispather_i*>  m_task_register;
+};
+
 }
 #endif
 

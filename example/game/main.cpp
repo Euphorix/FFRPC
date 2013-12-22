@@ -81,20 +81,23 @@ int main(int argc, char* argv[])
         }
         if (arg_helper.is_enable_option("-scene"))
         {
-            if (singleton_t<ffscene_python_t>::instance().open(arg_helper))
+            if (arg_helper.is_enable_option("-use_lua_scene"))
+            {
+                if (singleton_t<ffscene_lua_t>::instance().open(arg_helper))
+                {
+                    printf("scene open error!\n");
+                    ffbroker.close();
+                    return -1;
+                }
+            }
+            else if (singleton_t<ffscene_python_t>::instance().open(arg_helper))
             {
                 printf("scene open error!\n");
+                ffbroker.close();
                 return -1;
             }
         }
-        if (arg_helper.is_enable_option("-lua_mod"))
-        {
-            if (singleton_t<ffscene_lua_t>::instance().open(arg_helper))
-            {
-                printf("scene open error!\n");
-                return -1;
-            }
-        }
+        
     }
     catch(exception& e_)
     {

@@ -26,7 +26,7 @@ namespace ff
 #define CALL_SERVICE_RETURN_MSG_CB_NAME "ff_scene_call_return_msg"
 
 
-class ffscene_python_t: public ffscene_t
+class ffscene_python_t: public ffscene_t, task_dispather_i
 {
 public:
     static void py_send_msg_session(const userid_t& session_id_, uint16_t cmd_, const string& data_);
@@ -67,8 +67,8 @@ public:
     ffpython_t& get_ffpython(){ return *m_ffpython; }
     
     //! 线程间传递消息
-    void post_task(const string& func_name, const ffjson_tool_t& task_args);
-    void post_task_impl(const string& func_name, const ffjson_tool_t& task_args);
+    void post_task(const string& func_name, const ffjson_tool_t& task_args, long callback_id);
+    void post_task_impl(const string& func_name, const ffjson_tool_t& task_args, long callback_id);
 public:
     ffpython_t*     m_ffpython;
     string          m_ext_name;

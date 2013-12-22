@@ -65,8 +65,8 @@ public:
     fflua_t& get_fflua(){ return *m_fflua; }
     
     //! 线程间传递消息
-    void post_task(const string& func_name, const ffjson_tool_t& task_args);
-    void post_task_impl(const string& func_name, const ffjson_tool_t& task_args);
+    void post_task(const string& func_name, const ffjson_tool_t& task_args, long callback_id);
+    void post_task_impl(const string& func_name, const ffjson_tool_t& task_args, long callback_id);
 public:
     fflua_t*        m_fflua;
     db_mgr_t        m_db_mgr;

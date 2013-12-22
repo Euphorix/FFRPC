@@ -86,6 +86,17 @@ public:
     }
     int  load_file(const string& file_name_) throw (lua_exception_t)
 	{
+		if (luaL_loadfile(m_ls, file_name_.c_str()))
+		{
+			string err = fflua_tool_t::dump_error(m_ls, "cannot load file<%s>", file_name_.c_str());
+			::lua_pop(m_ls, 1);
+			throw lua_exception_t(err);
+		}
+
+		return 0;
+	}
+	int  do_file(const string& file_name_) throw (lua_exception_t)
+	{
 		if (luaL_dofile(m_ls, file_name_.c_str()))
 		{
 			string err = fflua_tool_t::dump_error(m_ls, "cannot load file<%s>", file_name_.c_str());

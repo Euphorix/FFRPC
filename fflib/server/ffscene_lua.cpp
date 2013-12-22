@@ -85,8 +85,21 @@ template<> struct lua_op_t<ffjson_tool_t>
             break;
             case LUA_TNUMBER:
             {
-                printf("`%g`", lua_tonumber(ls_, pos_));
-                jval.SetDouble(lua_tonumber(ls_, pos_));
+                double d = lua_tonumber(ls_, pos_);
+                long   l = long(d);
+                int    i = int(l);
+                if ((d > 0 && d > l) || (d < 0 && d < l))
+                {
+                    jval.SetDouble(d);
+                }
+                else if (i == l)
+                {
+                    jval.SetInt(i);
+                }
+                else
+                {
+                    jval.SetInt64(l);
+                }
             }
             break;
             case LUA_TTABLE:
@@ -203,6 +216,17 @@ static ffjson_tool_t json_decode(const string& src)
     }
     return ffjson_tool;
 }
+
+static bool lua_post_task(const string& name, const string& func_name, const ffjson_tool_t& task_args, long callback_id)
+{
+    task_dispather_i* d = singleton_t<task_dispather_mgr_t>::instance().get(name);
+    if (d)
+    {
+        d->post_task(func_name, task_args, callback_id);
+    }
+    return d != NULL;
+}
+
 static void lua_reg(lua_State* ls)  
 {
     //! 注册基类函数, ctor() 为构造函数的类型  
@@ -226,7 +250,8 @@ static void lua_reg(lua_State* ls)
     fflua_register_t<>(ls)  
                     .def(&ffdb_t::escape, "escape")
                     .def(&json_encode, "json_encode")
-                    .def(&json_decode, "json_decode");
+                    .def(&json_decode, "json_decode")
+                    .def(&lua_post_task, "lua_post_task");
 
 }
 
@@ -245,16 +270,24 @@ int ffscene_lua_t::open(arg_helper_t& arg_helper)
     this->callback_info().scene_call_callback = gen_scene_call_callback();
 
     (*m_fflua).add_package_path("./lualib");
+    (*m_fflua).add_package_path("./luaproject");
     if (arg_helper.is_enable_option("-lua_path"))
     {
+        LOGTRACE((FFSCENE_PYTHON, "add_package_path lua_path=%s\n", arg_helper.get_option_value("-lua_path")));
         (*m_fflua).add_package_path(arg_helper.get_option_value("-lua_path"));
+    }
+    
+    if (arg_helper.is_enable_option("-lua_mod"))
+    {
+        singleton_t<task_dispather_mgr_t>::instance().add(arg_helper.get_option_value("lua_mod"), this);
     }
 
     m_db_mgr.start();
 
     int ret = ffscene_t::open(arg_helper);
-    try{
-        (*m_fflua).load_file("main.lua");
+    try
+    {
+        (*m_fflua).do_file("main.lua");
         ret = (*m_fflua).call<int>("init");
         
         //rapidjson::Document::AllocatorType allocator;
@@ -265,16 +298,17 @@ int ffscene_lua_t::open(arg_helper_t& arg_helper)
         string dest_ = "TTTT";
         json_value_t tmp_val;
         tmp_val.SetString(dest_.c_str(), dest_.length(), *ffjson_tool.allocator);
+        json_value_t tmp_val2(-10241.3);
         ibj_json.AddMember("dumy", tmp_val, *ffjson_tool.allocator);
         ffjson_tool.jval->AddMember("foo", ibj_json, *(ffjson_tool.allocator));
-     
+        ffjson_tool.jval->AddMember("go", tmp_val2, *(ffjson_tool.allocator));     
 
         (*m_fflua).call<void>("test", ffjson_tool);
     }
     catch(exception& e_)
     {
         LOGERROR((FFSCENE_PYTHON, "ffscene_lua_t::open failed er=<%s>", e_.what()));
-
+        ffscene_t::close();
         return -1;
     }
     LOGTRACE((FFSCENE_PYTHON, "ffscene_lua_t::open end ok"));
@@ -646,16 +680,16 @@ void ffscene_lua_t::call_service_return_msg(ffreq_t<scene_call_msg_t::out_t>& re
     }
 }
 //! 线程间传递消息
-void ffscene_lua_t::post_task(const string& func_name, const ffjson_tool_t& task_args)
+void ffscene_lua_t::post_task(const string& func_name, const ffjson_tool_t& task_args, long callback_id)
 {
-    m_ffrpc->get_tq().produce(task_binder_t::gen(&ffscene_lua_t::post_task_impl, this, func_name, task_args));
+    m_ffrpc->get_tq().produce(task_binder_t::gen(&ffscene_lua_t::post_task_impl, this, func_name, task_args, callback_id));
 }
 
-void ffscene_lua_t::post_task_impl(const string& func_name, const ffjson_tool_t& task_args)
+void ffscene_lua_t::post_task_impl(const string& func_name, const ffjson_tool_t& task_args, long callback_id)
 {
     try
     {
-        (*m_fflua).call<void>(func_name.c_str(), task_args);
+        (*m_fflua).call<void>(func_name.c_str(), task_args, callback_id);
          
     }
     catch(exception& e_)
