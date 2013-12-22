@@ -3,7 +3,165 @@
 #include "base/performance_daemon.h"
 
 #include "python/ffpython.h"
+
 using namespace ff;
+//namespace ff {
+template<>
+struct pytype_traits_t<ffjson_tool_t>
+{
+    static PyObject* pyobj_from_cppobj(const ffjson_tool_t& val_)
+    {
+        return pytype_traits_t<ffjson_tool_t>::pyobj_from_json_obj(*(val_.jval.get()));
+    }
+    static PyObject* pyobj_from_json_obj(const json_value_t& jval)
+	{
+	    //const char* kTypeNames[] = { "Null", "False", "True", "Object", "Array", "String", "Number" };
+	    //printf("jval type=%s\n", kTypeNames[jval.GetType()]);
+	    if (jval.IsString())
+	    {
+	        return PyString_FromStringAndSize(jval.GetString(), jval.GetStringLength());
+	    }
+	    else if (jval.IsBool())
+	    {
+	        if (jval.GetBool())
+	        {
+                Py_RETURN_TRUE;
+            }
+            Py_RETURN_FALSE;
+    	}
+	    else if (jval.IsNumber())
+	    {
+	        if (jval.IsInt())
+	        {
+	            return PyLong_FromLong(long(jval.GetInt()));
+	        }
+	        else if (jval.IsInt64())
+	        {
+	            return PyLong_FromLong(long(jval.GetInt64()));
+	        }
+	        return PyFloat_FromDouble(jval.GetDouble());
+	    }
+		else if (jval.IsArray())
+		{
+		    PyObject* ret = PyList_New(jval.Size());
+
+            for (size_t i = 0; i < jval.Size(); ++i)
+            {
+                PyList_SetItem(ret, i, pytype_traits_t<ffjson_tool_t>::pyobj_from_json_obj(jval[i]));
+            }
+            return ret;
+		}
+		else if (jval.IsObject())
+		{
+		    PyObject* ret = PyDict_New();
+		    for (json_value_t::ConstMemberIterator itr = jval.MemberBegin(); itr != jval.MemberEnd(); ++itr)
+		    {   
+		        PyObject *k = pytype_traits_t<ffjson_tool_t>::pyobj_from_json_obj(itr->name);
+                PyObject *v = pytype_traits_t<ffjson_tool_t>::pyobj_from_json_obj(itr->value);
+                PyDict_SetItem(ret, k, v);
+                Py_DECREF(k);
+                Py_DECREF(v);
+            }
+            return ret;
+		}
+		else
+	    {
+	        Py_RETURN_NONE;
+	    }
+	}
+    
+    static int pyobj_to_cppobj(PyObject *pvalue_, ffjson_tool_t& ffjson_tool)
+    {
+        pytype_traits_t<ffjson_tool_t>::pyobj_to_json_obj(pvalue_, ffjson_tool, *(ffjson_tool.jval.get()));
+        return 0;
+    }
+    
+    static int pyobj_to_json_obj(PyObject *pvalue_, ffjson_tool_t& ffjson_tool, json_value_t& jval)
+    {
+        if (Py_False ==  pvalue_|| Py_None == pvalue_)
+        {
+            jval.SetBool(false);
+        }
+        else if (Py_True == pvalue_)
+        {
+            jval.SetBool(true);
+        }
+        else if (true == PyString_Check(pvalue_))
+        {
+            jval.SetString(PyString_AsString(pvalue_), PyString_Size(pvalue_), *ffjson_tool.allocator);
+        }
+        else if (true == PyUnicode_Check(pvalue_))
+        {
+#ifdef _WIN32
+            PyObject* retStr = PyUnicode_AsEncodedString(pvalue_, "gbk", "");
+#else
+            PyObject* retStr = PyUnicode_AsUTF8String(pvalue_);
+#endif
+            if (retStr)
+            {
+                jval.SetString(PyString_AsString(retStr), PyString_Size(retStr), *ffjson_tool.allocator);
+                Py_XDECREF(retStr);
+                return 0;
+            }
+        }
+        else if (true == PyLong_Check(pvalue_))
+        {
+            jval.SetInt64((long)PyLong_AsLong(pvalue_));
+        }
+        else if (true == PyInt_Check(pvalue_))
+        {
+            jval.SetInt((int)PyLong_AsLong(pvalue_));
+        }
+        else if (true == PyTuple_Check(pvalue_))
+        {
+            jval.SetArray();
+            int n = PyTuple_Size(pvalue_);
+            for (int i = 0; i < n; ++i)
+            {
+                json_value_t tmp_val;
+                pytype_traits_t<ffjson_tool_t>::pyobj_to_json_obj(PyTuple_GetItem(pvalue_, i), ffjson_tool, tmp_val);
+                jval.PushBack(tmp_val, *ffjson_tool.allocator);
+            }
+        }
+        else if (true == PyList_Check(pvalue_))
+        {
+            jval.SetArray();
+            int n = PyList_Size(pvalue_);
+            for (int i = 0; i < n; ++i)
+            {
+                json_value_t tmp_val;
+                pytype_traits_t<ffjson_tool_t>::pyobj_to_json_obj(PyList_GetItem(pvalue_, i), ffjson_tool, tmp_val);
+                jval.PushBack(tmp_val, *ffjson_tool.allocator);
+            }
+        }
+        else if (true == PyDict_Check(pvalue_))
+        {
+            jval.SetObject();
+            PyObject *key = NULL, *value = NULL;
+            Py_ssize_t pos = 0;
+
+            while (PyDict_Next(pvalue_, &pos, &key, &value))
+            {
+                json_value_t tmp_key;
+                json_value_t tmp_val;
+                if (pytype_traits_t<ffjson_tool_t>::pyobj_to_json_obj(key, ffjson_tool, tmp_key) ||
+                    pytype_traits_t<ffjson_tool_t>::pyobj_to_json_obj(value, ffjson_tool, tmp_val))
+                {
+                    return -1;
+                }
+                jval.AddMember(tmp_key, tmp_val, *(ffjson_tool.allocator));
+            }
+        }
+        else
+        {
+            jval.SetNull();
+        }
+        return 0;
+    }
+    
+    static const char* get_typename() { return "ffjson_tool_t";}
+};
+//}
 
 ffscene_python_t::ffscene_python_t()
 {
@@ -34,6 +192,10 @@ void ffscene_python_t::py_verify_session_id(long key, const userid_t& session_id
     singleton_t<ffscene_python_t>::instance().verify_session_id(key, session_id_, data_);
 }
 
+static void py_post_task(const string& func_name, const ffjson_tool_t& task_args)
+{
+}
+
 int ffscene_python_t::open(arg_helper_t& arg_helper)
 {
     LOGTRACE((FFSCENE_PYTHON, "ffscene_python_t::open begin"));
@@ -61,7 +223,8 @@ int ffscene_python_t::open(arg_helper_t& arg_helper)
                  .reg(&ffscene_python_t::py_send_msg_session, "py_send_msg_session")
                  .reg(&ffscene_python_t::py_broadcast_msg_session, "py_broadcast_msg_session")
                  .reg(&ffscene_python_t::py_verify_session_id, "py_verify_session_id")
-                 .reg(&ffscene_python_t::py_get_config, "py_get_config");
+                 .reg(&ffscene_python_t::py_get_config, "py_get_config")
+                 .reg(&::py_post_task, "py_post_task");
 
     (*m_ffpython).init("ff");
     (*m_ffpython).set_global_var("ff", "ffscene_obj", (ffscene_python_t*)this);
@@ -176,7 +339,7 @@ void ffscene_python_t::pylog(int level_, const string& mod_, const string& conte
         break;
     }
 }
-//! Âà§Êñ≠Êüê‰∏™serviceÊòØÂê¶Â≠òÂú®
+//! ≈–∂œƒ≥∏ˆservice «∑Ò¥Ê‘⁄
 bool ffscene_python_t::is_exist(const string& service_name_)
 {
     return m_ffrpc->is_exist(service_name_);
@@ -352,7 +515,7 @@ ffslot_t::callback_t* ffscene_python_t::gen_scene_call_callback()
     return new lambda_cb(this);
 }
 
-//! ÂÆöÊó∂Âô®Êé•Âè£
+//! ∂® ±∆˜Ω”ø⁄
 int ffscene_python_t::once_timer(int timeout_, uint64_t id_)
 {
     struct lambda_cb
@@ -420,7 +583,7 @@ ffslot_t::callback_t* ffscene_python_t::gen_db_query_callback(long callback_id_)
 }
 
 
-//! ÂàõÂª∫Êï∞ÊçÆÂ∫ìËøûÊé•
+//! ¥¥Ω® ˝æ›ø‚¡¨Ω”
 long ffscene_python_t::connect_db(const string& host_)
 {
     return m_db_mgr.connect_db(host_);
@@ -463,3 +626,23 @@ void ffscene_python_t::call_service_return_msg(ffreq_t<scene_call_msg_t::out_t>&
         LOGERROR((FFSCENE_PYTHON, "ffscene_python_t::gen_db_query_callback exception<%s>", e_.what()));
     }
 }
+
+//! œﬂ≥Ãº‰¥´µ›œ˚œ¢
+void ffscene_python_t::post_task(const string& func_name, const ffjson_tool_t& task_args)
+{
+    m_ffrpc->get_tq().produce(task_binder_t::gen(&ffscene_python_t::post_task_impl, this, func_name, task_args));
+}
+
+void ffscene_python_t::post_task_impl(const string& func_name, const ffjson_tool_t& task_args)
+{
+    try
+    {
+        (*m_ffpython).call<void>(m_ext_name, func_name.c_str(), task_args);
+         
+    }
+    catch(exception& e_)
+    {
+        LOGERROR((FFSCENE_PYTHON, "ffscene_python_t::post_task_impl exception<%s>", e_.what()));
+    }
+}
+

@@ -8,6 +8,7 @@
 #include "rpc/ffbroker.h"
 #include "base/log.h"
 #include "server/ffscene_python.h"
+#include "server/ffscene_lua.h"
 #include "server/ffgate.h"
 #include "base/signal_helper.h"
 #include "base/daemon_tool.h"
@@ -86,6 +87,14 @@ int main(int argc, char* argv[])
                 return -1;
             }
         }
+        if (arg_helper.is_enable_option("-lua_mod"))
+        {
+            if (singleton_t<ffscene_lua_t>::instance().open(arg_helper))
+            {
+                printf("scene open error!\n");
+                return -1;
+            }
+        }
     }
     catch(exception& e_)
     {
@@ -94,10 +103,18 @@ int main(int argc, char* argv[])
     }
 
     signal_helper_t::wait();
-
-    ffgate.close();
-    singleton_t<ffscene_python_t>::instance().close();
-
+    if (arg_helper.is_enable_option("-gate"))
+    {
+        ffgate.close();
+    }
+    if (arg_helper.is_enable_option("-scene"))
+    {
+        singleton_t<ffscene_python_t>::instance().close();
+    }
+    if (arg_helper.is_enable_option("-lua_mod"))
+    {
+        singleton_t<ffscene_lua_t>::instance().close();
+    }
     ffbroker.close();
     net_factory_t::stop();
     usleep(500);

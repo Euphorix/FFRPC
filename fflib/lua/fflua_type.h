@@ -170,6 +170,12 @@ struct reference_traits_t
     typedef ARG_TYPE arg_type_t;
 };
 
+template<typename ARG_TYPE>
+struct reference_traits_t<ARG_TYPE&>
+{
+    typedef ARG_TYPE arg_type_t;
+};
+
 template<>
 struct reference_traits_t<const string&>
 {
@@ -216,6 +222,11 @@ struct init_value_traits_t<const T*>
 
 template <typename T>
 struct init_value_traits_t<const T&>
+{
+    inline static T value(){ return T(); }
+};
+template <typename T>
+struct init_value_traits_t<T&>
 {
     inline static T value(){ return T(); }
 };

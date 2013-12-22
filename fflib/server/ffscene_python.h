@@ -8,6 +8,8 @@ using namespace std;
 #include "server/ffscene.h"
 #include "base/log.h"
 #include "server/db_mgr.h"
+#include "server/ffjson_tool.h"
+
 class ffpython_t;
 namespace ff
 {
@@ -63,6 +65,10 @@ public:
     void call_service_return_msg(ffreq_t<scene_call_msg_t::out_t>& req_, long id_);
     
     ffpython_t& get_ffpython(){ return *m_ffpython; }
+    
+    //! 线程间传递消息
+    void post_task(const string& func_name, const ffjson_tool_t& task_args);
+    void post_task_impl(const string& func_name, const ffjson_tool_t& task_args);
 public:
     ffpython_t*     m_ffpython;
     string          m_ext_name;

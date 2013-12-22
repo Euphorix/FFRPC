@@ -3,9 +3,173 @@
 #include "server/ffscene_lua.h"
 #include "base/performance_daemon.h"
 
+namespace ff{
+
+template<> struct lua_op_t<ffjson_tool_t>
+{
+    static void push_stack(lua_State* ls_, const ffjson_tool_t& jtool_)
+	{
+	    lua_op_t<ffjson_tool_t>::push_stack(ls_, *(jtool_.jval.get()));
+	}
+	static void push_stack(lua_State* ls_, const json_value_t& jval)
+	{
+	    //const char* kTypeNames[] = { "Null", "False", "True", "Object", "Array", "String", "Number" };
+	    //printf("jval type=%s\n", kTypeNames[jval.GetType()]);
+	    if (jval.IsString())
+	    {
+	        lua_pushlstring(ls_, jval.GetString(), jval.GetStringLength());
+	        //lua_pushstring(ls_, jval.GetString());
+	    }
+	    else if (jval.IsBool())
+	    {
+	        lua_pushboolean(ls_, jval.GetBool());
+	    }
+	    else if (jval.IsNumber())
+	    {
+	        lua_pushnumber(ls_, (lua_Number)(jval.GetDouble()));
+	    }
+		else if (jval.IsArray())
+		{
+		    lua_newtable(ls_);
+		    for (int i = 0; i < (int)jval.Size(); i++)
+		    {
+		        lua_op_t<int>::push_stack(ls_, i);
+		        lua_op_t<ffjson_tool_t>::push_stack(ls_, jval[i]);
+		        lua_settable(ls_, -3);
+		    }
+		}
+		else if (jval.IsObject())
+		{
+		    lua_newtable(ls_);
+		    for (json_value_t::ConstMemberIterator itr = jval.MemberBegin(); itr != jval.MemberEnd(); ++itr)
+		    {
+		        string tmp = itr->name.GetString();
+		        lua_op_t<string>::push_stack(ls_, tmp);
+		        lua_op_t<ffjson_tool_t>::push_stack(ls_, itr->value);
+		        lua_settable(ls_, -3);
+            }
+		}
+		else
+	    {
+	        lua_pushnil(ls_);
+	    }
+	}
+	/*
+	static int get_ret_value(lua_State* ls_, int pos_, ffjson_tool_t& param_)
+	{
+		return 0;
+	}
+	*/
+	static int lua_to_value(lua_State* ls_, int pos_, ffjson_tool_t& ffjson_tool)
+	{
+	    lua_op_t<ffjson_tool_t>::lua_to_value(ls_, pos_, ffjson_tool, *(ffjson_tool.jval));
+	    return 0;
+	}
+	static int lua_to_value(lua_State* ls_, int pos_, ffjson_tool_t& ffjson_tool, json_value_t& jval)
+	{
+        int t = lua_type(ls_, pos_);
+        //printf("lua_to_value	%s -\n", lua_typename(ls_, lua_type(ls_, pos_)));
+        switch (t)
+        {
+            case LUA_TSTRING:
+            {
+                //printf("LUA_TSTRING `%s'\n", lua_tostring(ls_, pos_));
+                jval.SetString(lua_tostring(ls_, pos_), *ffjson_tool.allocator);
+            }
+            break;
+            case LUA_TBOOLEAN:
+            {
+                //printf(lua_toboolean(ls_, pos_) ? "true" : "false");
+                jval.SetBool(lua_toboolean(ls_, pos_));
+            }
+            break;
+            case LUA_TNUMBER:
+            {
+                printf("`%g`", lua_tonumber(ls_, pos_));
+                jval.SetDouble(lua_tonumber(ls_, pos_));
+            }
+            break;
+            case LUA_TTABLE:
+            {
+            	//printf("table begin pos_=%d\n", pos_);
+            	int table_pos = lua_gettop(ls_);
+            	if (pos_ < 0)
+            	{
+            	    pos_= table_pos + (pos_ - (-1));
+            	}
+            	
+            	bool is_array = true;
+            	lua_pushnil(ls_);
+            	int index = 0;
+                while (lua_next(ls_, pos_) != 0) {
+                    if (lua_type(ls_, -2) == LUA_TNUMBER)
+                    {
+                        if (double(++index) != lua_tonumber(ls_, -2))
+                        {
+                            is_array = false;
+                        }
+                    }
+                    else
+                    {
+                        is_array = false;
+                    }
+                    lua_pop(ls_, 1);
+                }
+                if (is_array)
+                {
+                    jval.SetArray();
+                    lua_pushnil(ls_);
+                    while (lua_next(ls_, pos_) != 0) {
+                        //printf("	%s - %s\n",
+                        //        lua_typename(ls_, lua_type(ls_, -2)),
+                        //        lua_typename(ls_, lua_type(ls_, -1)));
+
+                        json_value_t tmp_val;
+                        lua_op_t<ffjson_tool_t>::lua_to_value(ls_, -1, ffjson_tool, tmp_val);
+                        
+                        //printf("key=`%s'\n", lua_tostring(ls_, -2));
+                        jval.PushBack(tmp_val, *ffjson_tool.allocator);
+                        lua_pop(ls_, 1);
+                    }
+                }
+                else
+                {
+                    jval.SetObject();
+                    lua_pushnil(ls_);
+                    while (lua_next(ls_, pos_) != 0) {
+                        //printf("	%s - %s\n",
+                        //        lua_typename(ls_, lua_type(ls_, -2)),
+                        //        lua_typename(ls_, lua_type(ls_, -1)));
+                                
+                        json_value_t tmp_key;
+                        json_value_t tmp_val;
+                        lua_op_t<ffjson_tool_t>::lua_to_value(ls_, -2, ffjson_tool, tmp_key);
+                        lua_op_t<ffjson_tool_t>::lua_to_value(ls_, -1, ffjson_tool, tmp_val);
+                        jval.AddMember(tmp_key, tmp_val, *(ffjson_tool.allocator));
+                        //printf("key=`%s'\n", lua_tostring(ls_, -2));
+                        
+                        lua_pop(ls_, 1);
+                    }
+                }
+                //printf("table end\n");
+            }
+            break;
+            default:
+            {
+                jval.SetNull();
+                //printf("`%s`", lua_typename(ls_, t));
+            }
+            break;
+        }
+		return 0;
+	}
+};
+}
+
 using namespace ff;
 
-ffscene_lua_t::ffscene_lua_t()
+ffscene_lua_t::ffscene_lua_t():
+    m_arg_helper("")
 {
     m_fflua = new fflua_t();
 }
@@ -15,25 +179,30 @@ ffscene_lua_t::~ffscene_lua_t()
     m_fflua = NULL;
 }
 
-arg_helper_t ffscene_lua_t::g_arg_helper("");
-
-void ffscene_lua_t::py_send_msg_session(const userid_t& session_id_, uint16_t cmd_, const string& data_)
+static string json_encode(ffjson_tool_t& ffjson_tool)
 {
-    singleton_t<ffscene_lua_t>::instance().send_msg_session(session_id_, cmd_, data_);
-}
-void ffscene_lua_t::py_broadcast_msg_session(uint16_t cmd_, const string& data_)
-{
-    singleton_t<ffscene_lua_t>::instance().broadcast_msg_session(cmd_, data_);
-}
-string ffscene_lua_t::py_get_config(const string& key_)
-{
-    return g_arg_helper.get_option_value(key_);
-}
-void ffscene_lua_t::py_verify_session_id(long key, const userid_t& session_id_, const string& data_)
-{
-    singleton_t<ffscene_lua_t>::instance().verify_session_id(key, session_id_, data_);
+    if (ffjson_tool.jval->IsNull())
+    {
+        return "null";
+    }
+    typedef rapidjson::GenericStringBuffer<rapidjson::UTF8<>, rapidjson::Document::AllocatorType> FFStringBuffer;
+    FFStringBuffer            str_buff(ffjson_tool.allocator.get());
+    rapidjson::Writer<FFStringBuffer> writer(str_buff, ffjson_tool.allocator.get());
+    ffjson_tool.jval->Accept(writer);
+    string output(str_buff.GetString(), str_buff.Size());
+    //printf("output=%s\n", output.c_str());
+    return output;
 }
 
+static ffjson_tool_t json_decode(const string& src)
+{
+    ffjson_tool_t ffjson_tool;
+    if (false == ffjson_tool.jval->Parse<0>(src.c_str()).HasParseError())
+    {
+        
+    }
+    return ffjson_tool;
+}
 static void lua_reg(lua_State* ls)  
 {
     //! 注册基类函数, ctor() 为构造函数的类型  
@@ -56,19 +225,16 @@ static void lua_reg(lua_State* ls)
 
     fflua_register_t<>(ls)  
                     .def(&ffdb_t::escape, "escape")
-                    .def(&ffscene_lua_t::py_send_msg_session, "py_send_msg_session")
-                    .def(&ffscene_lua_t::py_broadcast_msg_session, "py_broadcast_msg_session")
-                    .def(&ffscene_lua_t::py_verify_session_id, "py_verify_session_id")
-                    .def(&ffscene_lua_t::py_get_config, "py_get_config");
+                    .def(&json_encode, "json_encode")
+                    .def(&json_decode, "json_decode");
 
 }
 
 int ffscene_lua_t::open(arg_helper_t& arg_helper)
 {
     LOGTRACE((FFSCENE_PYTHON, "ffscene_lua_t::open begin"));
-    ffscene_lua_t::g_arg_helper = arg_helper;
-    m_ext_name = MOD_NAME;
-    
+    m_arg_helper = arg_helper;
+
     (*m_fflua).reg(lua_reg);
     (*m_fflua).set_global_variable("ffscene_obj", (ffscene_lua_t*)this);
 
@@ -88,19 +254,27 @@ int ffscene_lua_t::open(arg_helper_t& arg_helper)
 
     int ret = ffscene_t::open(arg_helper);
     try{
-        (*m_fflua).load_file("main");
-        ret = (*m_fflua).call<int>("main", string("init"));
+        (*m_fflua).load_file("main.lua");
+        ret = (*m_fflua).call<int>("init");
+        
+        //rapidjson::Document::AllocatorType allocator;
+        ffjson_tool_t ffjson_tool;
+        ffjson_tool.jval->SetObject();
+        //json_value_t jval(rapidjson::kObjectType);
+        json_value_t ibj_json(rapidjson::kObjectType);
+        string dest_ = "TTTT";
+        json_value_t tmp_val;
+        tmp_val.SetString(dest_.c_str(), dest_.length(), *ffjson_tool.allocator);
+        ibj_json.AddMember("dumy", tmp_val, *ffjson_tool.allocator);
+        ffjson_tool.jval->AddMember("foo", ibj_json, *(ffjson_tool.allocator));
+     
+
+        (*m_fflua).call<void>("test", ffjson_tool);
     }
     catch(exception& e_)
     {
         LOGERROR((FFSCENE_PYTHON, "ffscene_lua_t::open failed er=<%s>", e_.what()));
-        try{
-            (*m_fflua).call<void>("main", string("cleanup"));
-        }
-        catch(exception& ee_)
-        {
-            LOGERROR((FFSCENE_PYTHON, "ffscene_lua_t::open failed er=<%s>", ee_.what()));
-        }
+
         return -1;
     }
     LOGTRACE((FFSCENE_PYTHON, "ffscene_lua_t::open end ok"));
@@ -469,5 +643,23 @@ void ffscene_lua_t::call_service_return_msg(ffreq_t<scene_call_msg_t::out_t>& re
     catch(exception& e_)
     {
         LOGERROR((FFSCENE_PYTHON, "ffscene_lua_t::gen_db_query_callback exception<%s>", e_.what()));
+    }
+}
+//! 线程间传递消息
+void ffscene_lua_t::post_task(const string& func_name, const ffjson_tool_t& task_args)
+{
+    m_ffrpc->get_tq().produce(task_binder_t::gen(&ffscene_lua_t::post_task_impl, this, func_name, task_args));
+}
+
+void ffscene_lua_t::post_task_impl(const string& func_name, const ffjson_tool_t& task_args)
+{
+    try
+    {
+        (*m_fflua).call<void>(func_name.c_str(), task_args);
+         
+    }
+    catch(exception& e_)
+    {
+        LOGERROR((FFSCENE_PYTHON, "ffscene_lua_t::post_task_impl exception<%s>", e_.what()));
     }
 }

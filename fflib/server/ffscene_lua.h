@@ -7,8 +7,10 @@ using namespace std;
 
 #include "server/ffscene.h"
 #include "base/log.h"
+#include "base/smart_ptr.h"
 #include "server/db_mgr.h"
-class fflua_t;
+#include "server/ffjson_tool.h"
+
 namespace ff
 {
 #define FFSCENE_PYTHON "FFSCENE_PYTHON"
@@ -23,15 +25,13 @@ namespace ff
 #define SCENE_CALL_CB_NAME  "ff_scene_call"
 #define CALL_SERVICE_RETURN_MSG_CB_NAME "ff_scene_call_return_msg"
 
+class fflua_t;
+class ffjson_tool_t;
 
-class ffscene_lua_t: public ffscene_t
+class ffscene_lua_t: public ffscene_t, task_dispather_i
 {
 public:
-    static void py_send_msg_session(const userid_t& session_id_, uint16_t cmd_, const string& data_);
-    static void py_broadcast_msg_session(uint16_t cmd_, const string& data_);
-    static string py_get_config(const string& key_);
-    static arg_helper_t    g_arg_helper;
-    static void py_verify_session_id(long key, const userid_t& session_id_, const string& data_);
+    arg_helper_t    m_arg_helper;
 public:
     ffscene_lua_t();
     ~ffscene_lua_t();
@@ -63,9 +63,12 @@ public:
     void call_service_return_msg(ffreq_t<scene_call_msg_t::out_t>& req_, long id_);
     
     fflua_t& get_fflua(){ return *m_fflua; }
+    
+    //! 线程间传递消息
+    void post_task(const string& func_name, const ffjson_tool_t& task_args);
+    void post_task_impl(const string& func_name, const ffjson_tool_t& task_args);
 public:
     fflua_t*        m_fflua;
-    string          m_ext_name;
     db_mgr_t        m_db_mgr;
 };
 
