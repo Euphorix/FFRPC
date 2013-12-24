@@ -8,7 +8,7 @@ using namespace std;
 #include "server/ffscene.h"
 #include "base/log.h"
 #include "server/db_mgr.h"
-#include "server/ffjson_tool.h"
+#include "server/fftask_processor.h"
 
 class ffpython_t;
 namespace ff
@@ -26,7 +26,7 @@ namespace ff
 #define CALL_SERVICE_RETURN_MSG_CB_NAME "ff_scene_call_return_msg"
 
 
-class ffscene_python_t: public ffscene_t, task_dispather_i
+class ffscene_python_t: public ffscene_t, task_processor_i
 {
 public:
     static void py_send_msg_session(const userid_t& session_id_, uint16_t cmd_, const string& data_);

@@ -32,32 +32,56 @@ struct ffjson_tool_t{
         return *this;
     }
     
+    string encode()
+    {
+        if (this->jval->IsNull())
+        {
+            return "null";
+        }
+        typedef rapidjson::GenericStringBuffer<rapidjson::UTF8<>, rapidjson::Document::AllocatorType> FFStringBuffer;
+        FFStringBuffer            str_buff(this->allocator.get());
+        rapidjson::Writer<FFStringBuffer> writer(str_buff, this->allocator.get());
+        this->jval->Accept(writer);
+        string output(str_buff.GetString(), str_buff.Size());
+        //printf("output=%s\n", output.c_str());
+        return output;
+    }
+    bool decode(const string& src)
+    {
+        if (false == this->jval->Parse<0>(src.c_str()).HasParseError())
+        {
+            return false;
+        }
+        return true;
+    }
     shared_ptr_t<rapidjson::Document::AllocatorType>  allocator;
     shared_ptr_t<json_dom_t>                          jval;
 };
 
-class task_dispather_i{
+class task_processor_i{
 public:
-    virtual ~task_dispather_i(){}
+    virtual ~task_processor_i(){}
     //! 线程间传递消息
-    virtual    void post_task(const string& func_name, const ffjson_tool_t& task_args, long callback_id) = 0;
+    virtual    void post(const string& task_name, const ffjson_tool_t& task_args,
+                         const string& from_name, long callback_id) {}
+    virtual    void callback(const ffjson_tool_t& task_args, long callback_id) {}
 };
 
 
-class task_dispather_mgr_t{
+class task_processor_mgr_t{
 public:
-    void add(const string& name, task_dispather_i* d){ m_task_register[name] = d; }
+    void add(const string& name, task_processor_i* d){ m_task_register[name] = d; }
     void del(const string& name) { m_task_register.erase(name); }
-    task_dispather_i* get(const string& name)
+    task_processor_i* get(const string& name)
     {
-        map<string, task_dispather_i*>::iterator it = m_task_register.find(name);
+        map<string, task_processor_i*>::iterator it = m_task_register.find(name);
         if (it != m_task_register.end())
         {
             return it->second;
         }
         return NULL;
     }
-    map<string, task_dispather_i*>  m_task_register;
+    map<string, task_processor_i*>  m_task_register;
 };
 
 }

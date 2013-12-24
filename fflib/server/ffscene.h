@@ -48,7 +48,7 @@ public:
 public:
     ffscene_t();
     virtual ~ffscene_t();
-    virtual int open(arg_helper_t& arg);
+    virtual int open(arg_helper_t& arg, string scene_name = "");
     virtual int close();
 
     callback_info_t& callback_info();
@@ -68,6 +68,8 @@ public:
     //! 为session 分配session Id
     int verify_session_id(long key, const userid_t& session_id_, string extra_data = "");
     ffrpc_t& get_rpc() { return *m_ffrpc; }
+    
+    const string& get_scene_name() const { return m_logic_name;}
 private:
     //! 处理client 上线
     int process_session_verify(ffreq_t<session_verify_t::in_t, session_verify_t::out_t>& req_);

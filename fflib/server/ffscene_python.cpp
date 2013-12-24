@@ -194,10 +194,10 @@ void ffscene_python_t::py_verify_session_id(long key, const userid_t& session_id
 
 static bool py_post_task(const string& name, const string& func_name, const ffjson_tool_t& task_args, long callback_id)
 {
-    task_dispather_i* d = singleton_t<task_dispather_mgr_t>::instance().get(name);
+    task_processor_i* d = singleton_t<task_processor_mgr_t>::instance().get(name);
     if (d)
     {
-        d->post_task(func_name, task_args, callback_id);
+        //d->post_task(func_name, task_args, callback_id);
     }
     return d != NULL;
 }
@@ -248,15 +248,10 @@ int ffscene_python_t::open(arg_helper_t& arg_helper)
         ffpython_t::add_path(arg_helper.get_option_value("-python_path"));
     }
     
-    if (arg_helper.is_enable_option("-python_mod"))
-    {
-        singleton_t<task_dispather_mgr_t>::instance().add(arg_helper.get_option_value("python_mod"), this);
-    }
-    
-
     m_db_mgr.start();
 
     int ret = ffscene_t::open(arg_helper);
+    singleton_t<task_processor_mgr_t>::instance().add(this->get_scene_name(), this);
     try{
         (*m_ffpython).load("main");
         ret = (*m_ffpython).call<int>("main", string("init"));

@@ -9,7 +9,7 @@ using namespace std;
 #include "base/log.h"
 #include "base/smart_ptr.h"
 #include "server/db_mgr.h"
-#include "server/ffjson_tool.h"
+#include "server/fftask_processor.h"
 
 namespace ff
 {
@@ -28,14 +28,14 @@ namespace ff
 class fflua_t;
 class ffjson_tool_t;
 
-class ffscene_lua_t: public ffscene_t, task_dispather_i
+class ffscene_lua_t: public ffscene_t, task_processor_i
 {
 public:
     arg_helper_t    m_arg_helper;
 public:
     ffscene_lua_t();
     ~ffscene_lua_t();
-    int open(arg_helper_t& arg_helper);
+    int open(arg_helper_t& arg_helper, string scene_name = "");
     int close();
     string reload(const string& name_);
     void pylog(int level, const string& mod_, const string& content_);
@@ -65,8 +65,14 @@ public:
     fflua_t& get_fflua(){ return *m_fflua; }
     
     //! 线程间传递消息
-    void post_task(const string& func_name, const ffjson_tool_t& task_args, long callback_id);
-    void post_task_impl(const string& func_name, const ffjson_tool_t& task_args, long callback_id);
+    bool post_task(const string& name, const string& task_name, const ffjson_tool_t& task_args, long callback_id);
+
+    void post(const string& task_name, const ffjson_tool_t& task_args,
+              const string& from_name, long callback_id);
+    void post_impl(const string& task_name, const ffjson_tool_t& task_args,
+                   const string& from_name, long callback_id);
+    void callback(const ffjson_tool_t& task_args, long callback_id);
+    void callback_impl(const ffjson_tool_t& task_args, long callback_id);
 public:
     fflua_t*        m_fflua;
     db_mgr_t        m_db_mgr;

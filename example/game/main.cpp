@@ -59,7 +59,7 @@ int main(int argc, char* argv[])
     ffbroker_t ffbroker;
     ffgate_t ffgate;
     //ffscene_python_t ffscene_python;
-
+    ffscene_lua_t ffscene_lua;
     try
     {
         //! 启动broker，负责网络相关的操作，如消息转发，节点注册，重连等
@@ -83,7 +83,7 @@ int main(int argc, char* argv[])
         {
             if (arg_helper.is_enable_option("-use_lua_scene"))
             {
-                if (singleton_t<ffscene_lua_t>::instance().open(arg_helper))
+                if (ffscene_lua.open(arg_helper))
                 {
                     printf("scene open error!\n");
                     ffbroker.close();
@@ -116,7 +116,7 @@ int main(int argc, char* argv[])
     }
     if (arg_helper.is_enable_option("-lua_mod"))
     {
-        singleton_t<ffscene_lua_t>::instance().close();
+        ffscene_lua.close();
     }
     ffbroker.close();
     net_factory_t::stop();

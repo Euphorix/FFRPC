@@ -4,7 +4,7 @@ using namespace ff;
 
 #define FFSCENE                   "FFSCENE"
 
-ffscene_t::ffscene_t()
+ffscene_t::ffscene_t():m_ffrpc(NULL)
 {
     
 }
@@ -12,15 +12,19 @@ ffscene_t::~ffscene_t()
 {
     
 }
-int ffscene_t::open(arg_helper_t& arg_helper)
+int ffscene_t::open(arg_helper_t& arg_helper, string scene_name)
 {
     LOGTRACE((FFSCENE, "ffscene_t::open begin"));
-    if (false == arg_helper.is_enable_option("-scene"))
+    m_logic_name = scene_name;
+    if (scene_name.empty())
     {
-        LOGERROR((FFSCENE, "ffscene_t::open failed without -scene argmuent"));
-        return -1;
+        if (false == arg_helper.is_enable_option("-scene"))
+        {
+            LOGERROR((FFSCENE, "ffscene_t::open failed without -scene argmuent"));
+            return -1;
+        }
+        m_logic_name = arg_helper.get_option_value("-scene");
     }
-    m_logic_name = arg_helper.get_option_value("-scene");
     m_ffrpc = new ffrpc_t(m_logic_name);
     
     m_ffrpc->reg(&ffscene_t::process_session_verify, this);
