@@ -39,6 +39,7 @@ int ffscene_t::open(arg_helper_t& arg_helper, string scene_name)
         return -1;
     }
     
+    singleton_t<ffscene_mgr_t>::instance().add(m_logic_name, this);
     LOGTRACE((FFSCENE, "ffscene_t::open end ok"));
     return 0;
 }
@@ -47,6 +48,7 @@ int ffscene_t::close()
     if (m_ffrpc)
     {
         m_ffrpc->close();
+        singleton_t<ffscene_mgr_t>::instance().del(m_logic_name);
     }
     return 0;
 }

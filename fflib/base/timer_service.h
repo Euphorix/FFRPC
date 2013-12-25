@@ -74,13 +74,19 @@ public:
     }
     virtual ~timer_service_t()
     {
-        m_runing = false;
-        interupt();
-        
-        ::close(m_efd);
-        m_thread.join();
+        stop();
     }
-
+    void stop()
+    {
+        if (m_runing)
+        {
+            m_runing = false;
+            interupt();
+            
+            ::close(m_efd);
+            m_thread.join();
+        }
+    }
     void loop_timer(uint64_t ms_, task_t func)
     {
         struct timeval tv;
@@ -128,7 +134,7 @@ public:
             
         }while (true) ;
     }
-
+    
 private:
     void add_new_timer()
     {

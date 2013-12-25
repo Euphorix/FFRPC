@@ -62,6 +62,7 @@ int ffrpc_t::close()
         return 0;
     }
     m_runing = false;
+    m_timer.stop();
     if (m_master_broker_sock)
     {
         m_master_broker_sock->close();

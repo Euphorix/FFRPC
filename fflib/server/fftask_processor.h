@@ -1,5 +1,5 @@
-#ifndef _FF_JSON_TOOL_H_
-#define _FF_JSON_TOOL_H_
+#ifndef _FF_TASK_PROCESSOR_H_
+#define _FF_TASK_PROCESSOR_H_
 
 //线程间传递数据!
 
@@ -83,6 +83,7 @@ public:
     }
     map<string, task_processor_i*>  m_task_register;
 };
+
 
 }
 #endif

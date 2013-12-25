@@ -1,4 +1,6 @@
 
+//è„šæœ¬
+
 #include "server/ffscene_python.h"
 #include "base/performance_daemon.h"
 
@@ -274,6 +276,11 @@ int ffscene_python_t::open(arg_helper_t& arg_helper)
 
 int ffscene_python_t::close()
 {
+    if (this->get_scene_name().empty())
+    {
+        return -1;
+    }
+    singleton_t<task_processor_mgr_t>::instance().del(this->get_scene_name());
     int ret = 0;
     try
     {
@@ -347,7 +354,7 @@ void ffscene_python_t::pylog(int level_, const string& mod_, const string& conte
         break;
     }
 }
-//! ÅĞ¶ÏÄ³¸öserviceÊÇ·ñ´æÔÚ
+//! åˆ¤æ–­æŸä¸ªserviceæ˜¯å¦å­˜åœ¨
 bool ffscene_python_t::is_exist(const string& service_name_)
 {
     return m_ffrpc->is_exist(service_name_);
@@ -523,7 +530,7 @@ ffslot_t::callback_t* ffscene_python_t::gen_scene_call_callback()
     return new lambda_cb(this);
 }
 
-//! ¶¨Ê±Æ÷½Ó¿Ú
+//! å®šæ—¶å™¨æ¥å£
 int ffscene_python_t::once_timer(int timeout_, uint64_t id_)
 {
     struct lambda_cb
@@ -591,7 +598,7 @@ ffslot_t::callback_t* ffscene_python_t::gen_db_query_callback(long callback_id_)
 }
 
 
-//! ´´½¨Êı¾İ¿âÁ¬½Ó
+//! åˆ›å»ºæ•°æ®åº“è¿æ¥
 long ffscene_python_t::connect_db(const string& host_)
 {
     return m_db_mgr.connect_db(host_);
@@ -635,7 +642,7 @@ void ffscene_python_t::call_service_return_msg(ffreq_t<scene_call_msg_t::out_t>&
     }
 }
 
-//! Ïß³Ì¼ä´«µİÏûÏ¢
+//! çº¿ç¨‹é—´ä¼ é€’æ¶ˆæ¯
 void ffscene_python_t::post_task(const string& func_name, const ffjson_tool_t& task_args, long callback_id)
 {
     m_ffrpc->get_tq().produce(task_binder_t::gen(&ffscene_python_t::post_task_impl, this, func_name, task_args, callback_id));

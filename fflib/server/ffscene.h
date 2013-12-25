@@ -91,6 +91,39 @@ protected:
 };
 
 
+class ffscene_mgr_t
+{
+public:
+    ffscene_t* get(const string& name_)
+    {
+        map<string, ffscene_t*>::iterator it = m_all_scene.find(name_);
+        if (it != m_all_scene.end())
+        {
+            return it->second;
+        }
+        return NULL;
+    }
+    ffscene_t* get_any()
+    {
+        map<string, ffscene_t*>::iterator it = m_all_scene.begin();
+        if (it != m_all_scene.end())
+        {
+            return it->second;
+        }
+        return NULL;
+    }
+    void       add(const string& name_, ffscene_t* p)
+    {
+        m_all_scene[name_] = p;
+    }
+    void       del(const string& name_)
+    {
+        m_all_scene.erase(name_);
+    }
+    
+private:
+    map<string, ffscene_t*>     m_all_scene;
+};
 
 class ffscene_t::session_verify_arg: public ffslot_t::callback_arg_t
 {
