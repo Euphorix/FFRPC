@@ -60,7 +60,8 @@ public:
     long connect_db(const string& host_);
     void db_query(long db_id_,const string& sql_, long callback_id_);
     vector<vector<string> > sync_db_query(long db_id_,const string& sql_);
-    void call_service(const string& name_space_, const string& service_name_, const string& interface_name, const string& msg_body_, long callback_id_);
+    void call_service(const string& name_space_, const string& service_name_,
+                      const string& interface_name, const string& msg_body_, long callback_id_);
    
     ffpython_t& get_ffpython(){ return *m_ffpython; }
     

@@ -63,8 +63,7 @@ static void lua_reg(lua_State* ls)
                     .def(&ffscene_lua_t::connect_db, "connect_db")
                     .def(&ffscene_lua_t::db_query, "db_query")
                     .def(&ffscene_lua_t::sync_db_query, "sync_db_query")
-                    .def(&ffscene_lua_t::call_service, "call_service")    
-                    .def(&ffscene_lua_t::bridge_call_service, "bridge_call_service")
+                    .def(&ffscene_lua_t::call_service, "call_service")
                     .def(&ffscene_lua_t::post_task, "post_task");
 
     fflua_register_t<>(ls)  
@@ -466,37 +465,50 @@ vector<vector<string> > ffscene_lua_t::sync_db_query(long db_id_,const string& s
     m_db_mgr.sync_db_query(db_id_, sql_, ret);
     return ret;
 }
-void ffscene_lua_t::call_service(const string& name_, long cmd_, const string& msg_, long id_)
+void ffscene_lua_t::call_service(const string& name_space_, const string& service_name_,
+                                 const string& interface_name, const string& msg_body_, long callback_id_)
 {
-    scene_call_msg_t::in_t inmsg;
-    inmsg.cmd = cmd_;
-    inmsg.body = msg_;
-    m_ffrpc->call(name_, inmsg, ffrpc_ops_t::gen_callback(&ffscene_lua_t::call_service_return_msg, this, id_));
-}
-void ffscene_lua_t::bridge_call_service(const string& group_name_, const string& name_, long cmd_, const string& msg_, long id_)
-{
-    scene_call_msg_t::in_t inmsg;
-    inmsg.cmd = cmd_;
-    inmsg.body = msg_;
-    m_ffrpc->call(group_name_, name_, inmsg, ffrpc_ops_t::gen_callback(&ffscene_lua_t::call_service_return_msg, this, id_));
-}
-void ffscene_lua_t::call_service_return_msg(ffreq_t<scene_call_msg_t::out_t>& req_, long id_)
-{
-    AUTO_PERF();
-    static string func_name   = CALL_SERVICE_RETURN_MSG_CB_NAME;
-    try
+    struct lambda_cb: public ffslot_t::callback_t
     {
-        (*m_fflua).call<void>(func_name.c_str(),
-                              id_, req_.msg.err, req_.msg.msg_type, req_.msg.body);
-         
-    }
-    catch(exception& e_)
-    {
-        LOGERROR((FFSCENE_PYTHON, "ffscene_lua_t::gen_db_query_callback exception<%s>", e_.what()));
-    }
-}
-//! 线程间传递消息
+        lambda_cb(ffscene_lua_t* ffscene, long callback_id_):m_ffscene(ffscene),m_callback_id(callback_id_){}
+        virtual void exe(ffslot_t::callback_arg_t* args_)
+        {
+            if (args_->type() != TYPEID(ffslot_req_arg))
+            {
+                return;
+            }
+            ffslot_req_arg* msg_data = (ffslot_req_arg*)args_;
+            try
+            {
+                m_ffscene->get_fflua().call<void>(CALL_SERVICE_RETURN_MSG_CB_NAME, m_callback_id, msg_data->body, msg_data->err_info);
+            }
+            catch(exception& e_)
+            {
+                LOGERROR((FFSCENE_PYTHON, "ffscene_python_t::call_service exception=%s", e_.what()));
+            }
+        }
+        virtual ffslot_t::callback_t* fork() { return new lambda_cb(m_ffscene, m_callback_id); }
+        ffscene_lua_t*    m_ffscene;
+        long		      m_callback_id;
+    };
 
+    ffslot_t::callback_t* func = NULL;
+    if (callback_id_ != 0)
+    {
+        func = new lambda_cb(this, callback_id_);
+    }
+	
+    if (name_space_.empty())
+    {
+        m_ffrpc->call_impl(service_name_, interface_name, msg_body_, func);
+    }
+    else
+    {
+        m_ffrpc->bridge_call_impl(name_space_, service_name_, interface_name, msg_body_, func);
+    }
+}
+
+//! 线程间传递消息
 void ffscene_lua_t::post(const string& task_name, const ffjson_tool_t& task_args,
                          const string& from_name, long callback_id)
 {
@@ -543,18 +555,18 @@ void ffscene_lua_t::reg_scene_interface(const string& name_)
         lambda_cb(ffscene_lua_t* ffscene, const string& name_):m_ffscene(ffscene),m_name(name_){}
         virtual void exe(ffslot_t::callback_arg_t* args_)
         {
-            if (args_->type() != TYPEID(ffslot_msg_arg))
+            if (args_->type() != TYPEID(ffslot_req_arg))
             {
                 return;
             }
-            ffslot_msg_arg* msg_data = (ffslot_msg_arg*)args_;
+            ffslot_req_arg* msg_data = (ffslot_req_arg*)args_;
             m_ffscene->get_fflua().call<void>("ff_call_scene_interface", m_name, msg_data->body);
         }
         virtual ffslot_t::callback_t* fork() { return new lambda_cb(m_ffscene, m_name); }
         ffscene_lua_t*	  m_ffscene;
         string		      m_name;
     };
-    callback_t* func = new lambda_cb(this, name_);
+    ffslot_t::callback_t* func = new lambda_cb(this, name_);
     this->m_ffrpc->reg(name_, func);
 }
 

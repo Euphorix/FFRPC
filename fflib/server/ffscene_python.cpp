@@ -612,22 +612,23 @@ vector<vector<string> > ffscene_python_t::sync_db_query(long db_id_,const string
     m_db_mgr.sync_db_query(db_id_, sql_, ret);
     return ret;
 }
-void ffscene_python_t::call_service(const string& name_space_, const string& service_name_, const string& interface_name, const string& msg_body_, long callback_id_)
+void ffscene_python_t::call_service(const string& name_space_, const string& service_name_,
+                                    const string& interface_name, const string& msg_body_, long callback_id_)
 {
     struct lambda_cb: public ffslot_t::callback_t
     {
         lambda_cb(ffscene_python_t* ffscene, long callback_id_):m_ffscene(ffscene),m_callback_id(callback_id_){}
         virtual void exe(ffslot_t::callback_arg_t* args_)
         {
-            if (args_->type() != TYPEID(ffslot_msg_arg))
+            if (args_->type() != TYPEID(ffslot_req_arg))
             {
                 return;
             }
-            ffslot_msg_arg* msg_data = (ffslot_msg_arg*)args_;
-            static struct func_name = CALL_SERVICE_RETURN_MSG_CB_NAME;
+            ffslot_req_arg* msg_data = (ffslot_req_arg*)args_;
+            static string func_name = CALL_SERVICE_RETURN_MSG_CB_NAME;
             try
             {
-                m_ffscene->get_ffpython().call<void>(m_ffscene->m_ext_name, func_name, m_callback_id, req_.msg.body, msg_data->err_info);
+                m_ffscene->get_ffpython().call<void>(m_ffscene->m_ext_name, func_name, m_callback_id, msg_data->body, msg_data->err_info);
             }
             catch(exception& e_)
             {
@@ -639,7 +640,7 @@ void ffscene_python_t::call_service(const string& name_space_, const string& ser
         long		      m_callback_id;
     };
 
-    callback_t* func = NULL;
+    ffslot_t::callback_t* func = NULL;
     if (callback_id_ != 0)
     {
         func = new lambda_cb(this, callback_id_);
@@ -682,12 +683,12 @@ void ffscene_python_t::reg_scene_interface(const string& name_)
         lambda_cb(ffscene_python_t* ffscene, const string& name_):m_ffscene(ffscene),m_name(name_){}
         virtual void exe(ffslot_t::callback_arg_t* args_)
         {
-            if (args_->type() != TYPEID(ffslot_msg_arg))
+            if (args_->type() != TYPEID(ffslot_req_arg))
             {
                 return;
             }
-            ffslot_msg_arg* msg_data = (ffslot_msg_arg*)args_;
-            static struct func_name = "ff_call_scene_interface";
+            ffslot_req_arg* msg_data = (ffslot_req_arg*)args_;
+            static string func_name = "ff_call_scene_interface";
             try
             {
                 m_ffscene->get_ffpython().call<void>(m_ffscene->m_ext_name, func_name, m_name, msg_data->body);
@@ -701,6 +702,6 @@ void ffscene_python_t::reg_scene_interface(const string& name_)
         ffscene_python_t* m_ffscene;
         string		      m_name;
     };
-    callback_t* func = new lambda_cb(this, name_);
+    ffslot_t::callback_t* func = new lambda_cb(this, name_);
     this->m_ffrpc->reg(name_, func);
 }
