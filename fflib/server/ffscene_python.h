@@ -68,8 +68,8 @@ public:
     void post_task(const string& func_name, const ffjson_tool_t& task_args, long callback_id);
     void post_task_impl(const string& func_name, const ffjson_tool_t& task_args, long callback_id);
 
-	//! 使用python注册scene接口  name_为输入消息的名称
-	void reg_scene_interface(const string& name_);
+    //! 使用python注册scene接口  name_为输入消息的名称
+    void reg_scene_interface(const string& name_);
 public:
     ffpython_t*     m_ffpython;
     string          m_ext_name;
