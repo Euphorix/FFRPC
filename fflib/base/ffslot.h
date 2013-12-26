@@ -35,12 +35,14 @@ public:
     ffslot_t& bind(long cmd_, callback_t* callback_)
     {
         assert(callback_);
+		this->del(cmd_);
         m_cmd2callback.insert(make_pair(cmd_, callback_));
         return *this;
     }
     ffslot_t& bind(const string& cmd_, callback_t* callback_)
     {
         assert(callback_);
+		this->del(cmd_);
         m_name2callback.insert(make_pair(cmd_, callback_));
         return *this;
     }

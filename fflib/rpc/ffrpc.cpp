@@ -402,3 +402,9 @@ socket_ptr_t ffrpc_t::get_broker_socket()
     }
     return m_broker_sockets[m_bind_broker_id];     
 }
+
+//! 注册接口【支持动态的增加接口】
+void ffrpc_t::reg(const string& name_, ffslot_t::callback_t* func_)
+{
+	m_ffslot_interface.bind(name_, func_);
+}

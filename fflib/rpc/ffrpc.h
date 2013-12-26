@@ -80,6 +80,8 @@ public:
     socket_ptr_t get_broker_socket();
     //! 新版 调用消息对应的回调函数
     int handle_rpc_call_msg(broker_route_msg_t::in_t& msg_, socket_ptr_t sock_);
+	//! 注册接口【支持动态的增加接口】
+	void reg(const string& name_, ffslot_t::callback_t* func_);
 private:
     //! 处理连接断开
     int handle_broken_impl(socket_ptr_t sock_);
@@ -107,7 +109,7 @@ private:
     ffslot_t                                m_ffslot_interface;//! 通过reg 注册的接口会暂时的存放在这里
     ffslot_t                                m_ffslot_callback;//! 
     socket_ptr_t                            m_master_broker_sock;
-    map<string, ffslot_t::callback_t*>      m_reg_iterface;
+
     map<uint32_t, slave_broker_info_t>      m_slave_broker_sockets;//! node id -> info
     map<string, uint32_t>                   m_msg2id;
     map<uint32_t, broker_client_info_t>     m_broker_client_info;//! node id -> service
@@ -125,14 +127,12 @@ private:
 template <typename R, typename IN, typename OUT>
 ffrpc_t& ffrpc_t::reg(R (*func_)(ffreq_t<IN, OUT>&))
 {
-    m_reg_iterface[TYPE_NAME(IN)] = ffrpc_ops_t::gen_callback(func_);
     m_ffslot_interface.bind(TYPE_NAME(IN), ffrpc_ops_t::gen_callback(func_));
     return *this;
 }
 template <typename R, typename CLASS_TYPE, typename IN, typename OUT>
 ffrpc_t& ffrpc_t::reg(R (CLASS_TYPE::*func_)(ffreq_t<IN, OUT>&), CLASS_TYPE* obj)
 {
-    m_reg_iterface[TYPE_NAME(IN)] = ffrpc_ops_t::gen_callback(func_, obj);
     m_ffslot_interface.bind(TYPE_NAME(IN), ffrpc_ops_t::gen_callback(func_, obj));
     return *this;
 }
@@ -140,14 +140,12 @@ ffrpc_t& ffrpc_t::reg(R (CLASS_TYPE::*func_)(ffreq_t<IN, OUT>&), CLASS_TYPE* obj
 template <typename R, typename IN, typename OUT>
 ffrpc_t& ffrpc_t::reg(R (*func_)(ffreq_thrift_t<IN, OUT>&))
 {
-    m_reg_iterface[TYPE_NAME(IN)] = ffrpc_ops_t::gen_callback(func_);
     m_ffslot_interface.bind(TYPE_NAME(IN), ffrpc_ops_t::gen_callback(func_));
     return *this;
 }
 template <typename R, typename CLASS_TYPE, typename IN, typename OUT>
 ffrpc_t& ffrpc_t::reg(R (CLASS_TYPE::*func_)(ffreq_thrift_t<IN, OUT>&), CLASS_TYPE* obj)
 {
-    m_reg_iterface[TYPE_NAME(IN)] = ffrpc_ops_t::gen_callback(func_, obj);
     m_ffslot_interface.bind(TYPE_NAME(IN), ffrpc_ops_t::gen_callback(func_, obj));
     return *this;
 }

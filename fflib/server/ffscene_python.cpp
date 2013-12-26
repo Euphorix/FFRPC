@@ -224,8 +224,7 @@ int ffscene_python_t::open(arg_helper_t& arg_helper)
               .reg(&ffscene_python_t::connect_db, "connect_db")
               .reg(&ffscene_python_t::db_query, "db_query")
               .reg(&ffscene_python_t::sync_db_query, "sync_db_query")
-              .reg(&ffscene_python_t::call_service, "call_service")
-              .reg(&ffscene_python_t::bridge_call_service, "bridge_call_service");
+              .reg(&ffscene_python_t::call_service, "call_service");
 
 
     (*m_ffpython).reg(&ffdb_t::escape, "escape")
@@ -613,33 +612,47 @@ vector<vector<string> > ffscene_python_t::sync_db_query(long db_id_,const string
     m_db_mgr.sync_db_query(db_id_, sql_, ret);
     return ret;
 }
-void ffscene_python_t::call_service(const string& name_, long cmd_, const string& msg_, long id_)
+void ffscene_python_t::call_service(const string& name_space_, const string& service_name_, const string& interface_name, const string& msg_body_, long callback_id_)
 {
-    scene_call_msg_t::in_t inmsg;
-    inmsg.cmd = cmd_;
-    inmsg.body = msg_;
-    m_ffrpc->call(name_, inmsg, ffrpc_ops_t::gen_callback(&ffscene_python_t::call_service_return_msg, this, id_));
-}
-void ffscene_python_t::bridge_call_service(const string& group_name_, const string& name_, long cmd_, const string& msg_, long id_)
-{
-    scene_call_msg_t::in_t inmsg;
-    inmsg.cmd = cmd_;
-    inmsg.body = msg_;
-    m_ffrpc->call(group_name_, name_, inmsg, ffrpc_ops_t::gen_callback(&ffscene_python_t::call_service_return_msg, this, id_));
-}
-void ffscene_python_t::call_service_return_msg(ffreq_t<scene_call_msg_t::out_t>& req_, long id_)
-{
-    AUTO_PERF();
-    static string func_name   = CALL_SERVICE_RETURN_MSG_CB_NAME;
-    try
-    {
-        (*m_ffpython).call<void>(m_ext_name, func_name,
-                              id_, req_.msg.err, req_.msg.msg_type, req_.msg.body);
-    }
-    catch(exception& e_)
-    {
-        LOGERROR((FFSCENE_PYTHON, "ffscene_python_t::gen_db_query_callback exception<%s>", e_.what()));
-    }
+	struct lambda_cb: public ffslot_t::callback_t
+	{
+		lambda_cb(ffscene_python_t* ffscene, long callback_id_):m_ffscene(ffscene),m_callback_id(callback_id_){}
+		virtual void exe(ffslot_t::callback_arg_t* args_)
+		{
+			if (args_->type() != TYPEID(ffslot_msg_arg))
+			{
+				return;
+			}
+			ffslot_msg_arg* msg_data = (ffslot_msg_arg*)args_;
+			static struct func_name = CALL_SERVICE_RETURN_MSG_CB_NAME;
+			try
+			{
+				m_ffscene->get_ffpython().call<void>(m_ffscene->m_ext_name, func_name, m_callback_id, req_.msg.body, msg_data->err_info);
+			}
+			catch(exception& e_)
+			{
+				LOGERROR((FFSCENE_PYTHON, "ffscene_python_t::call_service exception=%s", e_.what()));
+			}
+		}
+		virtual ffslot_t::callback_t* fork() { return new lambda_cb(m_ffscene, m_callback_id); }
+		ffscene_python_t* m_ffscene;
+		long		      m_callback_id;
+	};
+
+	callback_t* func = NULL;
+	if (callback_id_ != 0)
+	{
+		func = new lambda_cb(this, callback_id_);
+	}
+	
+	if (name_space_.empty())
+	{
+		m_ffrpc->call_impl(service_name_, interface_name, msg_body_, func);
+	}
+	else
+	{
+		m_ffrpc->bridge_call_impl(name_space_, service_name_, interface_name, msg_body_, func);
+	}
 }
 
 //! 线程间传递消息
@@ -661,3 +674,33 @@ void ffscene_python_t::post_task_impl(const string& func_name, const ffjson_tool
     }
 }
 
+//! 使用python注册scene接口  name_为输入消息的名称
+void ffscene_python_t::reg_scene_interface(const string& name_)
+{
+	struct lambda_cb: public ffslot_t::callback_t
+	{
+		lambda_cb(ffscene_python_t* ffscene, const string& name_):m_ffscene(ffscene),m_name(name_){}
+		virtual void exe(ffslot_t::callback_arg_t* args_)
+		{
+			if (args_->type() != TYPEID(ffslot_msg_arg))
+			{
+				return;
+			}
+			ffslot_msg_arg* msg_data = (ffslot_msg_arg*)args_;
+			static struct func_name = "ff_call_scene_interface";
+			try
+			{
+				m_ffscene->get_ffpython().call<void>(m_ffscene->m_ext_name, func_name, m_name, msg_data->body);
+			}
+			catch(exception& e_)
+			{
+				LOGERROR((FFSCENE_PYTHON, "ffscene_python_t::call_service exception=%s", e_.what()));
+			}
+		}
+		virtual ffslot_t::callback_t* fork() { return new lambda_cb(m_ffscene, m_name); }
+		ffscene_python_t* m_ffscene;
+		string		      m_name;
+	};
+	callback_t* func = new lambda_cb(this, name_);
+	this->m_ffrpc->reg(name_, func);
+}

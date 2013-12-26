@@ -533,3 +533,28 @@ void ffscene_lua_t::callback_impl(const ffjson_tool_t& task_args, long callback_
         LOGERROR((FFSCENE_PYTHON, "ffscene_lua_t::callback_impl exception<%s>", e_.what()));
     }
 }
+
+
+//! 使用lua注册scene接口  name_为输入消息的名称 func_id_为函数id
+void ffscene_lua_t::reg_scene_interface(const string& name_)
+{
+	struct lambda_cb: public ffslot_t::callback_t
+	{
+		lambda_cb(ffscene_lua_t* ffscene, const string& name_):m_ffscene(ffscene),m_name(name_){}
+		virtual void exe(ffslot_t::callback_arg_t* args_)
+		{
+			if (args_->type() != TYPEID(ffslot_msg_arg))
+			{
+				return;
+			}
+			ffslot_msg_arg* msg_data = (ffslot_msg_arg*)args_;
+			m_ffscene->get_fflua().call<void>("ff_call_scene_interface", m_name, msg_data->body);
+		}
+		virtual ffslot_t::callback_t* fork() { return new lambda_cb(m_ffscene, m_name); }
+		ffscene_lua_t*	  m_ffscene;
+		string		      m_name;
+	};
+	callback_t* func = new lambda_cb(this, name_);
+	this->m_ffrpc->reg(name_, func);
+}
+

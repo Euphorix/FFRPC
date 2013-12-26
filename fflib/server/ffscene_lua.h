@@ -73,6 +73,9 @@ public:
                    const string& from_name, long callback_id);
     void callback(const ffjson_tool_t& task_args, long callback_id);
     void callback_impl(const ffjson_tool_t& task_args, long callback_id);
+
+	//! 使用lua注册scene接口  name_为输入消息的名称
+	void reg_scene_interface(const string& name_);
 public:
     fflua_t*        m_fflua;
     db_mgr_t        m_db_mgr;
