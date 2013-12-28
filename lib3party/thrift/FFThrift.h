@@ -32,7 +32,7 @@ struct ffthrift_t
     {
         using apache::thrift::transport::FFTMemoryBuffer;
         using apache::thrift::protocol::TBinaryProtocol;
-        FFTMemoryBuffer ffmem(data_.c_str(), data_.size());
+        FFTMemoryBuffer ffmem(data_);
         TBinaryProtocol  proto(&ffmem);
         msg_.read(&proto);
         return true;   

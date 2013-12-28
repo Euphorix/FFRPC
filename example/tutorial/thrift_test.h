@@ -1,8 +1,6 @@
 #ifndef _FF_THRIFT_ECHO_H_
 #define _FF_THRIFT_ECHO_H_
 
-#ifdef FF_ENABLE_THRIFT
-
 #include "echo_types.h"
 #include "rpc/ffrpc.h"
 
@@ -13,7 +11,7 @@ struct thrift_service_t
 {
     //! echo接口，返回请求的发送的消息ffreq_t可以提供两个模板参数，第一个表示输入的消息（请求者发送的）
     //! 第二个模板参数表示该接口要返回的结果消息类型
-    void echo(ffreq_thrift_t<echo_thrift_in_t, echo_thrift_out_t>& req_)
+    void echo(ffreq_t<echo_thrift_in_t, echo_thrift_out_t>& req_)
     {
         LOGINFO(("XX", "foo_t::echo: recv data=%s", req_.msg.data));
         echo_thrift_out_t out;
@@ -26,7 +24,7 @@ struct thrift_service_t
 struct thrift_client_t
 {
     //! 远程调用接口，可以指定回调函数（也可以留空），同样使用ffreq_t指定输入消息类型，并且可以使用lambda绑定参数
-    void echo_callback(ffreq_thrift_t<echo_thrift_out_t>& req_, int index, ffrpc_t* ffrpc_client)
+    void echo_callback(ffreq_t<echo_thrift_out_t>& req_, int index, ffrpc_t* ffrpc_client)
     {
         if (req_.error())
         {
@@ -82,13 +80,7 @@ static  int run_thrift_test(arg_helper_t& arg_helper)
 }
 
 }
-#else
-static  int run_thrift_test(arg_helper_t& arg_helper)
-{
-    printf("must open macro FF_ENABLE_THRIFT or make -f thrift.Makefile\n");
-    return 0;
-}
-#endif
+
 
 #endif
 

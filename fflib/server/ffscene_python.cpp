@@ -224,7 +224,8 @@ int ffscene_python_t::open(arg_helper_t& arg_helper)
               .reg(&ffscene_python_t::connect_db, "connect_db")
               .reg(&ffscene_python_t::db_query, "db_query")
               .reg(&ffscene_python_t::sync_db_query, "sync_db_query")
-              .reg(&ffscene_python_t::call_service, "call_service");
+              .reg(&ffscene_python_t::call_service, "call_service")
+              .reg(&ffscene_python_t::reg_scene_interface, "reg_scene_interface");
 
 
     (*m_ffpython).reg(&ffdb_t::escape, "escape")

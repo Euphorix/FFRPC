@@ -14,6 +14,6 @@ void ffthrift_codec_tool_t::read(msg_i& msg, ::apache::thrift::protocol::TProtoc
 {
     ::apache::thrift::protocol::TTransport* trans_ = iprot->getTransport();
     apache::thrift::transport::FFTMemoryBuffer* pmem = (apache::thrift::transport::FFTMemoryBuffer*)trans_;
-    msg.decode_data(pmem->get_wbuff());
+    msg.decode_data(pmem->get_rbuff());
 }
 

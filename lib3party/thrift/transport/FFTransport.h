@@ -11,19 +11,29 @@ class FFTMemoryBuffer: public TTransport
     uint8_t* rBase_;
     uint8_t* rBound_;//! Ω·Œ≤
     std::string*  m_wbuff;
+    const std::string*  m_rbuff;
 public:
     //! for read
     FFTMemoryBuffer(const char* pbuff, uint32_t len):
         rBase_((uint8_t*)pbuff),
         rBound_((uint8_t*)rBase_ + len),
-        m_wbuff(NULL)
+        m_wbuff(NULL),
+        m_rbuff(NULL)
+    {
+    }
+    FFTMemoryBuffer(const std::string& pstr):
+        rBase_((uint8_t*)pstr.c_str()),
+        rBound_((uint8_t*)rBase_ + pstr.length()),
+        m_wbuff(NULL),
+        m_rbuff(&pstr)
     {
     }
 
     FFTMemoryBuffer(std::string* pstr):
         rBase_(NULL),
         rBound_(NULL),
-        m_wbuff(pstr)
+        m_wbuff(pstr),
+        m_rbuff(NULL)
     {
     }
 
@@ -31,6 +41,7 @@ public:
         return true;
     }
     inline std::string& get_wbuff() { return *m_wbuff; }
+    inline const std::string& get_rbuff() { return *m_rbuff; }
     void open() {}
     void close() {}
     uint32_t read(uint8_t* buf, uint32_t len) {

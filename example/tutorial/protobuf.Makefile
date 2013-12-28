@@ -3,7 +3,7 @@ CROSS=
 CP=/bin/cp
 RM=-/bin/rm -rf
 LN=/bin/ln -s 
-CFLAGS=-g  -Wall -DFF_ENABLE_PROTOBUF
+CFLAGS=-g  -Wall -DFF_ENABLE_PROTOCOLBUF
 LDFLAGS=  -lpthread -lprotobuf
 #链接库名
 LIB_NAME=
