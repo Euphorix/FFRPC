@@ -97,6 +97,7 @@ public:
         m_cmd2callback.clear();
         m_name2callback.clear();
     }
+    map<string, callback_t*>&  get_str_cmd() { return  m_name2callback; }
 private:
     map<long, callback_t*>       m_cmd2callback;
     map<string, callback_t*>    m_name2callback;

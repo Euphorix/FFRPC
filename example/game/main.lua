@@ -1,12 +1,9 @@
 
-
-
-
-
 print('main.lua loading....')
 
 function init()
 	print('main.lua init execute....')
+	
 	return 0
 end
 function cleanup()

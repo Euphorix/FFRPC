@@ -234,6 +234,25 @@ int ffrpc_t::handle_rpc_call_msg(broker_route_msg_t::in_t& msg_, socket_ptr_t so
     if (msg_.dest_service_name.empty() == false)
     {
         ffslot_t::callback_t* cb = m_ffslot_interface.get_callback(msg_.dest_msg_name);
+        if (NULL == cb)
+        {
+            vector<string> args;
+            strtool::split(msg_.dest_msg_name, args, "::");
+            if (args.empty() == false)
+            {
+                const string& tmp_str_name = args[args.size()-1];
+                map<string, ffslot_t::callback_t*>& all_cmd = m_ffslot_interface.get_str_cmd();
+                for (map<string, ffslot_t::callback_t*>::iterator it = all_cmd.begin(); it != all_cmd.end(); ++it)
+                {
+                    string::size_type pos = it->first.find(tmp_str_name);
+                    if (pos != string::npos && pos + tmp_str_name.size() == it->first.size())
+                    {
+                        cb = it->second;
+                        break;
+                    }
+                }
+            }
+        }
         if (cb)
         {
             ffslot_req_arg arg(msg_.body, msg_.from_node_id, msg_.callback_id, msg_.from_namespace, msg_.err_info, this);
