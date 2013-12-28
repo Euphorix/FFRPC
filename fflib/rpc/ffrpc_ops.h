@@ -100,6 +100,25 @@ public:
         err_info(err_info_),
         responser(p)
     {}
+    ffslot_req_arg(){}
+    ffslot_req_arg(const ffslot_req_arg& src):
+        body(src.body),
+        dest_node_id(src.dest_node_id),
+        callback_id(src.callback_id),
+        dest_namespace(src.dest_namespace),
+        err_info(src.err_info),
+        responser(src.responser)
+    {}
+    ffslot_req_arg& operator=(const ffslot_req_arg& src)
+    {
+        body = src.body,
+        dest_node_id = src.dest_node_id;
+        callback_id = src.callback_id;
+        dest_namespace = src.dest_namespace;
+        err_info = src.err_info;
+        responser = src.responser;
+        return *this;
+    }
     virtual int type()
     {
         return TYPEID(ffslot_req_arg);

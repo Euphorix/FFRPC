@@ -4,15 +4,17 @@
 #include "base/strtool.h"
 #include "base/smart_ptr.h"
 
-#include "rpc/ffrpc.h"
-#include "rpc/ffbroker.h"
 #include "base/log.h"
-#include "server/ffscene_python.h"
-#include "server/ffscene_lua.h"
-#include "server/ffgate.h"
 #include "base/signal_helper.h"
 #include "base/daemon_tool.h"
 #include "base/performance_daemon.h"
+
+#include "rpc/ffrpc.h"
+#include "rpc/ffbroker.h"
+#include "server/ffgate.h"
+#include "server/ffscene_python.h"
+#include "server/ffscene_lua.h"
+#include "server/fflua_mod.h"
 
 using namespace ff;
 //./app_redrabbit -gate gate@0 -broker tcp://127.0.0.1:10241 -gate_listen tcp://121.199.21.238:10242 -python_path ./ -scene scene@0
@@ -60,6 +62,7 @@ int main(int argc, char* argv[])
     ffgate_t ffgate;
     //ffscene_python_t ffscene_python;
     ffscene_lua_t ffscene_lua;
+    vector<fflua_mod_t*> all_fflua_mod;
     try
     {
         //! 启动broker，负责网络相关的操作，如消息转发，节点注册，重连等
@@ -68,7 +71,7 @@ int main(int argc, char* argv[])
             if (ffbroker.open(arg_helper))
             {
                 printf("broker open failed\n");
-                return -1;
+                goto err_proc;
             }
         }
         if (arg_helper.is_enable_option("-gate"))
@@ -76,7 +79,7 @@ int main(int argc, char* argv[])
             if (ffgate.open(arg_helper))
             {
                 printf("gate open error!\n");
-                return -1;
+                goto err_proc;
             }
         }
         if (arg_helper.is_enable_option("-scene"))
@@ -86,18 +89,32 @@ int main(int argc, char* argv[])
                 if (ffscene_lua.open(arg_helper))
                 {
                     printf("scene open error!\n");
-                    ffbroker.close();
-                    return -1;
+                    goto err_proc;
                 }
             }
             else if (singleton_t<ffscene_python_t>::instance().open(arg_helper))
             {
                 printf("scene open error!\n");
-                ffbroker.close();
-                return -1;
+                goto err_proc;
             }
         }
-        
+        if (arg_helper.is_enable_option("-lua_mod"))
+        {
+            vector<string> vt_args;
+            strtool::split(arg_helper.get_option_value("-lua_mod"), vt_args, ",");
+            for (size_t i = 0; i <  vt_args.size(); ++i)
+            {
+                fflua_mod_t* fflua_mod = new fflua_mod_t();
+                if (fflua_mod->open(arg_helper, vt_args[i]))
+                {
+                    printf("fflua_mod open error!\n");
+                    ffbroker.close();
+                    delete fflua_mod;
+                    goto err_proc;
+                }
+                all_fflua_mod.push_back(fflua_mod);
+            }
+        }
     }
     catch(exception& e_)
     {
@@ -106,6 +123,7 @@ int main(int argc, char* argv[])
     }
 
     signal_helper_t::wait();
+err_proc:
     if (arg_helper.is_enable_option("-gate"))
     {
         ffgate.close();
@@ -118,9 +136,19 @@ int main(int argc, char* argv[])
     {
         ffscene_lua.close();
     }
+    for (size_t i = 0; i <  all_fflua_mod.size(); ++i)
+    {
+        all_fflua_mod[i]->close();
+    }
+    
     ffbroker.close();
     net_factory_t::stop();
     usleep(500);
+    for (size_t i = 0; i <  all_fflua_mod.size(); ++i)
+    {
+        delete all_fflua_mod[i];;
+    }
+    all_fflua_mod.clear();
     return 0;
 }
 

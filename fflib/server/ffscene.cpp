@@ -76,7 +76,7 @@ int ffscene_t::process_session_verify(ffreq_t<session_verify_t::in_t, session_ve
     session_verify_t::out_t out;
     if (m_callback_info.verify_callback)
     {
-        long key_id = (long)&(req_.msg);
+        long key_id = (long)(get_rpc().get_callback_id());
         m_cache_verify_req[key_id] = req_;
         session_verify_arg arg(req_.msg.session_key, req_.msg.online_time, req_.msg.ip, req_.msg.gate_name, key_id);
         m_callback_info.verify_callback->exe(&arg);

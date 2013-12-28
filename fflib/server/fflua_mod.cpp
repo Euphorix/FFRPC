@@ -65,8 +65,7 @@ static void lua_reg(lua_State* ls)
                     .def(&fflua_mod_t::connect_db, "connect_db")
                     .def(&fflua_mod_t::db_query, "db_query")
                     .def(&fflua_mod_t::sync_db_query, "sync_db_query")
-                    .def(&fflua_mod_t::call_service, "call_service")    
-                    .def(&fflua_mod_t::bridge_call_service, "bridge_call_service")
+                    .def(&fflua_mod_t::call_service, "call_service")
                     .def(&fflua_mod_t::post_task, "post_task");
     fflua_register_t<>(ls)  
                     .def(&ffdb_t::escape, "escape")
@@ -77,7 +76,7 @@ static void lua_reg(lua_State* ls)
 
 int fflua_mod_t::open(arg_helper_t& arg_helper, string scene_name)
 {
-    LOGTRACE((FFSCENE_PYTHON, "fflua_mod_t::open begin"));
+    LOGTRACE((FFSCENE_LUA, "fflua_mod_t::open begin"));
     m_name = scene_name;
     m_arg_helper = arg_helper;
     
@@ -88,7 +87,7 @@ int fflua_mod_t::open(arg_helper_t& arg_helper, string scene_name)
     (*m_fflua).add_package_path("./luaproject");
     if (arg_helper.is_enable_option("-lua_path"))
     {
-        LOGTRACE((FFSCENE_PYTHON, "add_package_path lua_path=%s\n", arg_helper.get_option_value("-lua_path")));
+        LOGTRACE((FFSCENE_LUA, "add_package_path lua_path=%s\n", arg_helper.get_option_value("-lua_path")));
         (*m_fflua).add_package_path(arg_helper.get_option_value("-lua_path"));
     }
     
@@ -100,7 +99,7 @@ int fflua_mod_t::open(arg_helper_t& arg_helper, string scene_name)
     {
         (*m_fflua).do_file("main.lua");
         ret = (*m_fflua).call<int>("init");
-        
+        /*
         //rapidjson::Document::AllocatorType allocator;
         ffjson_tool_t ffjson_tool;
         ffjson_tool.jval->SetObject();
@@ -115,14 +114,15 @@ int fflua_mod_t::open(arg_helper_t& arg_helper, string scene_name)
         ffjson_tool.jval->AddMember("go", tmp_val2, *(ffjson_tool.allocator));     
 
         (*m_fflua).call<void>("test", ffjson_tool);
+        */
     }
     catch(exception& e_)
     {
-        LOGERROR((FFSCENE_PYTHON, "fflua_mod_t::open failed er=<%s>", e_.what()));
+        LOGERROR((FFSCENE_LUA, "fflua_mod_t::open failed er=<%s>", e_.what()));
         return -1;
     }
     m_thread.create_thread(task_binder_t::gen(&task_queue_t::run, &m_tq), 1);
-    LOGTRACE((FFSCENE_PYTHON, "fflua_mod_t::open end ok"));
+    LOGTRACE((FFSCENE_LUA, "fflua_mod_t::open end ok"));
     return ret;
 }
 
@@ -136,7 +136,7 @@ int fflua_mod_t::close()
     }
     catch(exception& e_)
     {
-        LOGERROR((FFSCENE_PYTHON, "fflua_mod_t::close failed er=%s", e_.what()));
+        LOGERROR((FFSCENE_LUA, "fflua_mod_t::close failed er=%s", e_.what()));
     }
     m_db_mgr.stop();
     return ret;
@@ -145,7 +145,7 @@ int fflua_mod_t::close()
 string fflua_mod_t::reload(const string& name_)
 {
     AUTO_PERF();
-    LOGTRACE((FFSCENE_PYTHON, "fflua_mod_t::reload begin name_[%s]", name_));
+    LOGTRACE((FFSCENE_LUA, "fflua_mod_t::reload begin name_[%s]", name_));
     try
     {
         //! ffpython_t::reload(name_);
@@ -153,10 +153,10 @@ string fflua_mod_t::reload(const string& name_)
     }
     catch(exception& e_)
     {
-        LOGERROR((FFSCENE_PYTHON, "fflua_mod_t::reload exeception=%s", e_.what()));
+        LOGERROR((FFSCENE_LUA, "fflua_mod_t::reload exeception=%s", e_.what()));
         return e_.what();
     }
-    LOGTRACE((FFSCENE_PYTHON, "fflua_mod_t::reload end ok name_[%s]", name_));
+    LOGTRACE((FFSCENE_LUA, "fflua_mod_t::reload end ok name_[%s]", name_));
     return "";
 }
 
@@ -214,7 +214,7 @@ int fflua_mod_t::once_timer(int timeout_, uint64_t id_)
     {
         static void call_py(fflua_mod_t* ffscene, uint64_t id)
         {
-            LOGDEBUG((FFSCENE_PYTHON, "fflua_mod_t::once_timer call_py id<%u>", id));
+            LOGDEBUG((FFSCENE_LUA, "fflua_mod_t::once_timer call_py id<%u>", id));
             static string func_name  = TIMER_CB_NAME;
             PERF("once_timer");
             try
@@ -223,7 +223,7 @@ int fflua_mod_t::once_timer(int timeout_, uint64_t id_)
             }
             catch(exception& e_)
             {
-                LOGERROR((FFSCENE_PYTHON, "fflua_mod_t::gen_logic_callback exception<%s>", e_.what()));
+                LOGERROR((FFSCENE_LUA, "fflua_mod_t::gen_logic_callback exception<%s>", e_.what()));
             }
         }
         static void callback(fflua_mod_t* ffscene, task_queue_t* tq_, uint64_t id)
@@ -231,7 +231,7 @@ int fflua_mod_t::once_timer(int timeout_, uint64_t id_)
             tq_->produce(task_binder_t::gen(&lambda_cb::call_py, ffscene, id));
         }
     };
-    LOGDEBUG((FFSCENE_PYTHON, "fflua_mod_t::once_timer begin id<%u>", id_));
+    LOGDEBUG((FFSCENE_LUA, "fflua_mod_t::once_timer begin id<%u>", id_));
     get_timer().once_timer(timeout_, task_binder_t::gen(&lambda_cb::callback, this, &(get_tq()), id_));
     return 0;
 }
@@ -265,7 +265,7 @@ ffslot_t::callback_t* fflua_mod_t::gen_db_query_callback(long callback_id_)
             }
             catch(exception& e_)
             {
-                LOGERROR((FFSCENE_PYTHON, "fflua_mod_t::gen_db_query_callback exception<%s>", e_.what()));
+                LOGERROR((FFSCENE_LUA, "fflua_mod_t::gen_db_query_callback exception<%s>", e_.what()));
             }
         }
         virtual ffslot_t::callback_t* fork() { return new lambda_cb(ffscene, callback_id); }
@@ -291,43 +291,61 @@ vector<vector<string> > fflua_mod_t::sync_db_query(long db_id_,const string& sql
     m_db_mgr.sync_db_query(db_id_, sql_, ret);
     return ret;
 }
-
-void fflua_mod_t::call_service(const string& name_, long cmd_, const string& msg_, long id_)
+void fflua_mod_t::call_service(const string& name_space_, const string& service_name_,
+                                 const string& interface_name, const string& msg_body_, long callback_id_)
 {
-    scene_call_msg_t::in_t inmsg;
-    inmsg.cmd = cmd_;
-    inmsg.body = msg_;
+    LOGTRACE((FFSCENE_LUA, "fflua_mod_t::call_service service=%s,interface=%s", service_name_, interface_name));
     ffscene_t* ffscene = singleton_t<ffscene_mgr_t>::instance().get_any();
-    if (ffscene)
+    if (ffscene == NULL)
     {
-        ffscene->get_rpc().call(name_, inmsg, ffrpc_ops_t::gen_callback(&fflua_mod_t::call_service_return_msg, this, id_));
+        LOGERROR((FFSCENE_LUA, "fflua_mod_t::call_service no service=%s,interface=%s", service_name_, interface_name));
+        return;
     }
-}
-void fflua_mod_t::bridge_call_service(const string& group_name_, const string& name_, long cmd_, const string& msg_, long id_)
-{
-    scene_call_msg_t::in_t inmsg;
-    inmsg.cmd = cmd_;
-    inmsg.body = msg_;
-    ffscene_t* ffscene = singleton_t<ffscene_mgr_t>::instance().get_any();
-    if (ffscene)
+    struct lambda_cb: public ffslot_t::callback_t
     {
-        ffscene->get_rpc().call(group_name_, name_, inmsg, ffrpc_ops_t::gen_callback(&fflua_mod_t::call_service_return_msg, this, id_));
-    }
-}
+        static void call_back(fflua_mod_t* ffscene, ffslot_req_arg ffslot_req, long m_callback_id)
+        {
+            ffslot_req_arg* msg_data = &ffslot_req;
+            try
+            {
+                ffscene->get_fflua().call<void>(CALL_SERVICE_RETURN_MSG_CB_NAME, m_callback_id,
+                                                  msg_data->body, msg_data->err_info);
+            }
+            catch(exception& e_)
+            {
+                LOGERROR((FFSCENE_LUA, "FFSCENE_LUA_t::call_service exception=%s", e_.what()));
+            }
+        }
+        lambda_cb(fflua_mod_t* ffscene, long callback_id_):m_ffscene(ffscene),m_callback_id(callback_id_){}
+        virtual void exe(ffslot_t::callback_arg_t* args_)
+        {
+            if (args_->type() != TYPEID(ffslot_req_arg))
+            {
+                return;
+            }
+            ffslot_req_arg* msg_data = (ffslot_req_arg*)args_;
+            m_ffscene->get_tq().produce(task_binder_t::gen(&call_back, m_ffscene, *msg_data, m_callback_id));
+        }
+        virtual ffslot_t::callback_t* fork() { return new lambda_cb(m_ffscene, m_callback_id); }
+        fflua_mod_t*      m_ffscene;
+        long		      m_callback_id;
+    };
 
-void fflua_mod_t::call_service_return_msg(ffreq_t<scene_call_msg_t::out_t>& req_, long id_)
-{
-    AUTO_PERF();
-    static string func_name   = CALL_SERVICE_RETURN_MSG_CB_NAME;
-    try
+    ffslot_t::callback_t* func = NULL;
+    if (callback_id_ != 0)
     {
-        (*m_fflua).call<void>(func_name.c_str(),
-                              id_, req_.msg.err, req_.msg.msg_type, req_.msg.body);
-         
+        func = new lambda_cb(this, callback_id_);
     }
-    catch(exception& e_)
+	
+    if (name_space_.empty())
     {
-        LOGERROR((FFSCENE_PYTHON, "fflua_mod_t::gen_db_query_callback exception<%s>", e_.what()));
+        ffscene->get_rpc().get_tq().produce(task_binder_t::gen(&ffrpc_t::call_impl, &(ffscene->get_rpc()),
+                                            service_name_, interface_name, msg_body_, func));
+    }
+    else
+    {
+        ffscene->get_rpc().get_tq().produce(task_binder_t::gen(&ffrpc_t::bridge_call_impl, &(ffscene->get_rpc()),
+                                            name_space_, service_name_, interface_name, msg_body_, func));
     }
 }
 //! 线程间传递消息
@@ -347,7 +365,7 @@ void fflua_mod_t::post_impl(const string& task_name, const ffjson_tool_t& task_a
     }
     catch(exception& e_)
     {
-        LOGERROR((FFSCENE_PYTHON, "fflua_mod_t::post_task_impl exception<%s>", e_.what()));
+        LOGERROR((FFSCENE_LUA, "fflua_mod_t::post_task_impl exception<%s>", e_.what()));
     }
 }
 
@@ -365,7 +383,7 @@ void fflua_mod_t::callback_impl(const ffjson_tool_t& task_args, long callback_id
     }
     catch(exception& e_)
     {
-        LOGERROR((FFSCENE_PYTHON, "fflua_mod_t::callback_impl exception<%s>", e_.what()));
+        LOGERROR((FFSCENE_LUA, "fflua_mod_t::callback_impl exception<%s>", e_.what()));
     }
 }
 

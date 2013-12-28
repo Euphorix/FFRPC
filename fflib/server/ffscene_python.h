@@ -60,8 +60,7 @@ public:
     long connect_db(const string& host_);
     void db_query(long db_id_,const string& sql_, long callback_id_);
     vector<vector<string> > sync_db_query(long db_id_,const string& sql_);
-    void call_service(const string& name_space_, const string& service_name_,
-                      const string& interface_name, const string& msg_body_, long callback_id_);
+
    
     ffpython_t& get_ffpython(){ return *m_ffpython; }
     
@@ -69,12 +68,19 @@ public:
     void post_task(const string& func_name, const ffjson_tool_t& task_args, long callback_id);
     void post_task_impl(const string& func_name, const ffjson_tool_t& task_args, long callback_id);
 
+    void call_service(const string& name_space_, const string& service_name_,
+                      const string& interface_name, const string& msg_body_, long callback_id_);
+    
     //! 使用python注册scene接口  name_为输入消息的名称
     void reg_scene_interface(const string& name_);
+    //!接口调用完毕后，返回响应消息
+    void rpc_response(long callback_id, const string& msg_name, const string& body);
 public:
     ffpython_t*     m_ffpython;
     string          m_ext_name;
     db_mgr_t        m_db_mgr;
+    //! 用于暂存rpc请求
+    map<long, ffslot_req_arg> m_cache_req;
 };
 
 }

@@ -78,8 +78,13 @@ struct pytype_traits_t<ffjson_tool_t>
         return 0;
     }
     
-    static int pyobj_to_json_obj(PyObject *pvalue_, ffjson_tool_t& ffjson_tool, json_value_t& jval)
+    static int pyobj_to_json_obj(PyObject *pvalue_, ffjson_tool_t& ffjson_tool, json_value_t& jval, int depth = 0)
     {
+        if (depth > 20)
+        {
+            return false;
+        }
+        ++depth;
         if (Py_False ==  pvalue_|| Py_None == pvalue_)
         {
             jval.SetBool(false);
@@ -132,7 +137,7 @@ struct pytype_traits_t<ffjson_tool_t>
             for (int i = 0; i < n; ++i)
             {
                 json_value_t tmp_val;
-                pytype_traits_t<ffjson_tool_t>::pyobj_to_json_obj(PyList_GetItem(pvalue_, i), ffjson_tool, tmp_val);
+                pytype_traits_t<ffjson_tool_t>::pyobj_to_json_obj(PyList_GetItem(pvalue_, i), ffjson_tool, tmp_val, depth);
                 jval.PushBack(tmp_val, *ffjson_tool.allocator);
             }
         }
@@ -144,13 +149,15 @@ struct pytype_traits_t<ffjson_tool_t>
 
             while (PyDict_Next(pvalue_, &pos, &key, &value))
             {
+                string str_key;
                 json_value_t tmp_key;
                 json_value_t tmp_val;
-                if (pytype_traits_t<ffjson_tool_t>::pyobj_to_json_obj(key, ffjson_tool, tmp_key) ||
-                    pytype_traits_t<ffjson_tool_t>::pyobj_to_json_obj(value, ffjson_tool, tmp_val))
+                if (pytype_traits_t<string>::pyobj_to_cppobj(key, str_key) ||
+                    pytype_traits_t<ffjson_tool_t>::pyobj_to_json_obj(value, ffjson_tool, tmp_val, depth))
                 {
                     return -1;
                 }
+                tmp_key.SetString(str_key.c_str(), str_key.length(), *ffjson_tool.allocator);
                 jval.AddMember(tmp_key, tmp_val, *(ffjson_tool.allocator));
             }
         }
@@ -199,7 +206,12 @@ static bool py_post_task(const string& name, const string& func_name, const ffjs
     task_processor_i* d = singleton_t<task_processor_mgr_t>::instance().get(name);
     if (d)
     {
-        //d->post_task(func_name, task_args, callback_id);
+        d->post(func_name, task_args, singleton_t<ffscene_python_t>::instance().get_scene_name(), callback_id);
+        LOGTRACE((FFSCENE_PYTHON, "ffscene_python_t::py_post_task end ok"));
+    }
+    else
+    {
+        LOGERROR((FFSCENE_PYTHON, "ffscene_python_t::py_post_task none dest=%s", name));
     }
     return d != NULL;
 }
@@ -225,7 +237,8 @@ int ffscene_python_t::open(arg_helper_t& arg_helper)
               .reg(&ffscene_python_t::db_query, "db_query")
               .reg(&ffscene_python_t::sync_db_query, "sync_db_query")
               .reg(&ffscene_python_t::call_service, "call_service")
-              .reg(&ffscene_python_t::reg_scene_interface, "reg_scene_interface");
+              .reg(&ffscene_python_t::reg_scene_interface, "reg_scene_interface")
+              .reg(&ffscene_python_t::rpc_response, "rpc_response");
 
 
     (*m_ffpython).reg(&ffdb_t::escape, "escape")
@@ -237,6 +250,7 @@ int ffscene_python_t::open(arg_helper_t& arg_helper)
 
     (*m_ffpython).init("ff");
     (*m_ffpython).set_global_var("ff", "ffscene_obj", (ffscene_python_t*)this);
+    (*m_ffpython).set_global_var("ff", "ffscene", (ffscene_python_t*)this);
 
     this->callback_info().verify_callback = gen_verify_callback();
     this->callback_info().enter_callback = gen_enter_callback();
@@ -692,7 +706,13 @@ void ffscene_python_t::reg_scene_interface(const string& name_)
             static string func_name = "ff_call_scene_interface";
             try
             {
-                m_ffscene->get_ffpython().call<void>(m_ffscene->m_ext_name, func_name, m_name, msg_data->body);
+                long key_id = 0;
+                if (msg_data->callback_id != 0)
+                {
+                    key_id = (long)(m_ffscene->get_rpc().get_callback_id());
+                    m_ffscene->m_cache_req[key_id] = *msg_data;
+                }
+                m_ffscene->get_ffpython().call<void>(m_ffscene->m_ext_name, func_name, m_name, msg_data->body, key_id);
             }
             catch(exception& e_)
             {
@@ -705,4 +725,14 @@ void ffscene_python_t::reg_scene_interface(const string& name_)
     };
     ffslot_t::callback_t* func = new lambda_cb(this, name_);
     this->m_ffrpc->reg(name_, func);
+}
+//!接口调用完毕后，返回响应消息
+void ffscene_python_t::rpc_response(long callback_id, const string& msg_name, const string& body)
+{
+    map<long, ffslot_req_arg>::iterator it = m_cache_req.find(callback_id);
+    if (it != m_cache_req.end())
+    {
+        ffslot_req_arg& req = it->second;
+        req.responser->response(req.dest_namespace, msg_name, req.dest_node_id, req.callback_id, body);
+    }
 }

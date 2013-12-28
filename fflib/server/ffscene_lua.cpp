@@ -75,7 +75,7 @@ static void lua_reg(lua_State* ls)
 
 int ffscene_lua_t::open(arg_helper_t& arg_helper, string scene_name)
 {
-    LOGTRACE((FFSCENE_PYTHON, "ffscene_lua_t::open begin"));
+    LOGTRACE((FFSCENE_LUA, "ffscene_lua_t::open begin"));
     m_arg_helper = arg_helper;
     
     (*m_fflua).reg(lua_reg);
@@ -91,7 +91,7 @@ int ffscene_lua_t::open(arg_helper_t& arg_helper, string scene_name)
     (*m_fflua).add_package_path("./luaproject");
     if (arg_helper.is_enable_option("-lua_path"))
     {
-        LOGTRACE((FFSCENE_PYTHON, "add_package_path lua_path=%s\n", arg_helper.get_option_value("-lua_path")));
+        LOGTRACE((FFSCENE_LUA, "add_package_path lua_path=%s\n", arg_helper.get_option_value("-lua_path")));
         (*m_fflua).add_package_path(arg_helper.get_option_value("-lua_path"));
     }
     
@@ -121,16 +121,20 @@ int ffscene_lua_t::open(arg_helper_t& arg_helper, string scene_name)
     }
     catch(exception& e_)
     {
-        LOGERROR((FFSCENE_PYTHON, "ffscene_lua_t::open failed er=<%s>", e_.what()));
+        LOGERROR((FFSCENE_LUA, "ffscene_lua_t::open failed er=<%s>", e_.what()));
         ffscene_t::close();
         return -1;
     }
-    LOGTRACE((FFSCENE_PYTHON, "ffscene_lua_t::open end ok"));
+    LOGTRACE((FFSCENE_LUA, "ffscene_lua_t::open end ok"));
     return ret;
 }
 
 int ffscene_lua_t::close()
 {
+    if (this->get_scene_name().empty())
+    {
+        return 0;
+    }
     singleton_t<task_processor_mgr_t>::instance().del(this->get_scene_name());
     int ret = 0;
     try
@@ -139,7 +143,7 @@ int ffscene_lua_t::close()
     }
     catch(exception& e_)
     {
-        LOGERROR((FFSCENE_PYTHON, "ffscene_lua_t::close failed er=%s", e_.what()));
+        LOGERROR((FFSCENE_LUA, "ffscene_lua_t::close failed er=%s", e_.what()));
     }
     ffscene_t::close();
     m_db_mgr.stop();
@@ -149,7 +153,7 @@ int ffscene_lua_t::close()
 string ffscene_lua_t::reload(const string& name_)
 {
     AUTO_PERF();
-    LOGTRACE((FFSCENE_PYTHON, "ffscene_lua_t::reload begin name_[%s]", name_));
+    LOGTRACE((FFSCENE_LUA, "ffscene_lua_t::reload begin name_[%s]", name_));
     try
     {
         //! ffpython_t::reload(name_);
@@ -157,10 +161,10 @@ string ffscene_lua_t::reload(const string& name_)
     }
     catch(exception& e_)
     {
-        LOGERROR((FFSCENE_PYTHON, "ffscene_lua_t::reload exeception=%s", e_.what()));
+        LOGERROR((FFSCENE_LUA, "ffscene_lua_t::reload exeception=%s", e_.what()));
         return e_.what();
     }
-    LOGTRACE((FFSCENE_PYTHON, "ffscene_lua_t::reload end ok name_[%s]", name_));
+    LOGTRACE((FFSCENE_LUA, "ffscene_lua_t::reload end ok name_[%s]", name_));
     return "";
 }
 
@@ -242,7 +246,7 @@ ffslot_t::callback_t* ffscene_lua_t::gen_verify_callback()
             }
             catch(exception& e_)
             {
-                LOGERROR((FFSCENE_PYTHON, "ffscene_lua_t::gen_verify_callback exception<%s>", e_.what()));
+                LOGERROR((FFSCENE_LUA, "ffscene_lua_t::gen_verify_callback exception<%s>", e_.what()));
             }
         }
         virtual ffslot_t::callback_t* fork() { return new lambda_cb(ffscene); }
@@ -273,7 +277,7 @@ ffslot_t::callback_t* ffscene_lua_t::gen_enter_callback()
             }
             catch(exception& e_)
             {
-                LOGERROR((FFSCENE_PYTHON, "ffscene_lua_t::gen_enter_callback exception<%s>", e_.what()));
+                LOGERROR((FFSCENE_LUA, "ffscene_lua_t::gen_enter_callback exception<%s>", e_.what()));
             }
         }
         virtual ffslot_t::callback_t* fork() { return new lambda_cb(ffscene); }
@@ -303,7 +307,7 @@ ffslot_t::callback_t* ffscene_lua_t::gen_offline_callback()
             }
             catch(exception& e_)
             {
-                LOGERROR((FFSCENE_PYTHON, "ffscene_lua_t::gen_offline_callback exception<%s>", e_.what()));
+                LOGERROR((FFSCENE_LUA, "ffscene_lua_t::gen_offline_callback exception<%s>", e_.what()));
             }
         }
         virtual ffslot_t::callback_t* fork() { return new lambda_cb(ffscene); }
@@ -324,7 +328,7 @@ ffslot_t::callback_t* ffscene_lua_t::gen_logic_callback()
             }
             logic_msg_arg* data = (logic_msg_arg*)args_;
             static string func_name  = LOGIC_CB_NAME;
-            LOGDEBUG((FFSCENE_PYTHON, "ffscene_lua_t::gen_logic_callback len[%lu]", data->body.size()));
+            LOGDEBUG((FFSCENE_LUA, "ffscene_lua_t::gen_logic_callback len[%lu]", data->body.size()));
             
             AUTO_CMD_PERF("logic_callback", data->cmd);
             try
@@ -334,7 +338,7 @@ ffslot_t::callback_t* ffscene_lua_t::gen_logic_callback()
             }
             catch(exception& e_)
             {
-                LOGERROR((FFSCENE_PYTHON, "ffscene_lua_t::gen_logic_callback exception<%s>", e_.what()));
+                LOGERROR((FFSCENE_LUA, "ffscene_lua_t::gen_logic_callback exception<%s>", e_.what()));
             }
         }
         virtual ffslot_t::callback_t* fork() { return new lambda_cb(ffscene); }
@@ -356,7 +360,7 @@ ffslot_t::callback_t* ffscene_lua_t::gen_scene_call_callback()
             }
             scene_call_msg_arg* data = (scene_call_msg_arg*)args_;
             static string func_name  = SCENE_CALL_CB_NAME;
-            LOGINFO((FFSCENE_PYTHON, "ffscene_lua_t::gen_scene_call_callback len[%lu]", data->body.size()));
+            LOGINFO((FFSCENE_LUA, "ffscene_lua_t::gen_scene_call_callback len[%lu]", data->body.size()));
             
             AUTO_CMD_PERF("scene_callback", data->cmd);
             try
@@ -372,7 +376,7 @@ ffslot_t::callback_t* ffscene_lua_t::gen_scene_call_callback()
             catch(exception& e_)
             {
                 data->err = e_.what();
-                LOGERROR((FFSCENE_PYTHON, "ffscene_lua_t::gen_scene_call_callback exception<%s>", e_.what()));
+                LOGERROR((FFSCENE_LUA, "ffscene_lua_t::gen_scene_call_callback exception<%s>", e_.what()));
             }
         }
         virtual ffslot_t::callback_t* fork() { return new lambda_cb(ffscene); }
@@ -388,7 +392,7 @@ int ffscene_lua_t::once_timer(int timeout_, uint64_t id_)
     {
         static void call_py(ffscene_lua_t* ffscene, uint64_t id)
         {
-            LOGDEBUG((FFSCENE_PYTHON, "ffscene_lua_t::once_timer call_py id<%u>", id));
+            LOGDEBUG((FFSCENE_LUA, "ffscene_lua_t::once_timer call_py id<%u>", id));
             static string func_name  = TIMER_CB_NAME;
             PERF("once_timer");
             try
@@ -397,7 +401,7 @@ int ffscene_lua_t::once_timer(int timeout_, uint64_t id_)
             }
             catch(exception& e_)
             {
-                LOGERROR((FFSCENE_PYTHON, "ffscene_lua_t::gen_logic_callback exception<%s>", e_.what()));
+                LOGERROR((FFSCENE_LUA, "ffscene_lua_t::gen_logic_callback exception<%s>", e_.what()));
             }
         }
         static void callback(ffscene_lua_t* ffscene, task_queue_t* tq_, uint64_t id)
@@ -405,7 +409,7 @@ int ffscene_lua_t::once_timer(int timeout_, uint64_t id_)
             tq_->produce(task_binder_t::gen(&lambda_cb::call_py, ffscene, id));
         }
     };
-    LOGDEBUG((FFSCENE_PYTHON, "ffscene_lua_t::once_timer begin id<%u>", id_));
+    LOGDEBUG((FFSCENE_LUA, "ffscene_lua_t::once_timer begin id<%u>", id_));
     m_ffrpc->get_timer().once_timer(timeout_, task_binder_t::gen(&lambda_cb::callback, this, &(m_ffrpc->get_tq()), id_));
     return 0;
 }
@@ -439,7 +443,7 @@ ffslot_t::callback_t* ffscene_lua_t::gen_db_query_callback(long callback_id_)
             }
             catch(exception& e_)
             {
-                LOGERROR((FFSCENE_PYTHON, "ffscene_lua_t::gen_db_query_callback exception<%s>", e_.what()));
+                LOGERROR((FFSCENE_LUA, "ffscene_lua_t::gen_db_query_callback exception<%s>", e_.what()));
             }
         }
         virtual ffslot_t::callback_t* fork() { return new lambda_cb(ffscene, callback_id); }
@@ -484,7 +488,7 @@ void ffscene_lua_t::call_service(const string& name_space_, const string& servic
             }
             catch(exception& e_)
             {
-                LOGERROR((FFSCENE_PYTHON, "ffscene_python_t::call_service exception=%s", e_.what()));
+                LOGERROR((FFSCENE_LUA, "FFSCENE_LUA_t::call_service exception=%s", e_.what()));
             }
         }
         virtual ffslot_t::callback_t* fork() { return new lambda_cb(m_ffscene, m_callback_id); }
@@ -524,7 +528,7 @@ void ffscene_lua_t::post_impl(const string& task_name, const ffjson_tool_t& task
     }
     catch(exception& e_)
     {
-        LOGERROR((FFSCENE_PYTHON, "ffscene_lua_t::post_task_impl exception<%s>", e_.what()));
+        LOGERROR((FFSCENE_LUA, "ffscene_lua_t::post_task_impl exception<%s>", e_.what()));
     }
 }
 
@@ -542,7 +546,7 @@ void ffscene_lua_t::callback_impl(const ffjson_tool_t& task_args, long callback_
     }
     catch(exception& e_)
     {
-        LOGERROR((FFSCENE_PYTHON, "ffscene_lua_t::callback_impl exception<%s>", e_.what()));
+        LOGERROR((FFSCENE_LUA, "ffscene_lua_t::callback_impl exception<%s>", e_.what()));
     }
 }
 

@@ -35,7 +35,7 @@ template<> struct lua_op_t<ffjson_tool_t>
 		    lua_newtable(ls_);
 		    for (int i = 0; i < (int)jval.Size(); i++)
 		    {
-		        lua_op_t<int>::push_stack(ls_, i);
+		        lua_op_t<int>::push_stack(ls_, i+1);
 		        lua_op_t<ffjson_tool_t>::push_stack(ls_, jval[i]);
 		        lua_settable(ls_, -3);
 		    }
@@ -67,8 +67,13 @@ template<> struct lua_op_t<ffjson_tool_t>
 	    lua_op_t<ffjson_tool_t>::lua_to_value(ls_, pos_, ffjson_tool, *(ffjson_tool.jval));
 	    return 0;
 	}
-	static int lua_to_value(lua_State* ls_, int pos_, ffjson_tool_t& ffjson_tool, json_value_t& jval)
+	static int lua_to_value(lua_State* ls_, int pos_, ffjson_tool_t& ffjson_tool, json_value_t& jval, int depth = 0)
 	{
+	    if (depth > 20)
+	    {
+	        return -1;
+	    }
+	    ++depth;
         int t = lua_type(ls_, pos_);
         //printf("lua_to_value	%s -\n", lua_typename(ls_, lua_type(ls_, pos_)));
         switch (t)
@@ -113,22 +118,50 @@ template<> struct lua_op_t<ffjson_tool_t>
             	    pos_= table_pos + (pos_ - (-1));
             	}
             	
-            	bool is_array = true;
+            	set<int> tmp_set;
             	lua_pushnil(ls_);
-            	int index = 0;
+            	size_t index = 0;
                 while (lua_next(ls_, pos_) != 0) {
                     if (lua_type(ls_, -2) == LUA_TNUMBER)
                     {
-                        if (double(++index) != lua_tonumber(ls_, -2))
-                        {
-                            is_array = false;
-                        }
-                    }
-                    else
-                    {
-                        is_array = false;
+                        tmp_set.insert(int(lua_tonumber(ls_, -2)));
                     }
                     lua_pop(ls_, 1);
+                    ++ index;
+                }
+                bool is_array = false;
+                //! 检查是不是数组
+                if (tmp_set.size() == index)
+                {
+                    is_array = true;
+                    int start = -1;
+                    if (index > 1)
+                    {
+                        for (set<int>::iterator it = tmp_set.begin(); it != tmp_set.end(); ++it)
+                        {
+                            if (start < 0)
+                            {
+                                start = *it;
+                            }
+                            else if (*it != start + 1)
+                            {
+                                is_array = false;
+                                break;
+                            }
+                            else
+                            {
+                                ++start;
+                            }
+                        }
+                    }
+                    else if (index == 1)
+                    {
+                        if (*tmp_set.begin() != 0 && *tmp_set.begin() != 1)
+                        {
+                            is_array = false;
+                            break;
+                        }
+                    }
                 }
                 if (is_array)
                 {
@@ -140,7 +173,7 @@ template<> struct lua_op_t<ffjson_tool_t>
                         //        lua_typename(ls_, lua_type(ls_, -1)));
 
                         json_value_t tmp_val;
-                        lua_op_t<ffjson_tool_t>::lua_to_value(ls_, -1, ffjson_tool, tmp_val);
+                        lua_op_t<ffjson_tool_t>::lua_to_value(ls_, -1, ffjson_tool, tmp_val, depth);
                         
                         //printf("key=`%s'\n", lua_tostring(ls_, -2));
                         jval.PushBack(tmp_val, *ffjson_tool.allocator);
@@ -158,8 +191,10 @@ template<> struct lua_op_t<ffjson_tool_t>
                                 
                         json_value_t tmp_key;
                         json_value_t tmp_val;
-                        lua_op_t<ffjson_tool_t>::lua_to_value(ls_, -2, ffjson_tool, tmp_key);
-                        lua_op_t<ffjson_tool_t>::lua_to_value(ls_, -1, ffjson_tool, tmp_val);
+                        string str_key;
+                        lua_op_t<string>::lua_to_value(ls_, -2, str_key);
+                        lua_op_t<ffjson_tool_t>::lua_to_value(ls_, -1, ffjson_tool, tmp_val, depth);
+                        tmp_key.SetString(str_key.c_str(), str_key.length(), *ffjson_tool.allocator);
                         jval.AddMember(tmp_key, tmp_val, *(ffjson_tool.allocator));
                         //printf("key=`%s'\n", lua_tostring(ls_, -2));
                         

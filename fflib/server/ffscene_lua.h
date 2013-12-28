@@ -13,7 +13,7 @@ using namespace std;
 
 namespace ff
 {
-#define FFSCENE_PYTHON "FFSCENE_PYTHON"
+#define FFSCENE_LUA "FFSCENE_LUA"
 
 #define MOD_NAME            "ffext"
 #define VERIFY_CB_NAME      "ff_session_verify"
