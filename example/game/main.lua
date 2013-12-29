@@ -5,6 +5,7 @@ ffext = {
     id = 0,
     rpc_callback_cache_func = {},
     task_bind_func = {},
+    task_callback_func = {},
 }
 
 -- 调用远程scene的接口
@@ -45,16 +46,39 @@ function ffext:multi_bind_task(tbl)
         ffext.task_bind_func[task_name] = func
     end
 end
+-- 处理投递远程的任务消息
+function ffext:post_task(name, task_name, args, cb)
+    cb_id = 0
+    if cb ~= nil then
+        ffext.id = ffext.id + 1
+        cb_id = ffext.id
+        ffext.task_callback_func[cb_id..''] = cb
+    end
+    ffscene:post_task(name, task_name, args, cb_id)
+end
 
+
+-- c++调用，处理远程投递的任务消息
 function process_task(name, args, from_name, callback_id)
     -- print('luaprocess_task', name, json_encode(args), from_name, callback_id)
     func = ffext.task_bind_func[name]
     if func ~= nil then
-        func(args, function(ret_args) return ffscene:task_callback(from_name, ret_args, callback_id) end)
+        func(args, function(ret_args)
+            if callback_id ~= 0 and callback_id ~= '0' then
+                return ffscene:task_callback(from_name, ret_args, callback_id)
+            end
+        end)
     else
         print('process_task', name, 'none task binder')
     end
     return 0 
+end
+-- 处理投递远程的task回调 消息
+function process_task_callback(args, cb_id)
+    cb_id = cb_id ..''
+    cb = ffext.task_callback_func[cb_id]
+    ffext.task_callback_func[cb_id] = nil
+    cb(args)
 end
 
 
@@ -65,6 +89,7 @@ function init()
         cb(args)
         ffext:ff_rpc_call('scene@0', 'test', args, function(ret_args)
             print('ff_rpc_call callback TTTTT', json_encode(ret_args))
+            ffext:post_task('scene@0', 'py_task', ret_args)
         end)
     end)
 	return 0
