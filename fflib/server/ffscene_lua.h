@@ -23,7 +23,7 @@ namespace ff
 #define TIMER_CB_NAME       "ff_timer_callback"
 #define DB_QUERY_CB_NAME    "ff_db_query_callback"
 #define SCENE_CALL_CB_NAME  "ff_scene_call"
-#define CALL_SERVICE_RETURN_MSG_CB_NAME "ff_scene_call_return_msg"
+#define CALL_SERVICE_RETURN_MSG_CB_NAME "ff_rpc_call_return_msg"
 
 class fflua_t;
 class ffjson_tool_t;
@@ -66,7 +66,8 @@ public:
     
     //! 线程间传递消息
     bool post_task(const string& name, const string& task_name, const ffjson_tool_t& task_args, long callback_id);
-
+    bool task_callback(const string& name, const ffjson_tool_t& task_args, long callback_id);
+    
     void post(const string& task_name, const ffjson_tool_t& task_args,
               const string& from_name, long callback_id);
     void post_impl(const string& task_name, const ffjson_tool_t& task_args,

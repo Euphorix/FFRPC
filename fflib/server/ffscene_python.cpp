@@ -35,7 +35,7 @@ struct pytype_traits_t<ffjson_tool_t>
 	    {
 	        if (jval.IsInt())
 	        {
-	            return PyLong_FromLong(long(jval.GetInt()));
+	            return PyInt_FromLong(long(jval.GetInt()));
 	        }
 	        else if (jval.IsInt64())
 	        {
@@ -215,6 +215,20 @@ static bool py_post_task(const string& name, const string& func_name, const ffjs
     }
     return d != NULL;
 }
+static bool py_task_callback(const string& name, const ffjson_tool_t& task_args, long callback_id)
+{
+    task_processor_i* d = singleton_t<task_processor_mgr_t>::instance().get(name);
+    if (d)
+    {
+        d->callback(task_args, callback_id);
+        LOGTRACE((FFSCENE_PYTHON, "ffscene_python_t::py_task_callback end ok"));
+    }
+    else
+    {
+        LOGERROR((FFSCENE_PYTHON, "ffscene_python_t::py_task_callback none dest=%s", name));
+    }
+    return d != NULL;
+}
 
 int ffscene_python_t::open(arg_helper_t& arg_helper)
 {
@@ -246,7 +260,8 @@ int ffscene_python_t::open(arg_helper_t& arg_helper)
                  .reg(&ffscene_python_t::py_broadcast_msg_session, "py_broadcast_msg_session")
                  .reg(&ffscene_python_t::py_verify_session_id, "py_verify_session_id")
                  .reg(&ffscene_python_t::py_get_config, "py_get_config")
-                 .reg(&::py_post_task, "py_post_task");
+                 .reg(&::py_post_task, "py_post_task")
+                 .reg(&::py_task_callback, "py_task_callback");
 
     (*m_ffpython).init("ff");
     (*m_ffpython).set_global_var("ff", "ffscene_obj", (ffscene_python_t*)this);
@@ -690,6 +705,24 @@ void ffscene_python_t::post_task_impl(const string& func_name, const ffjson_tool
     }
 }
 
+void ffscene_python_t::callback(const ffjson_tool_t& task_args, long callback_id)
+{
+    m_ffrpc->get_tq().produce(task_binder_t::gen(&ffscene_python_t::callback_impl, this, task_args, callback_id));
+}
+
+void ffscene_python_t::callback_impl(const ffjson_tool_t& task_args, long callback_id)
+{
+    try
+    {
+        static string func_name = "process_task_callback";
+        (*m_ffpython).call<void>(m_ext_name, func_name, task_args, callback_id);
+         
+    }
+    catch(exception& e_)
+    {
+        LOGERROR((FFSCENE_PYTHON, "ffscene_python_t::callback_impl exception<%s>", e_.what()));
+    }
+}
 //! 使用python注册scene接口  name_为输入消息的名称
 void ffscene_python_t::reg_scene_interface(const string& name_)
 {

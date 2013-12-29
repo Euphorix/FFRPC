@@ -34,7 +34,7 @@ struct ffjson_tool_t{
     
     string encode()
     {
-        if (this->jval->IsNull())
+        if (false == this->jval->IsObject() && false == this->jval->IsArray())
         {
             return "null";
         }

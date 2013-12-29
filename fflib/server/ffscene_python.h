@@ -23,7 +23,7 @@ namespace ff
 #define TIMER_CB_NAME       "ff_timer_callback"
 #define DB_QUERY_CB_NAME    "ff_db_query_callback"
 #define SCENE_CALL_CB_NAME  "ff_scene_call"
-#define CALL_SERVICE_RETURN_MSG_CB_NAME "ff_scene_call_return_msg"
+#define CALL_SERVICE_RETURN_MSG_CB_NAME "ff_rpc_call_return_msg"
 
 
 class ffscene_python_t: public ffscene_t, task_processor_i
@@ -67,6 +67,8 @@ public:
     //! 线程间传递消息
     void post_task(const string& func_name, const ffjson_tool_t& task_args, long callback_id);
     void post_task_impl(const string& func_name, const ffjson_tool_t& task_args, long callback_id);
+    void callback(const ffjson_tool_t& task_args, long callback_id);
+    void callback_impl(const ffjson_tool_t& task_args, long callback_id);
 
     void call_service(const string& name_space_, const string& service_name_,
                       const string& interface_name, const string& msg_body_, long callback_id_);

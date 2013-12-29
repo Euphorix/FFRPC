@@ -46,6 +46,21 @@ bool ffscene_lua_t::post_task(const string& name, const string& task_name, const
     }
     return d != NULL;
 }
+bool ffscene_lua_t::task_callback(const string& name, const ffjson_tool_t& task_args, long callback_id)
+{
+    task_processor_i* d = singleton_t<task_processor_mgr_t>::instance().get(name);
+    if (d)
+    {
+        d->callback(task_args, callback_id);
+        LOGTRACE((FFSCENE_LUA, "ffscene_lua_t::py_task_callback end ok name=%s", name));
+    }
+    else
+    {
+        LOGERROR((FFSCENE_LUA, "ffscene_lua_t::py_task_callback none dest=%s", name));
+    }
+    return d != NULL;
+}
+
 static void lua_reg(lua_State* ls)  
 {
     //! 注册基类函数, ctor() 为构造函数的类型  
@@ -64,7 +79,8 @@ static void lua_reg(lua_State* ls)
                     .def(&ffscene_lua_t::db_query, "db_query")
                     .def(&ffscene_lua_t::sync_db_query, "sync_db_query")
                     .def(&ffscene_lua_t::call_service, "call_service")
-                    .def(&ffscene_lua_t::post_task, "post_task");
+                    .def(&ffscene_lua_t::post_task, "post_task")
+                    .def(&ffscene_lua_t::task_callback, "task_callback");
 
     fflua_register_t<>(ls)  
                     .def(&ffdb_t::escape, "escape")
