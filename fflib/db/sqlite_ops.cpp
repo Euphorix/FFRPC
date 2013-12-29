@@ -1,3 +1,4 @@
+#ifdef FF_ENABLE_SQLITE
 
 #include "db/sqlite_ops.h"
 #include <string.h>
@@ -104,3 +105,5 @@ void sqlite_ops_t::rollback_transaction()
 {
     exe_sql("rollback transaction", NULL);
 }
+
+#endif

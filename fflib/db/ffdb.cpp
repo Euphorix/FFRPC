@@ -27,8 +27,10 @@ int  ffdb_t::connect(const string& args_)
     {
         if (str_vt[0] == "sqlite")
         {
-            m_db_ops = new sqlite_ops_t();
-            return m_db_ops->connect(str_vt[1]);
+            #if FF_ENABLE_SQLITE
+                m_db_ops = new sqlite_ops_t();
+                return m_db_ops->connect(str_vt[1]);
+            #endif
         }
         else
         {

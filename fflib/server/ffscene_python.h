@@ -65,8 +65,11 @@ public:
     ffpython_t& get_ffpython(){ return *m_ffpython; }
     
     //! 线程间传递消息
-    void post_task(const string& func_name, const ffjson_tool_t& task_args, long callback_id);
-    void post_task_impl(const string& func_name, const ffjson_tool_t& task_args, long callback_id);
+    void post(const string& task_name, const ffjson_tool_t& task_args,
+              const string& from_name, long callback_id);
+    void post_impl(const string& task_name, const ffjson_tool_t& task_args,
+                   const string& from_name, long callback_id);
+
     void callback(const ffjson_tool_t& task_args, long callback_id);
     void callback_impl(const ffjson_tool_t& task_args, long callback_id);
 

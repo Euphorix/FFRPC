@@ -260,8 +260,8 @@ int ffscene_python_t::open(arg_helper_t& arg_helper)
                  .reg(&ffscene_python_t::py_broadcast_msg_session, "py_broadcast_msg_session")
                  .reg(&ffscene_python_t::py_verify_session_id, "py_verify_session_id")
                  .reg(&ffscene_python_t::py_get_config, "py_get_config")
-                 .reg(&::py_post_task, "py_post_task")
-                 .reg(&::py_task_callback, "py_task_callback");
+                 .reg(&::py_post_task, "post_task")
+                 .reg(&::py_task_callback, "task_callback");
 
     (*m_ffpython).init("ff");
     (*m_ffpython).set_global_var("ff", "ffscene_obj", (ffscene_python_t*)this);
@@ -687,21 +687,25 @@ void ffscene_python_t::call_service(const string& name_space_, const string& ser
 }
 
 //! 线程间传递消息
-void ffscene_python_t::post_task(const string& func_name, const ffjson_tool_t& task_args, long callback_id)
+void ffscene_python_t::post(const string& task_name, const ffjson_tool_t& task_args,
+                            const string& from_name, long callback_id)
 {
-    m_ffrpc->get_tq().produce(task_binder_t::gen(&ffscene_python_t::post_task_impl, this, func_name, task_args, callback_id));
+    m_ffrpc->get_tq().produce(task_binder_t::gen(&ffscene_python_t::post_impl, this,
+                                                 task_name, task_args, from_name, callback_id));
 }
 
-void ffscene_python_t::post_task_impl(const string& func_name, const ffjson_tool_t& task_args, long callback_id)
+void ffscene_python_t::post_impl(const string& task_name, const ffjson_tool_t& task_args,
+                                 const string& from_name, long callback_id)
 {
     try
     {
-        (*m_ffpython).call<void>(m_ext_name, func_name.c_str(), task_args, callback_id);
+        static string func_name = "process_task";
+        (*m_ffpython).call<void>(m_ext_name, func_name, task_name, task_args, from_name, callback_id);
          
     }
     catch(exception& e_)
     {
-        LOGERROR((FFSCENE_PYTHON, "ffscene_python_t::post_task_impl exception<%s>", e_.what()));
+        LOGERROR((FFSCENE_PYTHON, "ffscene_python_t::post_impl exception<%s>", e_.what()));
     }
 }
 
