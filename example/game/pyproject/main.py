@@ -11,50 +11,21 @@ MAX_Y = 640
 MOVE_SPEED = 3
 
 class player_t:
-    def __init(self):
+    def __init__(self):
         self.id = 0
         self.name = ''
         self.x = 0
         self.y = 0
+        self.last_move_tm = time.time()
 
 def init():
     print('init......')
     return 0
-    def cb():
-        print('timer.....')
-        def task_cb(data):
-            print('task cb', data)
-        ffext.post_task('scene@1', 'test_task', [1,2,3,4,5,6], task_cb)
-        #ff.post_task('fflua@1', 'test', [1,2,3,4,5,6], 0)
-        def foo(ffreq):
-            print('foo', ffreq)
-        #ffext.ff_rpc_call('scene@0', '[1,2,3,444,555]', foo, 'test')
-        msg = ttypes.friend_t()
-        #ffext.ff_rpc_call('scene@0', msg, ffext.ff_rpc_callback(foo, ttypes.friend_t))
-        return
-    ffext.once_timer(1000, cb)
-    return 0
-
+    
 
 def cleanup():
     print('cleanup.....')
     return 0
-
-@ffext.ff_reg_scene_interfacee('ff::test')
-def process_test(ffreq):
-    print('pyprocess_test', ffreq.msg)
-    ffreq.response(ffreq.msg)
-
-@ffext.ff_reg_scene_interfacee(ttypes.friend_t, ttypes.friend_t)
-def process_friend(ffreq):
-    print('process_friend', ffreq.msg)
-    ffreq.response(ffreq.msg)
-
-
-@ffext.bind_task('py_task')
-def py_test_task(args, cb):
-    print('py_test_task', args)
-    cb(args)
 
 @ffext.on_verify
 def real_session_verify(session_verify): #session_key,
@@ -72,6 +43,11 @@ g_move_offset = {
 @ffext.reg(msg_def.client_cmd_e.INPUT_REQ, msg_def.input_req_t)
 def process_move(session, msg):
     print('process_move', msg.ops)
+    now_tm = time.time()
+    if now_tm - session.player.last_move_tm < 0.1:
+        print('move too fast')
+        return
+    session.player.last_move_tm = now_tm
     offset = g_move_offset.get(msg.ops)
     if None == offset:
         return
@@ -79,8 +55,12 @@ def process_move(session, msg):
     session.player.y += offset[1] * MOVE_SPEED
     if session.player.x < 0:
         session.player.x = 0
+    elif session.player.x > MAX_X:
+        session.player.x = MAX_X
     if session.player.y < 0:
         session.player.y = 0
+    elif session.player.y > MAX_Y:
+        session.player.y = MAX_Y
 
     ret_msg     = msg_def.input_ret_t()
     ret_msg.id  = session.get_id()
@@ -98,8 +78,8 @@ def real_session_enter(session, from_scene, extra_data):
     session.player = player_t()
     session.player.id = session.get_id()
     session.player.name = '小' + g_alloc_names[session.get_id() % (len(g_alloc_names))]
-    session.player.x = 100 + random.randint(0, 300)
-    session.player.y = 100 + random.randint(0, 300)
+    session.player.x = 100 + random.randint(0, 100)
+    session.player.y = 100 + random.randint(0, 100)
     
     ret_msg = msg_def.login_ret_t()
     ret_msg.id = session.get_id()
