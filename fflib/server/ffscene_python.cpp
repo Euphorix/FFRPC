@@ -172,7 +172,8 @@ struct pytype_traits_t<ffjson_tool_t>
 };
 //}
 
-ffscene_python_t::ffscene_python_t()
+ffscene_python_t::ffscene_python_t():
+    m_started(false)
 {
     m_ffpython = new ffpython_t();
 }
@@ -299,17 +300,12 @@ int ffscene_python_t::open(arg_helper_t& arg_helper)
         }
         return -1;
     }
+    m_started = true;
     LOGTRACE((FFSCENE_PYTHON, "ffscene_python_t::open end ok"));
     return ret;
 }
-
-int ffscene_python_t::close()
+void ffscene_python_t::py_cleanup()
 {
-    if (this->get_scene_name().empty())
-    {
-        return -1;
-    }
-    singleton_t<task_processor_mgr_t>::instance().del(this->get_scene_name());
     int ret = 0;
     try
     {
@@ -317,12 +313,26 @@ int ffscene_python_t::close()
     }
     catch(exception& e_)
     {
-        LOGERROR((FFSCENE_PYTHON, "ffscene_python_t::close failed er=<%s>", e_.what()));
+        LOGERROR((FFSCENE_PYTHON, "py_cleanup failed er=<%s>", e_.what()));
     }
+}
+int ffscene_python_t::close()
+{
+    if (false == m_started)
+        return 0;
+    m_started = false;
+    if (this->get_scene_name().empty())
+    {
+        return -1;
+    }
+    get_rpc().get_tq().produce(task_binder_t::gen(&ffscene_python_t::py_cleanup, this));
+
+    singleton_t<task_processor_mgr_t>::instance().del(this->get_scene_name());
+    
     ffscene_t::close();
     Py_Finalize();
     m_db_mgr.stop();
-    return ret;
+    return 0;
 }
 
 string ffscene_python_t::reload(const string& name_)

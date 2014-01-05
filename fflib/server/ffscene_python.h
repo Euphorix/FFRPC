@@ -39,6 +39,7 @@ public:
     ~ffscene_python_t();
     int open(arg_helper_t& arg_helper);
     int close();
+    void py_cleanup();
     string reload(const string& name_);
     void pylog(int level, const string& mod_, const string& content_);
     //! 判断某个service是否存在
@@ -81,6 +82,7 @@ public:
     //!接口调用完毕后，返回响应消息
     void rpc_response(long callback_id, const string& msg_name, const string& body);
 public:
+    bool            m_started;
     ffpython_t*     m_ffpython;
     string          m_ext_name;
     db_mgr_t        m_db_mgr;
