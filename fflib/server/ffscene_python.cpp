@@ -181,6 +181,7 @@ ffscene_python_t::~ffscene_python_t()
 {
     delete m_ffpython;
     m_ffpython = NULL;
+    Py_Finalize();
 }
 
 arg_helper_t ffscene_python_t::g_arg_helper("");
@@ -330,7 +331,7 @@ int ffscene_python_t::close()
     singleton_t<task_processor_mgr_t>::instance().del(this->get_scene_name());
     
     ffscene_t::close();
-    Py_Finalize();
+    
     m_db_mgr.stop();
     return 0;
 }

@@ -33,7 +33,10 @@ public:
         vector<string> vt2;
         strtool::split(vt[1], vt2, ":");
         if (vt2.size() != 2) return NULL;
-        
+        if (vt2[0] == "*")
+        {
+            vt2[0] = "127.0.0.1";
+        }
         int s;
         struct sockaddr_in addr;
         

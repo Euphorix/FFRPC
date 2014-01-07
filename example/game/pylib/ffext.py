@@ -47,9 +47,15 @@ def protobuf_to_value(msg_type_, val_):
     dest.ParseFromString(val_)
     return dest
 
-g_protocol = 1 #1 json
+g_protocol = 0 #1 json
 g_ReadTMemoryBuffer   = TTransport.TMemoryBuffer()
 g_ReadTBinaryProtocol = TBinaryProtocol.TBinaryProtocol(g_ReadTMemoryBuffer)
+
+def set_protocol_type(s):
+    global g_protocol
+    if s == "json":
+        g_protocol = 1
+    return true
 
 def decode_buff(dest, val_):
     global g_ReadTMemoryBuffer, g_ReadTBinaryProtocol

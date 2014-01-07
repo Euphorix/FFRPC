@@ -20,6 +20,7 @@ class player_t:
 
 def init():
     print('init......')
+    ffext.set_protocol_type('json')
     return 0
     
 
