@@ -55,7 +55,7 @@ def set_protocol_type(s):
     global g_protocol
     if s == "json":
         g_protocol = 1
-    return true
+    return True
 
 def decode_buff(dest, val_):
     global g_ReadTMemoryBuffer, g_ReadTBinaryProtocol

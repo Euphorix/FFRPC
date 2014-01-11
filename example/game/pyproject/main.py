@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import ffext
 import ff
-from user_data import ttypes
 import time
 import msg_def.ttypes as msg_def
 import random
