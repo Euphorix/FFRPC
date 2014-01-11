@@ -60,6 +60,7 @@ public:
 public:
     int open(arg_helper_t& opt_);
     int close();
+    void real_cleaanup();
 
     //! 获取任务队列对象
     task_queue_t& get_tq();

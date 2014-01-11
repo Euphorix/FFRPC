@@ -62,33 +62,34 @@ int acceptor_impl_t::open(const string& address_)
         return -1;
     }
 
-    if ((m_listen_fd = ::socket(res->ai_family, res->ai_socktype, res->ai_protocol)) == -1)
+    int tmpfd = -1;
+    if ((tmpfd = ::socket(res->ai_family, res->ai_socktype, res->ai_protocol)) == -1)
     {
         perror("acceptor_impl_t::open when socket");
         return -1;
     }
 
-    if (::setsockopt(m_listen_fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1)
+    if (::setsockopt(tmpfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1)
     {
         perror("acceptor_impl_t::open when setsockopt");
         return -1;
     }
 
-    if (::bind(m_listen_fd, res->ai_addr, res->ai_addrlen) == -1)
+    if (::bind(tmpfd, res->ai_addr, res->ai_addrlen) == -1)
     {
         fprintf(stderr, "acceptor_impl_t::open when bind: %s, address_=<%s>\n", strerror(errno), address_.c_str());
         return -1;
     }
 
-    socket_op_t::set_nonblock(m_listen_fd);
-    if (::listen(m_listen_fd, LISTEN_BACKLOG) == -1)
+    socket_op_t::set_nonblock(tmpfd);
+    if (::listen(tmpfd, LISTEN_BACKLOG) == -1)
     {
         perror("acceptor_impl_t::open when listen");
         return -1;
     }
 
     ::freeaddrinfo(res);
-
+    m_listen_fd = tmpfd;
     return m_epoll->register_fd(this);
 }
 

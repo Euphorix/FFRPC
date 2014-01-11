@@ -299,6 +299,7 @@ int ffscene_python_t::open(arg_helper_t& arg_helper)
         {
             LOGERROR((FFSCENE_PYTHON, "ffscene_python_t::open failed er=<%s>", ee_.what()));
         }
+        ffscene_t::close();
         return -1;
     }
     m_started = true;

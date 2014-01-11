@@ -87,17 +87,22 @@ timer_service_t& ffbroker_t::get_timer()
 {
     return m_timer;
 }
-
-int ffbroker_t::close()
+void ffbroker_t::real_cleaanup()
 {
-    if (m_acceptor)
-        m_acceptor->close();
     map<uint64_t/* node id*/, socket_ptr_t>::iterator it = m_all_registered_info.node_sockets.begin();
     for (; it != m_all_registered_info.node_sockets.end(); ++it)
     {
         it->second->close();
     }
     m_all_registered_info.node_sockets.clear();
+}
+int ffbroker_t::close()
+{
+    if (!m_acceptor)
+        return 0;
+    m_acceptor->close();
+    m_acceptor = NULL;
+    m_tq.produce(task_binder_t::gen(&ffbroker_t::real_cleaanup, this));
     m_tq.close();
     m_thread.join();
     //usleep(100);

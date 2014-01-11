@@ -55,6 +55,7 @@ def set_protocol_type(s):
     global g_protocol
     if s == "json":
         g_protocol = 1
+    print('set_protocol_type', g_protocol)
     return True
 
 def decode_buff(dest, val_):
@@ -85,8 +86,8 @@ def session_call(cmd_, protocol_type_ = 'json', convert_func_ = ignore_id):
         if protocol_type_ == 'json':
             g_session_logic_callback_dict[cmd_] = (json_to_value, func_, convert_func_)
         elif hasattr(protocol_type_, 'thrift_spec'):
-            if g_protocol == 1:
-                def thrift_to_value(val_):
+            def thrift_to_value(val_):
+                if g_protocol == 1:
                     dest = protocol_type_()
                     tmp_ReadTMemoryBuffer   = TTransport.TMemoryBuffer()
                     tmp_ReadTJsonProtocol   = TJSONProtocol.TJSONProtocol(tmp_ReadTMemoryBuffer)
@@ -101,9 +102,7 @@ def session_call(cmd_, protocol_type_ = 'json', convert_func_ = ignore_id):
                     #bp2 = TBinaryProtocol.TBinaryProtocol(mb2)
                     #dest.read(bp2);
                     return dest
-                g_session_logic_callback_dict[cmd_] = (thrift_to_value, func_, convert_func_)
-            else:
-                def thrift_to_value(val_):
+                else:
                     dest = protocol_type_()
                     global g_ReadTMemoryBuffer, g_ReadTBinaryProtocol
                     g_ReadTMemoryBuffer.cstringio_buf.truncate()
@@ -115,7 +114,8 @@ def session_call(cmd_, protocol_type_ = 'json', convert_func_ = ignore_id):
                     #bp2 = TBinaryProtocol.TBinaryProtocol(mb2)
                     #dest.read(bp2);
                     return dest
-                g_session_logic_callback_dict[cmd_] = (thrift_to_value, func_, convert_func_)
+            g_session_logic_callback_dict[cmd_] = (thrift_to_value, func_, convert_func_)
+
         else: #protobuf
             def protobuf_to_value(val_):
                 dest = protocol_type_()
@@ -167,7 +167,7 @@ class session_t:
     def verify_id(self, id_, extra_ = ''):
         self.m_id = id_
         if self.m_id != 0:
-            g_session_mgr.add_tmp(self.m_id, self)
+            g_session_mgr.add(self.m_id, self)
         ff.py_verify_session_id(self.key_id, id_, extra_)
         
         print('verify_id', id_)
