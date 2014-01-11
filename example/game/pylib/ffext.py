@@ -132,6 +132,13 @@ class session_mgr_t:
         self.tmp_cache   = {}
     def add(self, id, session):
         self.all_session[id] = session
+    def add_tmp(self, id, session):
+        self.tmp_cache[id] = session
+    def get_tmp(self, id):
+        self.tmp_cache.get(id)
+    def remove_tmp(self, id):
+        if None != self.tmp_cache.get(id):
+            del self.tmp_cache[id]
     def get(self, id):
         return self.all_session.get(id)
     def remove(self, id):
@@ -160,7 +167,7 @@ class session_t:
     def verify_id(self, id_, extra_ = ''):
         self.m_id = id_
         if self.m_id != 0:
-            g_session_mgr.add(self.m_id, self)
+            g_session_mgr.add_tmp(self.m_id, self)
         ff.py_verify_session_id(self.key_id, id_, extra_)
         
         print('verify_id', id_)
