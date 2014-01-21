@@ -127,7 +127,7 @@ int acceptor_impl_t::handle_epoll_read()
             perror("accept");
             return -1;
         }
-
+        socket_op_t::set_no_delay(new_fd);
         socket_i* socket = create_socket(new_fd);
         socket->open();
     } while (true);

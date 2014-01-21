@@ -8,7 +8,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-//#include <linux/tcp.h>
+#include <netinet/tcp.h>
 #include <string>
 using namespace std;
 
@@ -38,13 +38,13 @@ struct socket_op_t
         }
         return ret;
     }
-    /*
+
     static int set_no_delay(int sockfd, bool flag_ = true)
     {
         int on = flag_? 1: 0;
         return ::setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY,&on,sizeof(on));
     }
-    */
+
 };
 
 }
