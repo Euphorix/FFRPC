@@ -493,17 +493,20 @@ class process_cmd_ret_t:
   """
   Attributes:
    - ret_code
+   - err_msg
    - info
   """
 
   thrift_spec = (
     None, # 0
     (1, TType.I32, 'ret_code', None, 0, ), # 1
-    (2, TType.MAP, 'info', (TType.STRING,None,TType.STRING,None), None, ), # 2
+    (2, TType.STRING, 'err_msg', None, None, ), # 2
+    (3, TType.MAP, 'info', (TType.STRING,None,TType.STRING,None), None, ), # 3
   )
 
-  def __init__(self, ret_code=thrift_spec[1][4], info=None,):
+  def __init__(self, ret_code=thrift_spec[1][4], err_msg=None, info=None,):
     self.ret_code = ret_code
+    self.err_msg = err_msg
     self.info = info
 
   def read(self, iprot):
@@ -521,6 +524,11 @@ class process_cmd_ret_t:
         else:
           iprot.skip(ftype)
       elif fid == 2:
+        if ftype == TType.STRING:
+          self.err_msg = iprot.readString();
+        else:
+          iprot.skip(ftype)
+      elif fid == 3:
         if ftype == TType.MAP:
           self.info = {}
           (_ktype46, _vtype47, _size45 ) = iprot.readMapBegin() 
@@ -545,8 +553,12 @@ class process_cmd_ret_t:
       oprot.writeFieldBegin('ret_code', TType.I32, 1)
       oprot.writeI32(self.ret_code)
       oprot.writeFieldEnd()
+    if self.err_msg is not None:
+      oprot.writeFieldBegin('err_msg', TType.STRING, 2)
+      oprot.writeString(self.err_msg)
+      oprot.writeFieldEnd()
     if self.info is not None:
-      oprot.writeFieldBegin('info', TType.MAP, 2)
+      oprot.writeFieldBegin('info', TType.MAP, 3)
       oprot.writeMapBegin(TType.STRING, TType.STRING, len(self.info))
       for kiter52,viter53 in self.info.items():
         oprot.writeString(kiter52)
