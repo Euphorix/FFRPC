@@ -28,7 +28,7 @@ int main(int argc, char* argv[])
     }
 
     arg_helper_t arg_helper(argc, argv);
-    arg_helper.load_from_file("default.config");
+    //arg_helper.load_from_file("default.config");
 
     if (arg_helper.is_enable_option("-d"))
     {
