@@ -35,7 +35,7 @@ int ffscene_t::open(arg_helper_t& arg_helper, string scene_name)
     
     if (m_ffrpc->open(arg_helper))
     {
-        LOGERROR((FFSCENE, "ffscene_t::open failed check -broker argmuent"));
+        LOGERROR((FFSCENE, "ffscene_t::open failed check -broker or -master_broker argmuent"));
         return -1;
     }
     

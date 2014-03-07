@@ -76,7 +76,9 @@ def process_echo(ffreq):
     elif ffreq.msg.cmd == '查看日志':
         ret_msg.info['update_data'] = dump_path(ffreq.msg.process_name + '/log/'+ffreq.msg.param['path'])
     elif ffreq.msg.cmd == '查看代码':
-        ret_msg.info['update_data'] = dump_path(ffreq.msg.process_name + '/pyproject/'+ffreq.msg.param['path'])   
+        ret_msg.info['update_data'] = dump_path(ffreq.msg.process_name + '/pyproject/'+ffreq.msg.param['path'])
+    elif ffreq.msg.cmd == '性能日志':
+        ret_msg.info['update_data'] = dump_path(ffreq.msg.process_name + '/'+ffreq.msg.param['path'])
     else:
         ret_msg.ret_code = 0
         ret_msg.output_msg = '当前后台不支持此操作'

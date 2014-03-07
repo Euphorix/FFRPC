@@ -284,6 +284,10 @@ int ffscene_python_t::open(arg_helper_t& arg_helper)
     m_db_mgr.start();
 
     int ret = ffscene_t::open(arg_helper);
+    if (ret < 0)
+    {
+        return -1;
+    }
     singleton_t<task_processor_mgr_t>::instance().add(this->get_scene_name(), this);
     try{
         (*m_ffpython).load("main");

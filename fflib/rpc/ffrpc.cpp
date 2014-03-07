@@ -27,6 +27,10 @@ int ffrpc_t::open(arg_helper_t& arg_helper)
 {
     net_factory_t::start(1);
     m_host = arg_helper.get_option_value("-broker");
+    if (m_host.empty())
+    {
+        m_host = arg_helper.get_option_value("-master_broker");
+    }
 
     m_thread.create_thread(task_binder_t::gen(&task_queue_t::run, &m_tq), 1);
             
