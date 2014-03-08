@@ -81,6 +81,9 @@ public:
     void reg_scene_interface(const string& name_);
     //!接口调用完毕后，返回响应消息
     void rpc_response(long callback_id, const string& msg_name, const string& body);
+    //! 添加cmd 对应msg
+    void set_py_cmd2msg(int cmd_, const string& msg_name);
+    const char* get_py_cmd2msg(int cmd_);
 public:
     bool            m_started;
     ffpython_t*     m_ffpython;
@@ -88,6 +91,8 @@ public:
     db_mgr_t        m_db_mgr;
     //! 用于暂存rpc请求
     map<long, ffslot_req_arg> m_cache_req;
+    //!各个cmd 对应的 消息名称
+    map<int, string>m_py_cmd2msg;
 };
 
 }

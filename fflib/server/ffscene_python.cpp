@@ -254,6 +254,7 @@ int ffscene_python_t::open(arg_helper_t& arg_helper)
               .reg(&ffscene_python_t::sync_db_query, "sync_db_query")
               .reg(&ffscene_python_t::call_service, "call_service")
               .reg(&ffscene_python_t::reg_scene_interface, "reg_scene_interface")
+              .reg(&ffscene_python_t::set_py_cmd2msg, "set_py_cmd2msg")
               .reg(&ffscene_python_t::rpc_response, "rpc_response");
 
 
@@ -357,7 +358,20 @@ string ffscene_python_t::reload(const string& name_)
     LOGTRACE((FFSCENE_PYTHON, "ffscene_python_t::reload end ok name_[%s]", name_));
     return "";
 }
-
+//! 添加cmd 对应msg
+void ffscene_python_t::set_py_cmd2msg(int cmd_, const string& msg_name)
+{
+    m_py_cmd2msg[cmd_] = msg_name;
+}
+const char* ffscene_python_t::get_py_cmd2msg(int cmd_)
+{
+    map<int, string>::iterator it = m_py_cmd2msg.find(cmd_);
+    if (it != m_py_cmd2msg.end())
+    {
+        return it->second.c_str();
+    }
+    return "NaN";
+}
 void ffscene_python_t::pylog(int level_, const string& mod_, const string& content_)
 {
     switch (level_)
@@ -520,7 +534,7 @@ ffslot_t::callback_t* ffscene_python_t::gen_logic_callback()
             static string func_name  = LOGIC_CB_NAME;
             LOGDEBUG((FFSCENE_PYTHON, "ffscene_python_t::gen_logic_callback len[%lu]", data->body.size()));
             
-            AUTO_CMD_PERF("logic_callback", data->cmd);
+            PERF(ffscene->get_py_cmd2msg(data->cmd));
             try
             {
                 ffscene->get_ffpython().call<void>(ffscene->m_ext_name, func_name,

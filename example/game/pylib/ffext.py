@@ -38,7 +38,8 @@ def once_timer(timeout_, func_):
     g_timer_callback_dict[GID] = func_
     ff.ffscene_obj.once_timer(timeout_, GID);
 
-
+def set_py_cmd2msg(cmd, msg_name):
+    return ff.ffscene_obj.set_py_cmd2msg(cmd, msg_name)
 def json_to_value(val_):
     return json.loads(val_)
 
@@ -189,6 +190,10 @@ def on_verify(func_):
 def reg(cmd_, protocol_type_ = 'json'):
     def func_id_to_session(id):
         return g_session_mgr.get(id)
+    if protocol_type_ != 'json':
+        set_py_cmd2msg(cmd_, protocol_type_.__name__)
+    else:
+        set_py_cmd2msg(cmd_, 'CMD=%d'%(cmd_))
     return session_call(cmd_, protocol_type_, func_id_to_session)
 def on_enter(func_):
     global g_session_enter_callback
