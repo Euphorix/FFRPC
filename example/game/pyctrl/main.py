@@ -46,6 +46,8 @@ def process_echo(ffreq):
                    "-log_class DB_MGR,XX,BROKER,FFRPC,FFGATE,FFSCENE,FFSCENE_PYTHON,FFNET "+\
                    "-log_print_screen true -log_print_file true -log_level 6"
             f.write(tmpS+'\n')
+            f.write('-perf_timeout 20\n')
+            f.write('-perf_path %s/perf\n'%(ffreq.msg.process_name))
             if ffreq.msg.param.get('-scene') != None:
                 f.write('-python_path ./%s/pyproject \n'%(ffreq.msg.process_name))
         f.close()
@@ -87,7 +89,8 @@ def process_echo(ffreq):
     ffreq.response(ret_msg)
 
 def init_dir(s):
-    os.system('mkdir -p ' + s)
+    os.system('mkdir -p %s'%(s))
+    os.system('mkdir -p %s/perf'%(s))
 def gen_filename(s):
     return './' + s + '/default.config'
 def gen_app_name(s):
