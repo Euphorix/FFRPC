@@ -186,13 +186,13 @@ ffscene_python_t::~ffscene_python_t()
 
 arg_helper_t ffscene_python_t::g_arg_helper("");
 
-void ffscene_python_t::py_send_msg_session(const userid_t& session_id_, uint16_t cmd_, const string& data_)
+void ffscene_python_t::py_send_msg_session(const string& gate_name, const userid_t& session_id_, uint16_t cmd_, const string& data_)
 {
-    singleton_t<ffscene_python_t>::instance().send_msg_session(session_id_, cmd_, data_);
+    singleton_t<ffscene_python_t>::instance().send_msg_session(gate_name, session_id_, cmd_, data_);
 }
 void ffscene_python_t::py_broadcast_msg_session(uint16_t cmd_, const string& data_)
 {
-    singleton_t<ffscene_python_t>::instance().broadcast_msg_session(cmd_, data_);
+    //! TODO singleton_t<ffscene_python_t>::instance().broadcast_msg_session(cmd_, data_);
 }
 string ffscene_python_t::py_get_config(const string& key_)
 {
@@ -240,8 +240,8 @@ int ffscene_python_t::open(arg_helper_t& arg_helper)
     m_ext_name = MOD_NAME;
     (*m_ffpython).reg_class<ffscene_python_t, PYCTOR()>("ffscene_t")
               .reg(&ffscene_python_t::send_msg_session, "send_msg_session")
-              .reg(&ffscene_python_t::multicast_msg_session, "multicast_msg_session")
-              .reg(&ffscene_python_t::broadcast_msg_session, "broadcast_msg_session")
+              //.reg(&ffscene_python_t::multicast_msg_session, "multicast_msg_session")
+              //.reg(&ffscene_python_t::broadcast_msg_session, "broadcast_msg_session")
               .reg(&ffscene_python_t::broadcast_msg_gate, "broadcast_msg_gate")
               .reg(&ffscene_python_t::close_session, "close_session")
               .reg(&ffscene_python_t::change_session_scene, "change_session_scene")
@@ -426,27 +426,21 @@ ffslot_t::callback_t* ffscene_python_t::gen_verify_callback()
         lambda_cb(ffscene_python_t* p):ffscene(p){}
         virtual void exe(ffslot_t::callback_arg_t* args_)
         {
-            PERF("verify_callback");
             if (args_->type() != TYPEID(session_verify_arg))
             {
                 return;
             }
             session_verify_arg* data = (session_verify_arg*)args_;
             static string func_name  = VERIFY_CB_NAME;
+            PERF(ffscene->get_py_cmd2msg(data->cmd));
             try
             {
-                vector<string> ret = ffscene->get_ffpython().call<vector<string> >(ffscene->m_ext_name, func_name, data->key_id,
-                                                                               data->session_key, data->online_time,
+                ffscene->get_ffpython().call<void>(ffscene->m_ext_name, func_name,
+                                                                               data->key_id,
+                                                                               data->cmd, data->msg_body,
+                                                                               data->socket_id,
                                                                                data->ip, data->gate_name);
-                if (ret.size() >= 1)
-                {
-                    data->flag_verify = true;
-                    data->alloc_session_id = ::atol(ret[0].c_str());
-                }
-                if (ret.size() >= 2)
-                {
-                    data->extra_data = ret[1];
-                }
+
             }
             catch(exception& e_)
             {

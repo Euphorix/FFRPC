@@ -833,6 +833,38 @@ struct session_verify_t
         string          extra_data;
     };
 };
+
+//!session 第一次进入
+struct session_first_entere_t
+{
+    struct in_t: public ffmsg_t<in_t>
+    {
+        void encode()
+        {
+            encoder() << cmd << socket_id << msg_body << ip << gate_name;
+        }
+        void decode()
+        {
+            decoder() >> cmd >> socket_id >> msg_body >> ip >> gate_name;
+        }
+        uint16_t    cmd;
+        userid_t    socket_id;//! 包含用户id
+        string      msg_body;
+        string      ip;
+        string      gate_name;
+    };
+    struct out_t: public ffmsg_t<out_t>
+    {
+        void encode()
+        {
+            encoder();
+        }
+        void decode()
+        {
+            decoder();
+        }
+    };
+};
 //! gate session 进入场景服务器消息
 struct session_enter_scene_t
 {

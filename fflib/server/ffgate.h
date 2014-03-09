@@ -50,12 +50,12 @@ private:
     //! 验证sessionid
     int verify_session_id(const message_t& msg_, socket_ptr_t sock_);
     //! 验证sessionid 的回调函数
-    int verify_session_callback(ffreq_t<session_verify_t::out_t>& req_, socket_ptr_t sock_);
+    int verify_session_callback(ffreq_t<session_first_entere_t::out_t>& req_, userid_t sock_id_);
     
     //! 逻辑处理,转发消息到logic service
     int route_logic_msg(const message_t& msg_, socket_ptr_t sock_);
     //! 逻辑处理,转发消息到logic service
-    int route_logic_msg_callback(ffreq_t<route_logic_msg_t::out_t>& req_, const userid_t& session_id_, socket_ptr_t sock_);
+    int route_logic_msg_callback(ffreq_t<route_logic_msg_t::out_t>& req_, const userid_t& session_id_);
     //! enter scene 回调函数
     int enter_scene_callback(ffreq_t<session_enter_scene_t::out_t>& req_, const userid_t& session_id_);
     
@@ -67,7 +67,11 @@ private:
     int route_msg_to_session(ffreq_t<gate_route_msg_to_session_t::in_t, gate_route_msg_to_session_t::out_t>& req_);
     //! 广播消息给所有的client
     int broadcast_msg_to_session(ffreq_t<gate_broadcast_msg_to_session_t::in_t, gate_broadcast_msg_to_session_t::out_t>& req_);
+    
+    
+    userid_t alloc_id() { return ++m_alloc_id; }
 private:
+    userid_t                                    m_alloc_id;
     string                                      m_gate_name;
     shared_ptr_t<ffrpc_t>                       m_ffrpc;
     set<socket_ptr_t>                           m_wait_verify_set;
@@ -77,9 +81,9 @@ private:
 
 struct ffgate_t::session_data_t
 {
-    session_data_t()
+    session_data_t(userid_t new_id_ = 0)
     {
-        session_id = 0;
+        session_id = new_id_;
         ::time(&online_time);
     }
     bool is_valid()

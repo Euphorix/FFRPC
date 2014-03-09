@@ -54,17 +54,17 @@ public:
     callback_info_t& callback_info();
     
     //! 发送消息给特定的client
-    int send_msg_session(const userid_t& session_id_, uint16_t cmd_, const string& data_);
+    int send_msg_session(const string& gate_name, const userid_t& session_id_, uint16_t cmd_, const string& data_);
     //! 多播
-    int multicast_msg_session(const vector<userid_t>& session_id_, uint16_t cmd_, const string& data_);
+    //TODO int multicast_msg_session(const vector<userid_t>& session_id_, uint16_t cmd_, const string& data_);
     //! 广播
-    int broadcast_msg_session(uint16_t cmd_, const string& data_);
+    //TODO broadcast_msg_session(uint16_t cmd_, const string& data_);
     //! 广播 整个gate
     int broadcast_msg_gate(const string& gate_name_, uint16_t cmd_, const string& data_);
     //! 关闭某个session
-    int close_session(const userid_t& session_id_);
+    int close_session(const string& gate_name_, const userid_t& session_id_);
     //! 切换scene
-    int change_session_scene(const userid_t& session_id_, const string& to_scene_, const string& extra_data);
+    int change_session_scene(const string& gate_name_, const userid_t& session_id_, const string& to_scene_, const string& extra_data);
     //! 为session 分配session Id
     int verify_session_id(long key, const userid_t& session_id_, string extra_data = "");
     ffrpc_t& get_rpc() { return *m_ffrpc; }
@@ -72,7 +72,7 @@ public:
     const string& get_scene_name() const { return m_logic_name;}
 private:
     //! 处理client 上线
-    int process_session_verify(ffreq_t<session_verify_t::in_t, session_verify_t::out_t>& req_);
+    int process_session_verify(ffreq_t<session_first_entere_t::in_t, session_first_entere_t::out_t>& req_);
     //! 处理client 进入场景
     int process_session_enter(ffreq_t<session_enter_scene_t::in_t, session_enter_scene_t::out_t>& req_);
     //! 处理client 下线
@@ -85,8 +85,8 @@ protected:
     string                                      m_logic_name;
     shared_ptr_t<ffrpc_t>                       m_ffrpc;
     callback_info_t                             m_callback_info;
-    map<userid_t/*sessionid*/, session_info_t>    m_session_info;
-    typedef ffreq_t<session_verify_t::in_t, session_verify_t::out_t> ffreq_verify_t;
+    //map<userid_t/*sessionid*/, session_info_t>    m_session_info;
+    typedef ffreq_t<session_first_entere_t::in_t, session_first_entere_t::out_t> ffreq_verify_t;
     map<long, ffreq_verify_t>                     m_cache_verify_req;
 };
 
@@ -128,9 +128,10 @@ private:
 class ffscene_t::session_verify_arg: public ffslot_t::callback_arg_t
 {
 public:
-    session_verify_arg(const string& s_, int64_t t_, const string& ip_, const string& gate_, long key_id_):
-        session_key(s_),
-        online_time(t_),
+    session_verify_arg(const string& s_, uint16_t cmd_, userid_t t_, const string& ip_, const string& gate_, long key_id_):
+        cmd(cmd_),
+        msg_body(s_),
+        socket_id(t_),
         ip(ip_),
         gate_name(gate_),
         key_id(key_id_),
@@ -141,8 +142,9 @@ public:
     {
         return TYPEID(session_verify_arg);
     }
-    string          session_key;
-    int64_t         online_time;
+    uint16_t        cmd;
+    string          msg_body;
+    userid_t        socket_id;
     string          ip;
     string          gate_name;
 

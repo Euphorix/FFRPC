@@ -66,8 +66,8 @@ static void lua_reg(lua_State* ls)
     //! 注册基类函数, ctor() 为构造函数的类型  
     fflua_register_t<ffscene_lua_t, ctor()>(ls, "ffscene_t")  //! 注册构造函数
                     .def(&ffscene_lua_t::send_msg_session, "send_msg_session")
-                    .def(&ffscene_lua_t::multicast_msg_session, "multicast_msg_session")
-                    .def(&ffscene_lua_t::broadcast_msg_session, "broadcast_msg_session")
+                    //.def(&ffscene_lua_t::multicast_msg_session, "multicast_msg_session")
+                    //.def(&ffscene_lua_t::broadcast_msg_session, "broadcast_msg_session")
                     .def(&ffscene_lua_t::broadcast_msg_gate, "broadcast_msg_gate")
                     .def(&ffscene_lua_t::close_session, "close_session")
                     .def(&ffscene_lua_t::change_session_scene, "change_session_scene")
@@ -247,8 +247,10 @@ ffslot_t::callback_t* ffscene_lua_t::gen_verify_callback()
             static string func_name  = VERIFY_CB_NAME;
             try
             {
-                vector<string> ret = ffscene->get_fflua().call<vector<string> >(func_name.c_str(), data->key_id,
-                                                                               data->session_key, data->online_time,
+                vector<string> ret = ffscene->get_fflua().call<vector<string> >(func_name.c_str(),
+                                                                                data->key_id,
+                                                                               data->cmd, data->msg_body,
+                                                                               data->socket_id,
                                                                                data->ip, data->gate_name);
                 if (ret.size() >= 1)
                 {

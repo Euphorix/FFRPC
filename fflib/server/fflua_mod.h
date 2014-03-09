@@ -72,7 +72,7 @@ public:
     task_queue_t& get_tq() { return m_tq; }
     
     //! 发送消息给特定的client
-    int send_msg_session(const userid_t& session_id_, uint16_t cmd_, const string& data_);
+    int send_msg_session(const string& gate_name, const userid_t& session_id_, uint16_t cmd_, const string& data_);
     //! 多播
     int multicast_msg_session(const vector<userid_t>& session_id_, uint16_t cmd_, const string& data_);
     //! 广播
@@ -80,9 +80,9 @@ public:
     //! 广播 整个gate
     int broadcast_msg_gate(const string& gate_name_, uint16_t cmd_, const string& data_);
     //! 关闭某个session
-    int close_session(const userid_t& session_id_);
+    int close_session(const string& gate_name_, const userid_t& session_id_);
     //! 切换scene
-    int change_session_scene(const userid_t& session_id_, const string& to_scene_, const string& extra_data);
+    int change_session_scene(const string& gate_name_, const userid_t& session_id_, const string& to_scene_, const string& extra_data);
     
 public:
     string          m_name;

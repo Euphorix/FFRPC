@@ -130,21 +130,24 @@ def session_call(cmd_, protocol_type_ = 'json', convert_func_ = ignore_id):
 class session_mgr_t:
     def __init__(self):
         self.all_session = {} # id -> session]
-        self.tmp_cache   = {}
-    def add(self, id, session):
+        self.socket2session = {}
+    def add(self, id, socket_id, session):
         self.all_session[id] = session
-    def add_tmp(self, id, session):
-        self.tmp_cache[id] = session
-    def get_tmp(self, id):
-        self.tmp_cache.get(id)
-    def remove_tmp(self, id):
-        if None != self.tmp_cache.get(id):
-            del self.tmp_cache[id]
+        self.socket2session[socket_id] = session
     def get(self, id):
         return self.all_session.get(id)
+    def get_by_sock(self, id):
+        return self.socket2session.get(id)
     def remove(self, id):
-        if None != self.all_session.get(id):
+        session = self.all_session.get(id)
+        if None != session:
             del self.all_session[id]
+            del self.socket2session[session.socket_id]
+    def remove_by_sock(self, id):
+        session = self.socket2session.get(id)
+        if None != session:
+            del self.socket2session[id]
+            del self.all_session[session.get_id()]
     def foreach(self, func):
         for k, v in self.all_session.iteritems():
             func(v)
@@ -156,10 +159,11 @@ g_session_mgr = session_mgr_t()
 def get_session_mgr():
     return g_session_mgr
 class session_t:
-    def __init__(self, key_id_, session_key, online_time, ip, gate_name):
+    def __init__(self, key_id_, cmd_, msg_body_, socket_id_, ip, gate_name):
         self.key_id      = key_id_
-        self.session_key = session_key
-        self.online_time = online_time
+        self.cmd         = cmd_
+        self.msg_body    = msg_body_
+        self.socket_id   = socket_id_
         self.ip          = ip
         self.gate_name   = gate_name
         self.m_id        = 0
@@ -168,8 +172,8 @@ class session_t:
     def verify_id(self, id_, extra_ = ''):
         self.m_id = id_
         if self.m_id != 0:
-            g_session_mgr.add(self.m_id, self)
-        ff.py_verify_session_id(self.key_id, id_, extra_)
+            g_session_mgr.add(self.m_id, self.socket_id, self)
+        ff.py_verify_session_id(self.key_id, self.socket_id, extra_)
         
         print('verify_id', id_)
     def get_id(self):
@@ -179,9 +183,11 @@ class session_t:
     def set_name(self, name):
         self.name = name
     def send_msg(self, cmd, ret_msg):
-        send_msg_session(self.m_id, cmd, ret_msg)
+        send_msg_session(self.gate_name, self.socket_id, cmd, ret_msg)
     def broadcast(self, cmd, ret_msg):
-        broadcast_msg_session(cmd, ret_msg)
+        def cb(tmp_session):
+            tmp_session.send_msg(cmd, ret_msg)
+        g_session_mgr.foreach(cb)
 
 def on_verify(func_):
     global g_session_verify_callback
@@ -189,12 +195,22 @@ def on_verify(func_):
     return func_
 def reg(cmd_, protocol_type_ = 'json'):
     def func_id_to_session(id):
+        return g_session_mgr.get_by_sock(id)
+    if protocol_type_ != 'json':
+        set_py_cmd2msg(cmd_, protocol_type_.__name__)
+    else:
+        set_py_cmd2msg(cmd_, 'CMD=%d'%(cmd_))
+    return session_call(cmd_, protocol_type_, func_id_to_session)
+
+def on_login(cmd_, protocol_type_ = 'json'):
+    def func_id_to_session(id):
         return g_session_mgr.get(id)
     if protocol_type_ != 'json':
         set_py_cmd2msg(cmd_, protocol_type_.__name__)
     else:
         set_py_cmd2msg(cmd_, 'CMD=%d'%(cmd_))
     return session_call(cmd_, protocol_type_, func_id_to_session)
+
 def on_enter(func_):
     global g_session_enter_callback
     def to_session(session_id, from_scene, extra_data):
@@ -204,24 +220,28 @@ def on_enter(func_):
 def on_logout(func_):
     global g_session_offline_callback
     def to_session(session_id, online_time):
-        session = g_session_mgr.get(session_id)
-        g_session_mgr.remove(session_id)
+        session = g_session_mgr.get_by_sock(session_id)
+        g_session_mgr.remove_by_sock(session_id)
         func_(session)
     g_session_offline_callback = to_session
     return func_
 
 
-def ff_session_verify(key_id, session_key, online_time, ip, gate_name):
+def ff_session_verify(key_id, cmd, session_body, socket_id, ip, gate_name):
     '''
     session_key 为client发过来的验证key，可能包括账号密码
     online_time 为上线时间
     gate_name 为从哪个gate登陆的
     '''
-    ret= []
-    if g_session_verify_callback != None:
-       session_vefify = session_t(key_id, session_key, online_time, ip, gate_name)
-       ret = g_session_verify_callback(session_vefify) 
-    return ret
+    info = g_session_logic_callback_dict.get(cmd)
+    if None == info:
+        print('cmd=%d not found'%(cmd))
+        return 0
+    arg  = info[0](session_body)
+    convert_func = info[2]
+    session_vefify = session_t(key_id, cmd, session_body, socket_id, ip, gate_name)
+    return info[1](session_vefify, arg)
+
 
 def ff_session_enter(session_id, from_scene, extra_data):
     '''
@@ -296,19 +316,25 @@ def to_str(msg):
     else:
         return json.dumps(msg, ensure_ascii=False)
 
-def send_msg_session(session_id, cmd_, body):
-    return ff.py_send_msg_session(session_id, cmd_, to_str(body))
+def send_msg_session(gate_name, session_id, cmd_, body):
+    return ff.py_send_msg_session(gate_name, session_id, cmd_, to_str(body))
     ff.ffscene_obj.send_msg_session(session_id, cmd_, to_str(body))
 def multi_send_msg_session(session_id_list, cmd_, body):
     return ff.ffscene_obj.multicast_msg_session(session_id_list, cmd_, to_str(body))
-def broadcast_msg_session(cmd_, body):
-    return ff.py_broadcast_msg_session(cmd_, to_str(body))
-    return ff.ffscene_obj.broadcast_msg_session(cmd_, to_str(body))
+#def broadcast_msg_session(cmd_, body):
+#    return ff.py_broadcast_msg_session(cmd_, to_str(body))
+#    return ff.ffscene_obj.broadcast_msg_session(cmd_, to_str(body))
 def broadcast_msg_gate(gate_name_, cmd_, body):
     return ff.ffscene_obj.broadcast_msg_gate(gate_name_, cmd_, body)
-def close_session(session_id):
-    return ff.ffscene_obj.close_session(session_id)
-
+def close_session(uid):
+    session = get_session_mgr().get(uid)
+    if session:
+        ff.ffscene_obj.close_session(session.gate_name, session.socket_id)
+def change_session_scene(uid, toSceneName):
+    session = get_session_mgr().get(uid)
+    if session:
+        ff.ffscene_obj.change_session_scene(session.gate_name, session.socket_id, toSceneName, '')
+    
 def reload(name_):
     if name_ != 'ff':
         return ff.ffscene_obj.reload(name_)

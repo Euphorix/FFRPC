@@ -403,13 +403,13 @@ void fflua_mod_t::callback_impl(const ffjson_tool_t& task_args, long callback_id
 }
 
 //! 发送消息给特定的client
-int fflua_mod_t::send_msg_session(const userid_t& session_id_, uint16_t cmd_, const string& data_)
+int fflua_mod_t::send_msg_session(const string& gate_name, const userid_t& session_id_, uint16_t cmd_, const string& data_)
 {
     ffscene_t* ffscene = singleton_t<ffscene_mgr_t>::instance().get_any();
     if (ffscene)
     {
         ffscene->get_rpc().get_tq().produce(task_binder_t::gen(&ffscene_t::send_msg_session,
-                                            ffscene, session_id_, cmd_, data_));
+                                            ffscene, gate_name, session_id_, cmd_, data_));
     }
     return 0;
 }
@@ -420,8 +420,8 @@ int fflua_mod_t::multicast_msg_session(const vector<userid_t>& session_id_, uint
     ffscene_t* ffscene = singleton_t<ffscene_mgr_t>::instance().get_any();
     if (ffscene)
     {
-        ffscene->get_rpc().get_tq().produce(task_binder_t::gen(&ffscene_t::multicast_msg_session,
-                                            ffscene, session_id_, cmd_, data_));
+        //! TODO ffscene->get_rpc().get_tq().produce(task_binder_t::gen(&ffscene_t::multicast_msg_session,
+        //! TODO                                     ffscene, session_id_, cmd_, data_));
     }
     return 0;
 }
@@ -433,7 +433,7 @@ int fflua_mod_t::broadcast_msg_session(uint16_t cmd_, const string& data_)
     ffscene_t* ffscene = singleton_t<ffscene_mgr_t>::instance().get_any();
     if (ffscene)
     {
-        ffscene->get_rpc().get_tq().produce(task_binder_t::gen(&ffscene_t::broadcast_msg_session, ffscene, cmd_, data_));
+        //! TODO ffscene->get_rpc().get_tq().produce(task_binder_t::gen(&ffscene_t::broadcast_msg_session, ffscene, cmd_, data_));
     }
     return 0;
 }
@@ -451,19 +451,19 @@ int fflua_mod_t::broadcast_msg_gate(const string& gate_name_, uint16_t cmd_, con
 }
 
 //! 关闭某个session
-int fflua_mod_t::close_session(const userid_t& session_id_)
+int fflua_mod_t::close_session(const string& gate_name_, const userid_t& session_id_)
 {
     ffscene_t* ffscene = singleton_t<ffscene_mgr_t>::instance().get_any();
     if (ffscene)
     {
-        ffscene->get_rpc().get_tq().produce(task_binder_t::gen(&ffscene_t::close_session, ffscene, session_id_));
+        ffscene->get_rpc().get_tq().produce(task_binder_t::gen(&ffscene_t::close_session, ffscene, gate_name_, session_id_));
     }
     return 0;
 }
 
 //! 切换scene
 
-int fflua_mod_t::change_session_scene(const userid_t& session_id_, const string& to_scene_, const string& extra_data)
+int fflua_mod_t::change_session_scene(const string& gate_name_, const userid_t& session_id_, const string& to_scene_, const string& extra_data)
 {
     ffscene_t* ffscene = singleton_t<ffscene_mgr_t>::instance().get_any();
     if (ffscene)
