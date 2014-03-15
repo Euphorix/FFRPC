@@ -81,6 +81,15 @@ def process_echo(ffreq):
         ret_msg.info['update_data'] = dump_path(ffreq.msg.process_name + '/pyproject/'+ffreq.msg.param['path'])
     elif ffreq.msg.cmd == '性能日志':
         ret_msg.info['update_data'] = dump_path(ffreq.msg.process_name + '/'+ffreq.msg.param['path'])
+    elif ffreq.msg.cmd == '进程状态':
+        pid = ps_app(ffreq.msg.process_name)
+        print('pid', pid)
+        if pid != 0:
+            ret_msg.output_msg = ffreq.msg.process_name +'该进程正在运行'
+            ret_msg.info['update_data'] = 'running'
+        else:
+            ret_msg.output_msg = ffreq.msg.process_name +'该进程并未运行'
+            ret_msg.info['update_data'] = 'not running'
     else:
         ret_msg.ret_code = 0
         ret_msg.output_msg = '当前后台不支持此操作'

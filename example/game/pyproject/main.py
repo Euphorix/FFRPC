@@ -88,7 +88,7 @@ def process_move(session, msg):
     print('input', ret_msg)
 
     session.broadcast(msg_def.server_cmd_e.INPUT_RET, ret_msg)
-    ffext.change_session_scene(session.get_id(), 'scene@0')
+    #ffext.change_session_scene(session.get_id(), 'scene@0')
     return
 
 @ffext.on_logout
