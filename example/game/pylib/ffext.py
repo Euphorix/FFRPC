@@ -134,6 +134,8 @@ class session_mgr_t:
     def add(self, id, socket_id, session):
         self.all_session[id] = session
         self.socket2session[socket_id] = session
+    def add_socket(self, socket_id, session):
+        self.socket2session[socket_id] = session
     def get(self, id):
         return self.all_session.get(id)
     def get_by_sock(self, id):
@@ -147,7 +149,10 @@ class session_mgr_t:
         session = self.socket2session.get(id)
         if None != session:
             del self.socket2session[id]
-            del self.all_session[session.get_id()]
+            if None != self.all_session.get(session.get_id()):
+                del self.all_session[session.get_id()]
+                return 1
+        return 0
     def foreach(self, func):
         for k, v in self.all_session.iteritems():
             func(v)
@@ -159,10 +164,7 @@ g_session_mgr = session_mgr_t()
 def get_session_mgr():
     return g_session_mgr
 class session_t:
-    def __init__(self, key_id_, cmd_, msg_body_, socket_id_, ip, gate_name):
-        self.key_id      = key_id_
-        self.cmd         = cmd_
-        self.msg_body    = msg_body_
+    def __init__(self, socket_id_, ip, gate_name):
         self.socket_id   = socket_id_
         self.ip          = ip
         self.gate_name   = gate_name
@@ -172,9 +174,7 @@ class session_t:
     def verify_id(self, id_, extra_ = ''):
         self.m_id = id_
         if self.m_id != 0:
-            g_session_mgr.add(self.m_id, self.socket_id, self)
-        ff.py_verify_session_id(self.key_id, self.socket_id, extra_)
-        
+            get_session_mgr().add(self.m_id, self.socket_id, self)
         print('verify_id', id_)
     def get_id(self):
         return self.m_id
@@ -188,7 +188,9 @@ class session_t:
         def cb(tmp_session):
             tmp_session.send_msg(cmd, ret_msg)
         g_session_mgr.foreach(cb)
-
+    def goto_scene(self, name_, msg_):
+        change_session_scene(self.gate_name, self.socket_id, name_, encode_msg(msg_))
+        get_session_mgr().remove(self.get_id())
 def on_verify(func_):
     global g_session_verify_callback
     g_session_verify_callback = func_
@@ -211,23 +213,29 @@ def on_login(cmd_, protocol_type_ = 'json'):
         set_py_cmd2msg(cmd_, 'CMD=%d'%(cmd_))
     return session_call(cmd_, protocol_type_, func_id_to_session)
 
-def on_enter(func_):
-    global g_session_enter_callback
-    def to_session(session_id, from_scene, extra_data):
-        return func_(g_session_mgr.get(session_id), from_scene, extra_data)
-    g_session_enter_callback = to_session
-    return func_
+def on_enter(msg_type):
+    def wrap_enter(func_):
+        global g_session_enter_callback
+        def to_session(gate_name, socket_id, from_scene, extra_data):
+            session_vefify = session_t(socket_id, '', gate_name)
+            get_session_mgr().add_socket(socket_id, session_vefify)
+            dest_msg = msg_type()
+            decode_msg(dest_msg, extra_data)
+            return func_(session_vefify, dest_msg)
+        g_session_enter_callback = to_session
+        return func_
+    return wrap_enter
 def on_logout(func_):
     global g_session_offline_callback
-    def to_session(session_id, online_time):
-        session = g_session_mgr.get_by_sock(session_id)
-        g_session_mgr.remove_by_sock(session_id)
-        func_(session)
+    def to_session(session_id):
+        session = get_session_mgr().get_by_sock(session_id)
+        if 1 == get_session_mgr().remove_by_sock(session_id):
+            func_(session)
     g_session_offline_callback = to_session
     return func_
 
 
-def ff_session_verify(key_id, cmd, session_body, socket_id, ip, gate_name):
+def ff_session_verify(cmd, session_body, socket_id, ip, gate_name):
     '''
     session_key 为client发过来的验证key，可能包括账号密码
     online_time 为上线时间
@@ -239,26 +247,27 @@ def ff_session_verify(key_id, cmd, session_body, socket_id, ip, gate_name):
         return 0
     arg  = info[0](session_body)
     convert_func = info[2]
-    session_vefify = session_t(key_id, cmd, session_body, socket_id, ip, gate_name)
+    session_vefify = session_t(socket_id, ip, gate_name)
+    get_session_mgr().add_socket(socket_id, session_vefify)
     return info[1](session_vefify, arg)
 
 
-def ff_session_enter(session_id, from_scene, extra_data):
+def ff_session_enter(gate_name, session_id, from_scene, extra_data):
     '''
     session_id 为client id
     from_scene 为从哪个scene过来的，若为空，则表示第一次进入
     extra_data 从from_scene附带过来的数据
     '''
     if g_session_enter_callback != None:
-       return g_session_enter_callback(session_id, from_scene, extra_data)
+       return g_session_enter_callback(gate_name, session_id, from_scene, extra_data)
 
-def ff_session_offline(session_id, online_time):
+def ff_session_offline(session_id):
     '''
     session_id 为client id
     online_time 为上线时间
     '''
     if g_session_offline_callback != None:
-       return g_session_offline_callback(session_id, online_time)
+       return g_session_offline_callback(session_id)
 
 def ff_session_logic(session_id, cmd, body):
     '''
@@ -330,11 +339,9 @@ def close_session(uid):
     session = get_session_mgr().get(uid)
     if session:
         ff.ffscene_obj.close_session(session.gate_name, session.socket_id)
-def change_session_scene(uid, toSceneName):
-    session = get_session_mgr().get(uid)
-    if session:
-        ff.ffscene_obj.change_session_scene(session.gate_name, session.socket_id, toSceneName, '')
-    
+def change_session_scene(gate_name, socket_id_, toSceneName, data_extra = ''):
+    ff.ffscene_obj.change_session_scene(gate_name, socket_id_, toSceneName, data_extra)
+
 def reload(name_):
     if name_ != 'ff':
         return ff.ffscene_obj.reload(name_)

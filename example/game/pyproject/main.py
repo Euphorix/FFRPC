@@ -89,13 +89,29 @@ def process_move(session, msg):
 
     session.broadcast(msg_def.server_cmd_e.INPUT_RET, ret_msg)
     #ffext.change_session_scene(session.get_id(), 'scene@0')
+    goto_msg = msg_def.input_req_t()
+    goto_msg.ops = '%d_%d_%d'%(session.get_id(), session.player.x, session.player.y)
+    session.goto_scene('scene@0', goto_msg)
     return
 
 @ffext.on_logout
 def process_logout(session):
     ret_msg = msg_def.logout_ret_t(session.get_id())
     session.broadcast(msg_def.server_cmd_e.LOGOUT_RET, ret_msg)
-    print('process_logout', ret_msg)
+    print('process_logout', ret_msg, session.socket_id)
+
+@ffext.on_enter(msg_def.input_req_t)
+def process_enter(session, msg):
+    session.player = player_t()
+    param = msg.ops.split('_')
+    session.player.id = int(param[0])
+    session.verify_id(session.player.id)
+    
+    session.player.name = '小' + g_alloc_names[session.get_id() % (len(g_alloc_names))]
+    session.player.x = int(param[1])
+    session.player.y = int(param[2])
+    
+    print('process_enter', msg, session.socket_id)
 
 def init():
     print('init......')
