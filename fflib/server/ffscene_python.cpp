@@ -198,10 +198,7 @@ string ffscene_python_t::py_get_config(const string& key_)
 {
     return g_arg_helper.get_option_value(key_);
 }
-void ffscene_python_t::py_verify_session_id(long key, const userid_t& session_id_, const string& data_)
-{
-    singleton_t<ffscene_python_t>::instance().verify_session_id(key, session_id_, data_);
-}
+
 
 static bool py_post_task(const string& name, const string& func_name, const ffjson_tool_t& task_args, long callback_id)
 {
@@ -261,7 +258,6 @@ int ffscene_python_t::open(arg_helper_t& arg_helper)
     (*m_ffpython).reg(&ffdb_t::escape, "escape")
                  .reg(&ffscene_python_t::py_send_msg_session, "py_send_msg_session")
                  .reg(&ffscene_python_t::py_broadcast_msg_session, "py_broadcast_msg_session")
-                 .reg(&ffscene_python_t::py_verify_session_id, "py_verify_session_id")
                  .reg(&ffscene_python_t::py_get_config, "py_get_config")
                  .reg(&::py_post_task, "post_task")
                  .reg(&::py_task_callback, "task_callback");
@@ -436,7 +432,6 @@ ffslot_t::callback_t* ffscene_python_t::gen_verify_callback()
             try
             {
                 ffscene->get_ffpython().call<void>(ffscene->m_ext_name, func_name,
-                                                                               data->key_id,
                                                                                data->cmd, data->msg_body,
                                                                                data->socket_id,
                                                                                data->ip, data->gate_name);
@@ -470,8 +465,8 @@ ffslot_t::callback_t* ffscene_python_t::gen_enter_callback()
             try
             {
                 ffscene->get_ffpython().call<void>(ffscene->m_ext_name, func_name,
-                                               data->session_id, data->from_scene,
-                                               data->extra_data);
+                                               data->gate_name, data->session_id,
+                                               data->from_scene, data->extra_data);
             }
             catch(exception& e_)
             {
@@ -501,7 +496,7 @@ ffslot_t::callback_t* ffscene_python_t::gen_offline_callback()
             try
             {
                 ffscene->get_ffpython().call<void>(ffscene->m_ext_name, func_name,
-                                               data->session_id, data->online_time);
+                                               data->session_id);
             }
             catch(exception& e_)
             {

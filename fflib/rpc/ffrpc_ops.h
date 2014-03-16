@@ -857,12 +857,13 @@ struct session_first_entere_t
     {
         void encode()
         {
-            encoder();
+            encoder() << uid;
         }
         void decode()
         {
-            decoder();
+            decoder() >> uid;
         }
+        userid_t    uid;//! 包含用户id
     };
 };
 //! gate session 进入场景服务器消息
@@ -904,14 +905,13 @@ struct session_offline_t
     {
         void encode()
         {
-            encoder() << session_id << online_time;
+            encoder() << session_id;
         }
         void decode()
         {
-            decoder() >> session_id >> online_time;
+            decoder() >> session_id;
         }
         userid_t    session_id;//! 包含用户id
-        int64_t   online_time;
     };
     struct out_t: public ffmsg_t<out_t>
     {

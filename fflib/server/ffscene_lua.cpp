@@ -248,7 +248,6 @@ ffslot_t::callback_t* ffscene_lua_t::gen_verify_callback()
             try
             {
                 vector<string> ret = ffscene->get_fflua().call<vector<string> >(func_name.c_str(),
-                                                                                data->key_id,
                                                                                data->cmd, data->msg_body,
                                                                                data->socket_id,
                                                                                data->ip, data->gate_name);
@@ -321,7 +320,7 @@ ffslot_t::callback_t* ffscene_lua_t::gen_offline_callback()
             try
             {
                 ffscene->get_fflua().call<void>(func_name.c_str(),
-                                               data->session_id, data->online_time);
+                                               data->session_id);
             }
             catch(exception& e_)
             {

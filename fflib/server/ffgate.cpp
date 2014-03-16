@@ -78,18 +78,19 @@ int ffgate_t::handle_msg(const message_t& msg_, socket_ptr_t sock_)
 //! 处理连接断开
 int ffgate_t::handle_broken_impl(socket_ptr_t sock_)
 {
-    LOGTRACE((FFGATE, "ffgate_t::broken begin"));
     session_data_t* session_data = sock_->get_data<session_data_t>();
     if (NULL == session_data)
     {
+        LOGDEBUG((FFGATE, "ffgate_t::broken ignore"));
         sock_->safe_delete();
         return 0;
     }
     
+    LOGTRACE((FFGATE, "ffgate_t::broken begin"));
     if (false == session_data->is_valid())
     {
         //! 还未通过验证
-        m_wait_verify_set.erase(sock_);
+        m_wait_verify_set.erase(session_data->socket_id);
     }
     else
     {
@@ -98,8 +99,7 @@ int ffgate_t::handle_broken_impl(socket_ptr_t sock_)
         {
             session_offline_t::in_t msg;
             msg.session_id  = session_data->id();
-            msg.online_time = session_data->online_time;
-            m_ffrpc->call(DEFAULT_LOGIC_SERVICE, msg);
+            m_ffrpc->call(client_info.alloc_logic_service, msg);
             m_client_set.erase(session_data->id());
         }
     }
@@ -142,17 +142,15 @@ int ffgate_t::verify_session_id(const message_t& msg_, socket_ptr_t sock_)
     }
     session_data_t* session_data = new session_data_t(this->alloc_id());
     sock_->set_data(session_data);
-    
-    client_info_t& client_info = m_client_set[session_data->id()];
-    client_info.sock = sock_;
+    m_wait_verify_set[session_data->socket_id] = sock_;
     
     session_first_entere_t::in_t msg;
     msg.cmd         = msg_.get_cmd();
-    msg.socket_id   = session_data->id();
+    msg.socket_id   = session_data->socket_id;
     msg.msg_body    = msg_.get_body();
     msg.gate_name   = m_gate_name;
     msg.ip          = ip;
-    m_ffrpc->call(DEFAULT_LOGIC_SERVICE, msg, ffrpc_ops_t::gen_callback(&ffgate_t::verify_session_callback, this, session_data->id()));
+    m_ffrpc->call(DEFAULT_LOGIC_SERVICE, msg, ffrpc_ops_t::gen_callback(&ffgate_t::verify_session_callback, this, session_data->socket_id));
     LOGTRACE((FFGATE, "ffgate_t::verify_session_id end ok"));
     return 0;
 }
@@ -161,8 +159,23 @@ int ffgate_t::verify_session_callback(ffreq_t<session_first_entere_t::out_t>& re
 {
     LOGTRACE((FFGATE, "ffgate_t::verify_session_callback session_id=%d", sock_id_));
     ffreq_t<route_logic_msg_t::out_t> ret_msg;
-    route_logic_msg_callback(ret_msg, sock_id_);
-    LOGTRACE((FFGATE, "ffgate_t::verify_session_callback end ok"));
+    map<userid_t/*sessionid*/, socket_ptr_t>::iterator it = m_wait_verify_set.find(sock_id_);
+    if (it == m_wait_verify_set.end())
+    {
+        session_offline_t::in_t msg;
+        msg.session_id  = req_.msg.uid;
+        m_ffrpc->call(DEFAULT_LOGIC_SERVICE, msg);
+        return 0;
+    }
+    socket_ptr_t sock = it->second;
+    m_wait_verify_set.erase(it);
+    session_data_t* session_data = sock->get_data<session_data_t>();
+    
+    session_data->set_id(req_.msg.uid);
+    
+    client_info_t& client_info = m_client_set[session_data->id()];
+    client_info.sock           = sock;
+    LOGTRACE((FFGATE, "ffgate_t::verify_session_callback end ok uid=%d", session_data->id()));
     return 0;
 }
 

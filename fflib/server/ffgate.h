@@ -74,7 +74,7 @@ private:
     userid_t                                    m_alloc_id;
     string                                      m_gate_name;
     shared_ptr_t<ffrpc_t>                       m_ffrpc;
-    set<socket_ptr_t>                           m_wait_verify_set;
+    map<userid_t, socket_ptr_t>                 m_wait_verify_set;
     map<userid_t/*sessionid*/, client_info_t>     m_client_set;
 };
 
@@ -83,8 +83,9 @@ struct ffgate_t::session_data_t
 {
     session_data_t(userid_t new_id_ = 0)
     {
-        session_id = new_id_;
+        socket_id = new_id_;
         ::time(&online_time);
+        session_id = 0;
     }
     bool is_valid()
     {
@@ -92,6 +93,7 @@ struct ffgate_t::session_data_t
     }
     const userid_t& id() const        { return session_id;    }
     void set_id(const userid_t& s_)   { session_id = s_;      }
+    userid_t socket_id;
     userid_t session_id;
     time_t online_time;
 };

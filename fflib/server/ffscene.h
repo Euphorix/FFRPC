@@ -65,8 +65,7 @@ public:
     int close_session(const string& gate_name_, const userid_t& session_id_);
     //! 切换scene
     int change_session_scene(const string& gate_name_, const userid_t& session_id_, const string& to_scene_, const string& extra_data);
-    //! 为session 分配session Id
-    int verify_session_id(long key, const userid_t& session_id_, string extra_data = "");
+
     ffrpc_t& get_rpc() { return *m_ffrpc; }
     
     const string& get_scene_name() const { return m_logic_name;}
@@ -81,13 +80,14 @@ private:
     int process_session_req(ffreq_t<route_logic_msg_t::in_t, route_logic_msg_t::out_t>& req_);
     //! scene 之间的互调用
     int process_scene_call(ffreq_t<scene_call_msg_t::in_t, scene_call_msg_t::out_t>& req_);
+    userid_t alloc_uid() { return ++m_alloc_id; }
 protected:
+    userid_t                                    m_alloc_id;
     string                                      m_logic_name;
     shared_ptr_t<ffrpc_t>                       m_ffrpc;
     callback_info_t                             m_callback_info;
     //map<userid_t/*sessionid*/, session_info_t>    m_session_info;
     typedef ffreq_t<session_first_entere_t::in_t, session_first_entere_t::out_t> ffreq_verify_t;
-    map<long, ffreq_verify_t>                     m_cache_verify_req;
 };
 
 
@@ -128,13 +128,12 @@ private:
 class ffscene_t::session_verify_arg: public ffslot_t::callback_arg_t
 {
 public:
-    session_verify_arg(const string& s_, uint16_t cmd_, userid_t t_, const string& ip_, const string& gate_, long key_id_):
+    session_verify_arg(const string& s_, uint16_t cmd_, userid_t t_, const string& ip_, const string& gate_):
         cmd(cmd_),
         msg_body(s_),
         socket_id(t_),
         ip(ip_),
         gate_name(gate_),
-        key_id(key_id_),
         alloc_session_id(0),
         flag_verify(false)
     {}
@@ -149,7 +148,6 @@ public:
     string          gate_name;
 
     //! 验证后的sessionid
-    long            key_id;
     userid_t         alloc_session_id;
     //! 需要额外的返回给client的消息内容
     string          extra_data;
@@ -159,7 +157,8 @@ public:
 class ffscene_t::session_enter_arg: public ffslot_t::callback_arg_t
 {
 public:
-    session_enter_arg(const userid_t& s_, const string& from_, const string& to_, const string& data_):
+    session_enter_arg(const string& gate_, const userid_t& s_, const string& from_, const string& to_, const string& data_):
+        gate_name(gate_),
         session_id(s_),
         from_scene(from_),
         to_scene(to_),
@@ -169,6 +168,7 @@ public:
     {
         return TYPEID(session_enter_arg);
     }
+    string    gate_name;
     userid_t    session_id;//! 包含用户id
     string    from_scene;//! 从哪个scene跳转过来,若是第一次上线，from_scene为空
     string    to_scene;//! 跳到哪个scene上面去,若是下线，to_scene为空
@@ -177,16 +177,14 @@ public:
 class ffscene_t::session_offline_arg: public ffslot_t::callback_arg_t
 {
 public:
-    session_offline_arg(const userid_t& s_, int64_t t_):
-        session_id(s_),
-        online_time(t_)
+    session_offline_arg(const userid_t& s_):
+        session_id(s_)
     {}
     virtual int type()
     {
         return TYPEID(session_offline_arg);
     }
     userid_t          session_id;
-    int64_t         online_time;
 };
 class ffscene_t::logic_msg_arg: public ffslot_t::callback_arg_t
 {
