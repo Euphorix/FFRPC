@@ -26,7 +26,7 @@ class ffgate_t: public msg_handler_i
 {
     enum limite_e
     {
-        MAX_MSG_QUEUE_SIZE = 64
+        MAX_MSG_QUEUE_SIZE = 1024
     };
     struct session_data_t;
     struct client_info_t;
@@ -74,8 +74,8 @@ private:
     userid_t                                    m_alloc_id;
     string                                      m_gate_name;
     shared_ptr_t<ffrpc_t>                       m_ffrpc;
-    map<userid_t, socket_ptr_t>                 m_wait_verify_set;
-    map<userid_t/*sessionid*/, client_info_t>     m_client_set;
+    map<userid_t, client_info_t>                m_wait_verify_set;
+    map<userid_t/*sessionid*/, client_info_t>   m_client_set;
 };
 
 

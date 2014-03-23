@@ -120,7 +120,11 @@ int ffgate_t::handle_msg_impl(const message_t& msg_, socket_ptr_t sock_)
     else if (false == session_data->is_valid())
     {
         //! sessionid再未验证之前，client是不能发送消息的
-        sock_->close();
+        route_logic_msg_t::in_t msg;
+        msg.session_id = session_data->id();
+        msg.cmd        = msg_.get_cmd();
+        msg.body       = msg_.get_body();
+        m_wait_verify_set[session_data->socket_id].request_queue.push(msg);
         return 0;
     }
     else
@@ -142,7 +146,7 @@ int ffgate_t::verify_session_id(const message_t& msg_, socket_ptr_t sock_)
     }
     session_data_t* session_data = new session_data_t(this->alloc_id());
     sock_->set_data(session_data);
-    m_wait_verify_set[session_data->socket_id] = sock_;
+    m_wait_verify_set[session_data->socket_id].sock = sock_;
     
     session_first_entere_t::in_t msg;
     msg.cmd         = msg_.get_cmd();
@@ -159,7 +163,7 @@ int ffgate_t::verify_session_callback(ffreq_t<session_first_entere_t::out_t>& re
 {
     LOGTRACE((FFGATE, "ffgate_t::verify_session_callback session_id=%d", sock_id_));
     ffreq_t<route_logic_msg_t::out_t> ret_msg;
-    map<userid_t/*sessionid*/, socket_ptr_t>::iterator it = m_wait_verify_set.find(sock_id_);
+    map<userid_t/*sessionid*/, client_info_t>::iterator it = m_wait_verify_set.find(sock_id_);
     if (it == m_wait_verify_set.end())
     {
         session_offline_t::in_t msg;
@@ -167,14 +171,22 @@ int ffgate_t::verify_session_callback(ffreq_t<session_first_entere_t::out_t>& re
         m_ffrpc->call(DEFAULT_LOGIC_SERVICE, msg);
         return 0;
     }
-    socket_ptr_t sock = it->second;
-    m_wait_verify_set.erase(it);
+    socket_ptr_t sock = it->second.sock;
+    
     session_data_t* session_data = sock->get_data<session_data_t>();
     
     session_data->set_id(req_.msg.uid);
     
     client_info_t& client_info = m_client_set[session_data->id()];
     client_info.sock           = sock;
+    client_info.request_queue  = it->second.request_queue;
+    
+    while(false == it->second.request_queue.empty())
+    {
+        client_info.request_queue.push(it->second.request_queue.front());
+        it->second.request_queue.pop();
+    }
+    m_wait_verify_set.erase(it);
     LOGTRACE((FFGATE, "ffgate_t::verify_session_callback end ok uid=%d", session_data->id()));
     return 0;
 }
