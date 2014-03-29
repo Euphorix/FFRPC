@@ -163,14 +163,27 @@ class session_mgr_t:
 g_session_mgr = session_mgr_t()
 def get_session_mgr():
     return g_session_mgr
+#区组名称
+g_group_name = ''
+def ff_set_group_name(group_name):
+    global g_group_name
+    g_group_name = group_name
+    return 0
+def ff_get_group_name():
+    return g_group_name
 class session_t:
-    def __init__(self, socket_id_, ip, gate_name):
+    def __init__(self, socket_id_, ip, group_name, gate_name):
         self.socket_id   = socket_id_
         self.ip          = ip
+        self.group_name  = group_name
         self.gate_name   = gate_name
         self.m_id        = 0
         self.m_name      = ''
         self.player      = None
+        self.kf_flag     = False
+        if self.group_name != '' and ff_get_group_name() != self.group_name and ff_get_group_name() != '':
+            self.kf_flag = True
+        #print('group_name:%s'%(ff_get_group_name()))
     def verify_id(self, id_, extra_ = ''):
         self.m_id = id_
         if self.m_id != 0:
@@ -183,13 +196,19 @@ class session_t:
     def set_name(self, name):
         self.name = name
     def send_msg(self, cmd, ret_msg):
-        send_msg_session(self.gate_name, self.socket_id, cmd, ret_msg)
+        if self.kf_flag == False:
+            send_msg_session(self.gate_name, self.socket_id, cmd, ret_msg)
+        else:
+            kf_send_msg_session(self.group_name, self.gate_name, self.socket_id, cmd, ret_msg)
     def broadcast(self, cmd, ret_msg):
         def cb(tmp_session):
             tmp_session.send_msg(cmd, ret_msg)
         g_session_mgr.foreach(cb)
     def goto_scene(self, name_, msg_):
         change_session_scene(self.gate_name, self.socket_id, name_, encode_msg(msg_))
+        get_session_mgr().remove(self.get_id())
+    def goto_kf_scene(self, group_name, name_, msg_):
+        change_session_kf_scene(group_name, self.gate_name, self.socket_id, name_, encode_msg(msg_))
         get_session_mgr().remove(self.get_id())
 def on_verify(func_):
     global g_session_verify_callback
@@ -216,8 +235,8 @@ def on_login(cmd_, protocol_type_ = 'json'):
 def on_enter(msg_type):
     def wrap_enter(func_):
         global g_session_enter_callback
-        def to_session(gate_name, socket_id, from_scene, extra_data):
-            session_vefify = session_t(socket_id, '', gate_name)
+        def to_session(group_name, gate_name, socket_id, from_scene, extra_data):
+            session_vefify = session_t(socket_id, '', group_name, gate_name)
             get_session_mgr().add_socket(socket_id, session_vefify)
             dest_msg = msg_type()
             decode_msg(dest_msg, extra_data)
@@ -247,19 +266,19 @@ def ff_session_verify(cmd, session_body, socket_id, ip, gate_name):
         return 0
     arg  = info[0](session_body)
     convert_func = info[2]
-    session_vefify = session_t(socket_id, ip, gate_name)
+    session_vefify = session_t(socket_id, ip, '', gate_name)
     get_session_mgr().add_socket(socket_id, session_vefify)
     return info[1](session_vefify, arg)
 
 
-def ff_session_enter(gate_name, session_id, from_scene, extra_data):
+def ff_session_enter(group_name, gate_name, session_id, from_scene, extra_data):
     '''
     session_id 为client id
     from_scene 为从哪个scene过来的，若为空，则表示第一次进入
     extra_data 从from_scene附带过来的数据
     '''
     if g_session_enter_callback != None:
-       return g_session_enter_callback(gate_name, session_id, from_scene, extra_data)
+       return g_session_enter_callback(group_name, gate_name, session_id, from_scene, extra_data)
 
 def ff_session_offline(session_id):
     '''
@@ -327,7 +346,9 @@ def to_str(msg):
 
 def send_msg_session(gate_name, session_id, cmd_, body):
     return ff.py_send_msg_session(gate_name, session_id, cmd_, to_str(body))
-    ff.ffscene_obj.send_msg_session(session_id, cmd_, to_str(body))
+def kf_send_msg_session(group_name, gate_name, session_id, cmd_, body):
+    return ff.py_kf_send_msg_session(group_name, gate_name, session_id, cmd_, to_str(body))
+
 def multi_send_msg_session(session_id_list, cmd_, body):
     return ff.ffscene_obj.multicast_msg_session(session_id_list, cmd_, to_str(body))
 #def broadcast_msg_session(cmd_, body):
@@ -341,6 +362,8 @@ def close_session(uid):
         ff.ffscene_obj.close_session(session.gate_name, session.socket_id)
 def change_session_scene(gate_name, socket_id_, toSceneName, data_extra = ''):
     ff.ffscene_obj.change_session_scene(gate_name, socket_id_, toSceneName, data_extra)
+def change_session_kf_scene(group_name, gate_name, socket_id_, toSceneName, data_extra = ''):
+    ff.ffscene_obj.change_session_kf_scene(group_name, sgate_name, socket_id_, toSceneName, data_extra)
 
 def reload(name_):
     if name_ != 'ff':

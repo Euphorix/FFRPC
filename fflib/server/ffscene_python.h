@@ -30,6 +30,9 @@ class ffscene_python_t: public ffscene_t, task_processor_i
 {
 public:
     static void py_send_msg_session(const string& gate_name, const userid_t& session_id_, uint16_t cmd_, const string& data_);
+    static void py_kf_send_msg_session(const string& group_name, const string& gate_name,
+                                       const userid_t& session_id_, uint16_t cmd_,
+                                       const string& data_);
     static void py_broadcast_msg_session(uint16_t cmd_, const string& data_);
     static string py_get_config(const string& key_);
     static arg_helper_t    g_arg_helper;

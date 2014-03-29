@@ -107,6 +107,7 @@ struct ffgate_t::client_info_t
     {}
     socket_ptr_t     sock;
     string           alloc_logic_service;
+    string           group_name;
     queue<route_logic_msg_t::in_t>    request_queue;//! 请求队列，客户端有可能发送多个请求，但是服务器需要一个一个处理
 };
 

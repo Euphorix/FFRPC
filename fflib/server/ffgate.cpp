@@ -219,7 +219,7 @@ int ffgate_t::route_logic_msg(const message_t& msg_, socket_ptr_t sock_)
     msg.body       = msg_.get_body();
     if (client_info.request_queue.empty())
     {
-        m_ffrpc->call(client_info.alloc_logic_service, msg,
+        m_ffrpc->call(client_info.group_name, client_info.alloc_logic_service, msg,
                       ffrpc_ops_t::gen_callback(&ffgate_t::route_logic_msg_callback, this, session_data->id()));
     }
     else
@@ -245,7 +245,7 @@ int ffgate_t::route_logic_msg_callback(ffreq_t<route_logic_msg_t::out_t>& req_, 
         return 0;
     }
     
-    m_ffrpc->call(client_info.alloc_logic_service, client_info.request_queue.front(),
+    m_ffrpc->call(client_info.group_name, client_info.alloc_logic_service, client_info.request_queue.front(),
                   ffrpc_ops_t::gen_callback(&ffgate_t::route_logic_msg_callback, this, session_id_));
     
     client_info.request_queue.pop();
@@ -265,6 +265,8 @@ int ffgate_t::change_session_logic(ffreq_t<gate_change_logic_node_t::in_t, gate_
     }
     
     session_enter_scene_t::in_t enter_msg;
+    it->second.group_name = req_.msg.dest_group_name;
+    enter_msg.from_group = req_.msg.cur_group_name;
     enter_msg.from_scene = it->second.alloc_logic_service;
     
     it->second.alloc_logic_service = req_.msg.alloc_logic_service;
@@ -276,7 +278,8 @@ int ffgate_t::change_session_logic(ffreq_t<gate_change_logic_node_t::in_t, gate_
     
     enter_msg.to_scene = req_.msg.alloc_logic_service;
     enter_msg.extra_data = req_.msg.extra_data;
-    m_ffrpc->call(req_.msg.alloc_logic_service, enter_msg, ffrpc_ops_t::gen_callback(&ffgate_t::enter_scene_callback, this, req_.msg.session_id));
+    m_ffrpc->call(it->second.group_name, req_.msg.alloc_logic_service, enter_msg,
+                  ffrpc_ops_t::gen_callback(&ffgate_t::enter_scene_callback, this, req_.msg.session_id));
     
     LOGTRACE((FFGATE, "ffgate_t::change_session_logic end ok"));
     return 0;

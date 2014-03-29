@@ -55,6 +55,8 @@ public:
     
     //! 发送消息给特定的client
     int send_msg_session(const string& gate_name, const userid_t& session_id_, uint16_t cmd_, const string& data_);
+    int kf_send_msg_session(const string& group_name, const string& gate_name, const userid_t& session_id_,
+                            uint16_t cmd_, const string& data_);
     //! 多播
     //TODO int multicast_msg_session(const vector<userid_t>& session_id_, uint16_t cmd_, const string& data_);
     //! 广播
@@ -65,10 +67,13 @@ public:
     int close_session(const string& gate_name_, const userid_t& session_id_);
     //! 切换scene
     int change_session_scene(const string& gate_name_, const userid_t& session_id_, const string& to_scene_, const string& extra_data);
-
+    //! 跨服
+    int change_session_kf_scene(const string& group_name_, const string& gate_name_, const userid_t& session_id_,
+                                const string& to_scene_, const string& extra_data);
     ffrpc_t& get_rpc() { return *m_ffrpc; }
     
     const string& get_scene_name() const { return m_logic_name;}
+    const string& get_group_name() const { return m_group_name;}
 private:
     //! 处理client 上线
     int process_session_verify(ffreq_t<session_first_entere_t::in_t, session_first_entere_t::out_t>& req_);
@@ -83,6 +88,7 @@ private:
     userid_t alloc_uid() { return ++m_alloc_id; }
 protected:
     userid_t                                    m_alloc_id;
+    string                                      m_group_name;//! 区组名称
     string                                      m_logic_name;
     shared_ptr_t<ffrpc_t>                       m_ffrpc;
     callback_info_t                             m_callback_info;
@@ -157,7 +163,9 @@ public:
 class ffscene_t::session_enter_arg: public ffslot_t::callback_arg_t
 {
 public:
-    session_enter_arg(const string& gate_, const userid_t& s_, const string& from_, const string& to_, const string& data_):
+    session_enter_arg(const string& group_, const string& gate_, const userid_t& s_,
+                      const string& from_, const string& to_, const string& data_):
+        group_name(group_),
         gate_name(gate_),
         session_id(s_),
         from_scene(from_),
@@ -168,6 +176,7 @@ public:
     {
         return TYPEID(session_enter_arg);
     }
+    string    group_name;
     string    gate_name;
     userid_t    session_id;//! 包含用户id
     string    from_scene;//! 从哪个scene跳转过来,若是第一次上线，from_scene为空

@@ -25,6 +25,7 @@ int ffscene_t::open(arg_helper_t& arg_helper, string scene_name)
         }
         m_logic_name = arg_helper.get_option_value("-scene");
     }
+    m_group_name = arg_helper.get_option_value("-group_name");
     m_ffrpc = new ffrpc_t(m_logic_name);
     
     m_ffrpc->reg(&ffscene_t::process_session_verify, this);
@@ -81,7 +82,7 @@ int ffscene_t::process_session_enter(ffreq_t<session_enter_scene_t::in_t, sessio
     req_.response(out);
     if (m_callback_info.enter_callback)
     {
-        session_enter_arg arg(req_.msg.from_gate, req_.msg.session_id, req_.msg.from_scene, req_.msg.to_scene, req_.msg.extra_data);
+        session_enter_arg arg(req_.msg.from_group, req_.msg.from_gate, req_.msg.session_id, req_.msg.from_scene, req_.msg.to_scene, req_.msg.extra_data);
         m_callback_info.enter_callback->exe(&arg);
     }
     LOGTRACE((FFSCENE, "ffscene_t::process_session_enter end ok"));
@@ -157,32 +158,20 @@ int ffscene_t::send_msg_session(const string& gate_name, const userid_t& session
     LOGTRACE((FFSCENE, "ffscene_t::send_msg_session end ok gate[%s]", gate_name));
     return 0;
 }
-/*
-//! 多播
-int ffscene_t::multicast_msg_session(const vector<userid_t>& session_id_, uint16_t cmd_, const string& data_)
+int ffscene_t::kf_send_msg_session(const string& group_name, const string& gate_name,
+                                   const userid_t& session_id_,
+                                   uint16_t cmd_, const string& data_)
 {
-    vector<userid_t>::const_iterator it = session_id_.begin();
-    for (; it != session_id_.end(); ++it)
-    {
-        send_msg_session(*it, cmd_, data_);
-    }
+    LOGTRACE((FFSCENE, "ffscene_t::send_msg_session begin session_id_<%ld>", session_id_));
+
+    gate_route_msg_to_session_t::in_t msg;
+    msg.session_id.push_back(session_id_);
+    msg.cmd  = cmd_;
+    msg.body = data_;
+    m_ffrpc->call(group_name, gate_name, msg);
+    LOGTRACE((FFSCENE, "ffscene_t::send_msg_session end ok gate[%s]", gate_name));
     return 0;
 }
-//! 广播
-int ffscene_t::broadcast_msg_session(uint16_t cmd_, const string& data_)
-{
-    map<userid_t, session_info_t>::iterator it = m_session_info.begin();
-    for (; it != m_session_info.end(); ++it)
-    {
-        gate_route_msg_to_session_t::in_t msg;
-        msg.session_id.push_back(it->first);
-        msg.cmd = cmd_;
-        msg.body = data_;
-        m_ffrpc->call(it->second.gate_name, msg);
-    }
-    return 0;
-}
-*/
 //! 广播 整个gate
 int ffscene_t::broadcast_msg_gate(const string& gate_name_, uint16_t cmd_, const string& data_)
 {
@@ -195,37 +184,34 @@ int ffscene_t::broadcast_msg_gate(const string& gate_name_, uint16_t cmd_, const
 //! 关闭某个session
 int ffscene_t::close_session(const string& gate_name_, const userid_t& session_id_)
 {
-    /*useless
-    map<userid_t, session_info_t>::iterator it = m_session_info.find(session_id_);
-    if (it == m_session_info.end())
-    {
-        LOGWARN((FFSCENE, "ffscene_t::send_msg_session no session id[%ld]", session_id_));
-        return -1;
-    }
-    */
     gate_close_session_t::in_t msg;
     msg.session_id = session_id_;
     m_ffrpc->call(gate_name_, msg);
-    //useless m_session_info.erase(it);
     return 0;
 }
 //! 切换scene
 int ffscene_t::change_session_scene(const string& gate_name_, const userid_t& session_id_, const string& to_scene_, const string& extra_data_)
 {
 	LOGTRACE((FFSCENE, "ffscene_t::change_session_scene session id[%ld]", session_id_));
-    /*useless
-    map<userid_t, session_info_t>::iterator it = m_session_info.find(session_id_);
-    if (it == m_session_info.end())
-    {
-        LOGWARN((FFSCENE, "ffscene_t::change_session_scene no session id[%ld]", session_id_));
-        return -1;
-    }
-    */
+
     gate_change_logic_node_t::in_t msg;
     msg.session_id = session_id_;
     msg.alloc_logic_service = to_scene_;
     msg.extra_data = extra_data_;
     m_ffrpc->call(gate_name_, msg);
-    //m_session_info.erase(it);
+    return 0;
+}
+int ffscene_t::change_session_kf_scene(const string& group_name, const string& gate_name_, const userid_t& session_id_,
+                                       const string& to_scene_, const string& extra_data_)
+{
+	LOGTRACE((FFSCENE, "ffscene_t::change_session_kf_scene session id[%ld]", session_id_));
+
+    gate_change_logic_node_t::in_t msg;
+    msg.cur_group_name  = this->get_group_name();
+    msg.dest_group_name = group_name;
+    msg.session_id = session_id_;
+    msg.alloc_logic_service = to_scene_;
+    msg.extra_data = extra_data_;
+    m_ffrpc->call(gate_name_, msg);
     return 0;
 }

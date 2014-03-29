@@ -190,6 +190,13 @@ void ffscene_python_t::py_send_msg_session(const string& gate_name, const userid
 {
     singleton_t<ffscene_python_t>::instance().send_msg_session(gate_name, session_id_, cmd_, data_);
 }
+void ffscene_python_t::py_kf_send_msg_session(const string& group_name, const string& gate_name,
+                                              const userid_t& session_id_,
+                                              uint16_t cmd_, const string& data_)
+{
+    singleton_t<ffscene_python_t>::instance().kf_send_msg_session(group_name, gate_name, session_id_,
+                                                                  cmd_, data_);
+}
 void ffscene_python_t::py_broadcast_msg_session(uint16_t cmd_, const string& data_)
 {
     //! TODO singleton_t<ffscene_python_t>::instance().broadcast_msg_session(cmd_, data_);
@@ -242,6 +249,7 @@ int ffscene_python_t::open(arg_helper_t& arg_helper)
               .reg(&ffscene_python_t::broadcast_msg_gate, "broadcast_msg_gate")
               .reg(&ffscene_python_t::close_session, "close_session")
               .reg(&ffscene_python_t::change_session_scene, "change_session_scene")
+              .reg(&ffscene_python_t::change_session_kf_scene, "change_session_kf_scene")
               .reg(&ffscene_python_t::once_timer, "once_timer")
               .reg(&ffscene_python_t::reload, "reload")
               .reg(&ffscene_python_t::pylog, "pylog")
@@ -254,9 +262,9 @@ int ffscene_python_t::open(arg_helper_t& arg_helper)
               .reg(&ffscene_python_t::set_py_cmd2msg, "set_py_cmd2msg")
               .reg(&ffscene_python_t::rpc_response, "rpc_response");
 
-
     (*m_ffpython).reg(&ffdb_t::escape, "escape")
                  .reg(&ffscene_python_t::py_send_msg_session, "py_send_msg_session")
+                 .reg(&ffscene_python_t::py_kf_send_msg_session, "py_kf_send_msg_session")
                  .reg(&ffscene_python_t::py_broadcast_msg_session, "py_broadcast_msg_session")
                  .reg(&ffscene_python_t::py_get_config, "py_get_config")
                  .reg(&::py_post_task, "post_task")
@@ -288,6 +296,7 @@ int ffscene_python_t::open(arg_helper_t& arg_helper)
     singleton_t<task_processor_mgr_t>::instance().add(this->get_scene_name(), this);
     try{
         (*m_ffpython).load("main");
+        (*m_ffpython).call<void>("ffext", string("ff_set_group_name"), this->get_group_name());
         ret = (*m_ffpython).call<int>("main", string("init"));
     }
     catch(exception& e_)
@@ -465,6 +474,7 @@ ffslot_t::callback_t* ffscene_python_t::gen_enter_callback()
             try
             {
                 ffscene->get_ffpython().call<void>(ffscene->m_ext_name, func_name,
+                                               data->group_name,
                                                data->gate_name, data->session_id,
                                                data->from_scene, data->extra_data);
             }

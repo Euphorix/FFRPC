@@ -873,13 +873,14 @@ struct session_enter_scene_t
     {
         void encode()
         {
-            encoder() << session_id << from_gate << from_scene << to_scene << extra_data;
+            encoder() << session_id << from_group << from_gate << from_scene << to_scene << extra_data;
         }
         void decode()
         {
-            decoder() >> session_id >> from_gate >> from_scene >> to_scene >> extra_data;
+            decoder() >> session_id >> from_group >> from_gate >> from_scene >> to_scene >> extra_data;
         }
         userid_t    session_id;//! 包含用户id
+        string    from_group;//! 来自区组
         string    from_gate;
         string    from_scene;//! 从哪个scene跳转过来,若是第一次上线，from_scene为空
         string    to_scene;//! 跳到哪个scene上面去,若是下线，to_scene为空
@@ -962,14 +963,17 @@ struct gate_change_logic_node_t
     {
         void encode()
         {
-            encoder() << session_id << alloc_logic_service << extra_data;
+            encoder() << session_id << alloc_logic_service << cur_group_name << dest_group_name << extra_data;
         }
         void decode()
         {
-            decoder() >> session_id >> alloc_logic_service >> extra_data;
+            decoder() >> session_id >> alloc_logic_service >> cur_group_name >> dest_group_name >> extra_data;
         }
         userid_t session_id;//! 包含用户id
         string alloc_logic_service;//! 分配的logic service
+        //!区组名称
+        string cur_group_name;
+        string dest_group_name;
         string extra_data;
     };
     struct out_t: public ffmsg_t<out_t>
