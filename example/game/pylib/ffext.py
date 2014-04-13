@@ -184,11 +184,16 @@ class session_t:
         if self.group_name != '' and ff_get_group_name() != self.group_name and ff_get_group_name() != '':
             self.kf_flag = True
         #print('group_name:%s'%(ff_get_group_name()))
+    #判断是否仍然有效
+    def is_valid(self):
+        if get_session_mgr().get_by_sock(self.socket_id):
+            return True
+        return False
     def verify_id(self, id_, extra_ = ''):
         self.m_id = id_
         if self.m_id != 0:
             get_session_mgr().add(self.m_id, self.socket_id, self)
-        print('verify_id', id_)
+        #print('verify_id', id_)
     def get_id(self):
         return self.m_id
     def get_name(self):

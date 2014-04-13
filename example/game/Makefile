@@ -3,8 +3,14 @@ CROSS=
 CP=/bin/cp
 RM=-/bin/rm -rf
 LN=/bin/ln -s 
-CFLAGS=-g  -Wall -DFF_ENABLE_CURL
-LDFLAGS= -lpthread  -ldl -lpython2.6 -lmysqlclient -llua -lcurl
+#是否开启sqlite的支持，如需要关闭，设置为空字符串
+FF_ENABLE_SQLITE_FLAG =-DFF_ENABLE_SQLITE
+FF_ENABLE_CURL_FLAG   =
+#-DFF_ENABLE_CURL
+CFLAGS=-g -Wall $(FF_ENABLE_CURL_FLAG)  $(FF_ENABLE_SQLITE_FLAG)
+LDFLAGS= -O2 -lpthread  -ldl -lpython2.6 -lmysqlclient 
+#-lcurl
+#-llua 
 #链接库名
 LIB_NAME=
 #链接库版本
@@ -33,9 +39,12 @@ OBJS = $(SRCS:%.cpp=%.o)
 
 all:$(BIN)
 $(BIN):$(OBJS)
-	#gcc -c ../../fflib/db/sqlite3.c -o sqlite3.o
-	#g++ -o $(BIN) $(OBJS) sqlite3.o $(LDFLAGS)  
+ifeq ($(FF_ENABLE_SQLITE_FLAG),-DFF_ENABLE_SQLITE)
+	gcc -c ../../fflib/db/sqlite3.c -o sqlite3.o
+	g++ -o $(BIN) $(OBJS) sqlite3.o $(LDFLAGS)  
+else
 	g++ -o $(BIN) $(OBJS) $(LDFLAGS)  
+endif
 	@echo  " OK! Compile $@ "
 # @$(LN) $(shell pwd)/$(LIB_NAME).$(LIB_VER) /lib/$(LIB_NAME)
 

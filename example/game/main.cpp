@@ -142,8 +142,9 @@ err_proc:
     }
     
     ffbroker.close();
+    usleep(100);
     net_factory_t::stop();
-    usleep(500);
+    usleep(200);
     for (size_t i = 0; i <  all_fflua_mod.size(); ++i)
     {
         delete all_fflua_mod[i];;
