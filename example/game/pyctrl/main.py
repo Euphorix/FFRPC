@@ -48,6 +48,7 @@ def process_echo(ffreq):
             f.write(tmpS+'\n')
             #f.write('-perf_timeout 20\n')
             f.write('-perf_path %s/perf\n'%(ffreq.msg.process_name))
+            f.write('-db sqlite://./ff_demo.db\n')
             if ffreq.msg.param.get('-scene') != None:
                 f.write('-python_path ./%s/pyproject \n'%(ffreq.msg.process_name))
         f.close()
@@ -90,6 +91,10 @@ def process_echo(ffreq):
         else:
             ret_msg.output_msg = ffreq.msg.process_name +'该进程并未运行'
             ret_msg.info['update_data'] = 'not running'
+    elif ffreq.msg.cmd == '删除进程':
+        cmd = 'rm -rf ' + ffreq.msg.process_name
+        os.system(cmd)
+        print(cmd)
     else:
         ret_msg.ret_code = 0
         ret_msg.output_msg = '当前后台不支持此操作'
@@ -180,7 +185,7 @@ def dump_path(path):
            if raw_flag:
                data += line
            else:
-               data += line #+ "<br/>" 
+               data += line + "\n\n" 
         f.close()
         if data[-1:] == '\n':
             data = data[0:-1]

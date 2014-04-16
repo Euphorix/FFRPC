@@ -114,8 +114,8 @@ def process_move(session, msg):
     #下面的代码模拟的是调scene，goto_scene直接完成调scene，so easy!
     #由于本demo没有启动多个scene，所以这里只是把player对象传过去，没有给client发送player消失消息
     goto_msg = msg_def.input_req_t()
-    goto_msg.ops = '%d_%d_%d_%d'%(session.get_id(), session.player.x, session.player.y,
-                                 g_alloc_names.index(session.player.name))
+    goto_msg.ops = '%d_%d_%d_%s'%(session.get_id(), session.player.x, session.player.y,
+                                  session.player.name)
     
     print('goto_msg:', goto_msg)
     session.goto_scene('scene@0', goto_msg)
@@ -143,7 +143,7 @@ def process_enter(session, msg):
     
     session.player.x = int(param[1])
     session.player.y = int(param[2])
-    session.player.name = g_alloc_names[int(param[3])] 
+    session.player.name = param[3]
     print('process_enter', msg, session.socket_id)
 
 

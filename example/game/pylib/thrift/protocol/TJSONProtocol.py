@@ -309,10 +309,221 @@ class TJSONProtocolBase(TProtocolBase):
     self.readJSONSyntaxChar(RBRACKET)
     self.popContext()
 
+class FFStructObj:
+    def __init__(self, param = None):
+        self.parent_obj = None
+        self.param  = param
+        self.values = []
+    def add_value(self, v):
+        self.values.append(v)
+class FFFieldObj:
+    def __init__(self, parent_obj = None, name = '', ttype = '', id = 0, param = None):
+        self.parent_obj = parent_obj
+        self.param  = param
+        self.values = []
+        self.name = name
+        self.ttype = CTYPES[ttype]
+        self.id = id
+    def add_value(self, v):
+        self.values.append(v)
+    def format_write_val(self):
+        dest = {}
+        if self.values[0].__class__ == FFFieldObj:
+            dest = {
+                self.id:{
+                    self.ttype:{
+                    }
+                }
+            }
+            dest_set = dest[self.id][self.ttype]
+            for k in self.values:
+                tmp_val = k.format_write_val()
+                for i, v in tmp_val.iteritems():
+                    dest_set[i] = v
+        else:
+            dest ={
+                self.id:{
+                    self.ttype: self.values[0].format_write_val(),
+                }
+           }
+        return dest
+class FFMapObj:
+    def __init__(self, parent_obj, ktype, vtype, size, param = None):
+        self.parent_obj = parent_obj
+        self.param    = param
+        self.key_list = []
+        self.val_list = []
+        self.ktype = CTYPES[ktype]
+        self.vtype = CTYPES[vtype]
+        self.size  = size
+    def add_value(self, v):
+        if v.__class__ == FFFieldObj or (len(self.key_list) > 0 and len(self.val_list[len(self.key_list) - 1]) == 0):
+            self.val_list[len(self.key_list) - 1].append(v)
+        else:
+            self.key_list.append(v)
+            self.val_list.append([])
+    def format_write_val(self):
+        dest = [self.ktype, self.vtype, self.size]
+        tmp_dict = {}
+        for i in range(0, len(self.key_list)):
+            tmp_key = self.key_list[i].format_write_val()
+            tmp_val_list = self.val_list[i]
+            #print('tmp_key', tmp_key)
+            if tmp_val_list[0].__class__ == FFFieldObj:#
+                dest_dict = {}
+                for tmp_val in tmp_val_list:
+                    for id, val in tmp_val.format_write_val().iteritems():
+                        dest_dict[id] = val
+                tmp_dict[tmp_key] = dest_dict
+            else:
+                tmp_dict[tmp_key] = tmp_val_list[0].format_write_val()
+            #print('FFMapObj', tmp_key)
+        dest.append(tmp_dict)
+        return dest
+class FFListObj:
+    def __init__(self, parent_obj, etype, size, param = None):
+        self.parent_obj = parent_obj
+        self.param  = param
+        self.values = []
+        self.etype = CTYPES[etype]
+        self.size = size
+        self.child_field_val = []
+    def writeStructEnd(self):
+        self.values.append(self.child_field_val)
+        self.child_field_val = []
+    def add_value(self, v):
+        if v.__class__ == FFFieldObj:
+            self.child_field_val.append(v)
+        else:
+            self.values.append(v)
+    def format_write_val(self):
+        dest = [self.etype, self.size]
+        for i in self.values:
+            if i.__class__ == list:
+                tmp_dict = {}
+                for k in i:
+                    tmp_ret = k.format_write_val()
+                    for id, val in  tmp_ret.iteritems():
+                        tmp_dict[id] = val
+                dest.append(tmp_dict)
+            else:
+                dest.append(i.format_write_val())
+        return dest
+class FFSetObj:
+    def __init__(self, parent_obj, etype, size, param = None):
+        self.parent_obj = parent_obj
+        self.param  = param
+        self.values = []
+        self.etype = CTYPES[etype]
+        self.size = size
+    def add_value(self, v):
+        self.values.append(v)
+    def format_write_val(self):
+        dest = [self.etype, self.size]
+        for i in self.values:
+            dest.append(i.format_write_val())
+        return dest
+class FFBaseTypeObj:
+    def __init__(self, value):
+        self.value = value
+    def add_value(self, v):
+        self.value = v
+    def format_write_val(self):
+        return self.value
 
 class TJSONProtocol(TJSONProtocolBase):
+  def __init__(self, trans):
+    TJSONProtocolBase.__init__(self, trans)
+    self.write_cur_field = None
+    self.read_all_data   = None
+  def writeMessageBegin(self, name, request_type, seqid):
+    #self.write_val = [VERSION, name, request_type, seqid, {}]
+    child_obj = {
+        'parent_obj':self.write_cur_field,
+        'param':[VERSION, name, request_type, seqid, {}],
+        'value':[], #all field  obj
+    }
+    self.write_cur_field = FFStructObj([VERSION, name, request_type, seqid, {}])
+  def writeMessageEnd(self):
+    value_dict = {}
+    for field_obj in self.write_cur_field.values:
+        #print(field_obj.__class__.__name__)
+        tmp_dict = field_obj.format_write_val()
+        for k, v in tmp_dict.iteritems():
+            value_dict[k] = v
+    self.write_cur_field.param[4] = value_dict
+    #print(self.write_cur_field.param)
+    str_ret = json.dumps(self.write_cur_field.param, ensure_ascii=False,separators=(',',':'))
+    self.trans.write(str_ret)
+  def writeStructBegin(self, name):
+    pass
 
+  def writeStructEnd(self):
+    obj = self.write_cur_field
+    if obj != None and obj.__class__ == FFListObj:
+        obj.writeStructEnd()
+
+  def writeFieldBegin(self, name, ttype, id):
+    child_obj = FFFieldObj(self.write_cur_field, name, ttype, id)
+    self.write_cur_field = child_obj
+  def writeFieldEnd(self):
+    child_obj = self.write_cur_field
+    self.write_cur_field = child_obj.parent_obj
+    self.write_cur_field.add_value(child_obj)
+  def writeVal(self, val):
+    self.write_cur_field.add_value(FFBaseTypeObj(val))
+  def writeFieldStop(self):
+    pass
+
+  def writeMapBegin(self, ktype, vtype, size):
+    child_obj = FFMapObj(self.write_cur_field, ktype, vtype, size)
+    self.write_cur_field = child_obj
+  def writeMapEnd(self):
+    child_obj = self.write_cur_field
+    self.write_cur_field = child_obj.parent_obj
+    self.write_cur_field.add_value(child_obj)
+  def writeListBegin(self, etype, size):
+    child_obj = FFListObj(self.write_cur_field, etype, size)
+    self.write_cur_field = child_obj
+  def writeListEnd(self):
+    child_obj = self.write_cur_field
+    self.write_cur_field = child_obj.parent_obj
+    self.write_cur_field.add_value(child_obj)
+
+  def writeSetBegin(self, etype, size):
+    child_obj = FFSetObj(self.write_cur_field, etype, size)
+    self.write_cur_field = child_obj
+    
+  def writeSetEnd(self):
+    child_obj = self.write_cur_field
+    self.write_cur_field = child_obj.parent_obj
+    self.write_cur_field.add_value(child_obj)
+
+  def writeBool(self, boolean):
+    self.writeVal(1 if boolean is True else 0)
+
+  def writeInteger(self, integer):
+    self.writeVal(integer)
+  writeByte = writeInteger
+  writeI16 = writeInteger
+  writeI32 = writeInteger
+  writeI64 = writeInteger
+
+  def writeDouble(self, dbl):
+    self.writeVal(dbl)
+
+  def writeString(self, string):
+    self.writeVal(string)
+    
+  def writeBinary(self, binary):
+    str_val = QUOTE + base64.b64encode(binary) + QUOTE
+    self.writeVal(str_val)
   def readMessageBegin(self):
+    #readAllData = json.loads(self.trans.getvalue())
+    #self.read_all_data = readAllData
+    #ver      = readAllData[1]
+    #retTuple = (readAllData[1], readAllData[2], readAllData[3])
+    
     self.resetReadContext()
     self.readJSONArrayStart()
     if self.readJSONInteger() != VERSION:
@@ -321,6 +532,7 @@ class TJSONProtocol(TJSONProtocolBase):
     name = self.readJSONString(False)
     typen = self.readJSONInteger()
     seqid = self.readJSONInteger()
+    
     return (name, typen, seqid)
 
   def readMessageEnd(self):
@@ -391,79 +603,7 @@ class TJSONProtocol(TJSONProtocolBase):
   def readBinary(self):
     return self.readJSONBase64()
 
-  def writeMessageBegin(self, name, request_type, seqid):
-    self.resetWriteContext()
-    self.writeJSONArrayStart()
-    self.writeJSONNumber(VERSION)
-    self.writeJSONString(name)
-    self.writeJSONNumber(request_type)
-    self.writeJSONNumber(seqid)
-
-  def writeMessageEnd(self):
-    self.writeJSONArrayEnd()
-
-  def writeStructBegin(self, name):
-    self.writeJSONObjectStart()
-
-  def writeStructEnd(self):
-    self.writeJSONObjectEnd()
-
-  def writeFieldBegin(self, name, ttype, id):
-    self.writeJSONNumber(id)
-    self.writeJSONObjectStart()
-    self.writeJSONString(CTYPES[ttype])
-
-  def writeFieldEnd(self):
-    self.writeJSONObjectEnd()
-
-  def writeFieldStop(self):
-    pass
-
-  def writeMapBegin(self, ktype, vtype, size):
-    self.writeJSONArrayStart()
-    self.writeJSONString(CTYPES[ktype])
-    self.writeJSONString(CTYPES[vtype])
-    self.writeJSONNumber(size)
-    self.writeJSONObjectStart()
-
-  def writeMapEnd(self):
-    self.writeJSONObjectEnd()
-    self.writeJSONArrayEnd()
-    
-  def writeListBegin(self, etype, size):
-    self.writeJSONArrayStart()
-    self.writeJSONString(CTYPES[etype])
-    self.writeJSONNumber(size)
-    
-  def writeListEnd(self):
-    self.writeJSONArrayEnd()
-
-  def writeSetBegin(self, etype, size):
-    self.writeJSONArrayStart()
-    self.writeJSONString(CTYPES[etype])
-    self.writeJSONNumber(size)
-    
-  def writeSetEnd(self):
-    self.writeJSONArrayEnd()
-
-  def writeBool(self, boolean):
-    self.writeJSONNumber(1 if boolean is True else 0)
-
-  def writeInteger(self, integer):
-    self.writeJSONNumber(integer)
-  writeByte = writeInteger
-  writeI16 = writeInteger
-  writeI32 = writeInteger
-  writeI64 = writeInteger
-
-  def writeDouble(self, dbl):
-    self.writeJSONNumber(dbl)
-
-  def writeString(self, string):
-    self.writeJSONString(string)
-    
-  def writeBinary(self, binary):
-    self.writeJSONBase64(binary)
+  
 
 
 class TJSONProtocolFactory:
