@@ -1,21 +1,28 @@
 
-#include "lua/fflua.h"
 #include "server/ffscene_lua.h"
 #include "base/performance_daemon.h"
-#include "server/fflua_json_traits.h"
 
 using namespace ff;
 
+#ifdef FF_ENABLE_LUA
+
+#include "lua/fflua.h"
+#include "server/fflua_json_traits.h"
+
 ffscene_lua_t::ffscene_lua_t():
-    m_arg_helper("")
+    m_arg_helper(""),m_fflua(NULL)
 {
     m_fflua = new fflua_t();
 }
 ffscene_lua_t::~ffscene_lua_t()
 {
-    delete m_fflua;
-    m_fflua = NULL;
+    if (m_fflua)
+    {
+        delete m_fflua;
+        m_fflua = NULL;
+    }
 }
+
 
 static string json_encode(ffjson_tool_t& ffjson_tool)
 {
@@ -590,4 +597,33 @@ void ffscene_lua_t::reg_scene_interface(const string& name_)
     ffslot_t::callback_t* func = new lambda_cb(this, name_);
     this->m_ffrpc->reg(name_, func);
 }
+
+#else
+
+
+ffscene_lua_t::ffscene_lua_t():
+    m_arg_helper(""),m_fflua(NULL)
+{
+}
+ffscene_lua_t::~ffscene_lua_t()
+{
+}
+
+int ffscene_lua_t::open(arg_helper_t& arg_helper, string scene_name)
+{
+    return -1;
+}
+int ffscene_lua_t::close()
+{
+    return -1;
+}
+void ffscene_lua_t::post(const string& task_name, const ffjson_tool_t& task_args,
+              const string& from_name, long callback_id)
+{
+}
+void ffscene_lua_t::callback(const ffjson_tool_t& task_args, long callback_id)
+{
+}
+#endif
+
 

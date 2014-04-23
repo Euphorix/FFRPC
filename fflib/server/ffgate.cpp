@@ -50,6 +50,12 @@ int ffgate_t::open(arg_helper_t& arg_helper)
 }
 int ffgate_t::close()
 {
+    if (m_ffrpc)
+        m_ffrpc->get_tq().produce(task_binder_t::gen(&ffgate_t::close_impl, this));
+    return 0;
+}
+int ffgate_t::close_impl()
+{
     map<userid_t/*sessionid*/, client_info_t>::iterator it = m_client_set.begin();
     for (; it != m_client_set.end(); ++it)
     {
@@ -61,7 +67,6 @@ int ffgate_t::close()
     }
     return 0;
 }
-
 //! 处理连接断开
 int ffgate_t::handle_broken(socket_ptr_t sock_)
 {

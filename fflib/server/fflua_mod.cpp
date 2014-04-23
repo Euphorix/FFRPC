@@ -1,10 +1,12 @@
 
-#include "lua/fflua.h"
 #include "server/fflua_mod.h"
 #include "base/performance_daemon.h"
-#include "server/fflua_json_traits.h"
-
 using namespace ff;
+
+#ifdef FF_ENABLE_LUA
+
+#include "lua/fflua.h"
+#include "server/fflua_json_traits.h"
 
 fflua_mod_t::fflua_mod_t():
     m_arg_helper("")
@@ -472,4 +474,32 @@ int fflua_mod_t::change_session_scene(const string& gate_name_, const userid_t& 
     }
     return 0;
 }
+
+#else
+    
+fflua_mod_t::fflua_mod_t():
+    m_arg_helper(""), m_fflua(NULL)
+{
+}
+fflua_mod_t::~fflua_mod_t()
+{
+}
+
+int fflua_mod_t::open(arg_helper_t& arg_helper, string scene_name)
+{
+    return -1;
+}
+int fflua_mod_t::close()
+{
+    return -1;
+}
+void fflua_mod_t::post(const string& task_name, const ffjson_tool_t& task_args,
+              const string& from_name, long callback_id)
+{
+}
+void fflua_mod_t::callback(const ffjson_tool_t& task_args, long callback_id)
+{
+}
+
+#endif
 
