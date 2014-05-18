@@ -185,7 +185,7 @@ def dump_path(path):
            if raw_flag:
                data += line
            else:
-               data += line + "\n\n" 
+               data += line# + "\n\n" 
         f.close()
         if data[-1:] == '\n':
             data = data[0:-1]
